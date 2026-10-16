@@ -1,0 +1,13 @@
+{
+  "name": "OmoLink",
+  "short_name": "OmoLink",
+  "description": "Connecting South Omo's local producers to wider markets.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fbf5ef",
+  "theme_color": "#733e1c",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

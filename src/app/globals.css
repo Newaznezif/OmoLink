@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --focus: #b96a2c;
+}
+
+html,
+body {
+  color: var(--color-ink-900, #111418);
+  background: #fbf7f1;
+}
+
+body {
+  font-feature-settings: 'cv02', 'cv03';
+  -webkit-tap-highlight-color: transparent;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+.skip-link:focus {
+  left: 12px;
+  top: 12px;
+  z-index: 100;
+  background: #111418;
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
+.card-shadow {
+  box-shadow: 0 1px 2px rgba(17, 20, 24, 0.04), 0 4px 16px rgba(17, 20, 24, 0.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
