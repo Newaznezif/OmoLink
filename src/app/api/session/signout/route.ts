@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
-import { clearSession, getSessionProfile } from '@/lib/session';
+import { clearSession } from '@/lib/session';
+import { isDemoMode } from '@/lib/store';
+import { supabaseServer } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST() {
-  const profile = await getSessionProfile();
-  if (profile) {
-    // In demo mode we don't have real auth to invalidate. Clearing the cookie
-    // ends the session for the browser.
+  if (isDemoMode()) {
+    // Demo sign-in is only a cookie; deleting it ends the session.
+    clearSession();
+  } else {
+    await supabaseServer().auth.signOut();
   }
-  clearSession();
   return NextResponse.redirect(new URL('/', process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'), {
     status: 302
   });

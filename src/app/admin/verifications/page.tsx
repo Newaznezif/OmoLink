@@ -31,7 +31,7 @@ export default async function AdminVerificationsPage() {
                   </div>
                   <p className="mt-2 text-sm text-ink-700">{p.shortBio}</p>
                   <div className="mt-3">
-                    <VerificationAction profileId={p.id} reviewerProfileId={profile.id} />
+                    <VerificationAction profileId={p.id} simulated={profile.isDemo} />
                   </div>
                 </CardBody>
               </Card>

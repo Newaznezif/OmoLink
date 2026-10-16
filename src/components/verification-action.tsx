@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Field, Textarea } from './ui';
 
-export function VerificationAction({ profileId, reviewerProfileId }: { profileId: string; reviewerProfileId: string }) {
+export function VerificationAction({ profileId, simulated }: { profileId: string; simulated: boolean }) {
   const router = useRouter();
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState<null | 'approved' | 'rejected' | 'needs_more_info'>(null);
@@ -21,11 +21,12 @@ export function VerificationAction({ profileId, reviewerProfileId }: { profileId
       const res = await fetch('/api/admin/verifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileId, reviewerProfileId, decision, reason })
+        // The reviewer is identified by the session on the server, never here.
+        body: JSON.stringify({ profileId, decision, reason })
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error ?? 'Failed to record decision.');
-      setMessage('Simulated decision recorded.');
+      setMessage(simulated ? 'Simulated decision recorded.' : 'Decision recorded against this profile.');
       setReason('');
       router.refresh();
     } catch (err: unknown) {

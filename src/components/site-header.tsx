@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getSession, getSessionProfile } from '@/lib/session';
+import { getSessionActor, getSessionProfile } from '@/lib/session';
 import { isDemoMode } from '@/lib/store';
 import { LanguageSelector } from './language-selector';
 import { OfflineStatus } from './offline-status';
@@ -14,8 +14,8 @@ const links = [
 ];
 
 export async function SiteHeader() {
-  const session = getSession();
-  const profile = session ? await getSessionProfile() : undefined;
+  const actor = await getSessionActor();
+  const profile = actor ? await getSessionProfile() : undefined;
 
   return (
     <>
@@ -52,7 +52,7 @@ export async function SiteHeader() {
             {profile ? (
               <div className="hidden md:flex items-center gap-2">
                 <Link
-                  href={profile.id.startsWith('prof_admin') ? '/admin' : '/dashboard'}
+                  href={actor?.role === 'admin' ? '/admin' : '/dashboard'}
                   className="px-3 py-2 rounded-lg text-sm font-semibold text-clay-800 hover:bg-clay-50"
                 >
                   Dashboard

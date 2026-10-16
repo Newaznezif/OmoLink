@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { formatMoney, parseDecimalAmount } from '@/lib/money';
+import { suggestSellingPrice } from '@/lib/pricing';
 import { Card, CardBody, Field, Input } from './ui';
 
 type Inputs = {
@@ -37,13 +38,10 @@ export function PriceCalculator() {
     const pack = cents.packaging!;
     const trans = cents.transport!;
     const other = cents.other!;
-    const markupCents = cents.markupPct!; // 25.00 means 25%
+    // parseDecimalAmount returns minor units, so "25" arrives as 2500 — i.e. 25.00 %.
+    const markupPercent = cents.markupPct! / 100;
     const total = prod + pack + trans + other;
-    const markupPctReal = markupCents / 100; // percent in minor units
-    const suggested = Math.round(total * (1 + markupPctReal / 100));
-    const profit = suggested - total;
-    const margin = total > 0 && suggested > 0 ? Math.round((profit / suggested) * 10_000) / 100 : 0;
-    return { invalid: [] as (keyof Inputs)[], result: { total, suggested, profit, margin } };
+    return { invalid: [] as (keyof Inputs)[], result: suggestSellingPrice(total, markupPercent) };
   }, [values]);
 
   function set<K extends keyof Inputs>(k: K, v: string) {
@@ -85,10 +83,14 @@ export function PriceCalculator() {
           <h2 className="font-semibold text-ink-900">Suggestion</h2>
           {parsed.result ? (
             <dl className="mt-3 space-y-2 text-sm">
-              <Row label="Total cost" value={formatMoney({ cents: parsed.result.total, currency: 'ETB' })} />
-              <Row label="Suggested selling price" value={formatMoney({ cents: parsed.result.suggested, currency: 'ETB' })} strong />
-              <Row label="Estimated profit" value={formatMoney({ cents: parsed.result.profit, currency: 'ETB' })} />
-              <Row label="Profit margin on selling price" value={`${parsed.result.margin.toFixed(2)} %`} />
+              <Row label="Total cost" value={formatMoney({ cents: parsed.result.totalCostCents, currency: 'ETB' })} />
+              <Row
+                label="Suggested selling price"
+                value={formatMoney({ cents: parsed.result.suggestedPriceCents, currency: 'ETB' })}
+                strong
+              />
+              <Row label="Estimated profit" value={formatMoney({ cents: parsed.result.profitCents, currency: 'ETB' })} />
+              <Row label="Profit margin on selling price" value={`${parsed.result.marginPercent.toFixed(2)} %`} />
             </dl>
           ) : (
             <p className="text-sm text-ink-500">Complete the form to see a suggestion.</p>

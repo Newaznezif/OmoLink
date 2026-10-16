@@ -3,9 +3,19 @@
 import type { Category, Profile } from '@/lib/types';
 import { Field, Input, Textarea, Select, Button } from './ui';
 
-export function RegisterForm({ categories }: { categories: Category[] }) {
+export function RegisterForm({ categories, mode }: { categories: Category[]; mode: 'demo' | 'supabase' }) {
   return (
     <div className="space-y-4">
+      {mode === 'supabase' && (
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Email" htmlFor="email" required>
+            <Input id="email" name="email" type="email" autoComplete="email" required />
+          </Field>
+          <Field label="Password" htmlFor="password" required hint="At least 6 characters.">
+            <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={6} />
+          </Field>
+        </div>
+      )}
       <Field label="Display name or group name" htmlFor="displayName" required>
         <Input id="displayName" name="displayName" required maxLength={120} />
       </Field>
@@ -74,19 +84,27 @@ export function RegisterForm({ categories }: { categories: Category[] }) {
           imagery, or ceremony details are <strong>not</strong> commercialised by default.
         </span>
       </label>
-      <Button type="submit">Create demo profile</Button>
+      <Button type="submit">{mode === 'demo' ? 'Create demo profile' : 'Create account and profile'}</Button>
       <p className="text-xs text-ink-500">
-        <ProfileDisclaimer />
+        <ProfileDisclaimer mode={mode} />
       </p>
     </div>
   );
 }
 
-function ProfileDisclaimer() {
+function ProfileDisclaimer({ mode }: { mode: 'demo' | 'supabase' }) {
+  if (mode === 'supabase') {
+    return (
+      <span>
+        This creates a real Supabase Auth account. If email confirmation is enabled on the project, confirm the link
+        before the profile becomes visible. A new profile always starts as unverified.
+      </span>
+    );
+  }
   return (
     <span>
-      This build does not connect to Supabase Auth yet. The account you create is stored only in an in-memory demo
-      store that resets when the server cold-restarts. Do not enter real private data.
+      Demo mode stores this account in an in-memory store that resets when the server cold-restarts. Do not enter real
+      private data. A new profile always starts as unverified.
     </span>
   );
 }

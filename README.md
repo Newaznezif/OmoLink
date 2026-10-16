@@ -2,7 +2,7 @@
 
 **Connecting South Omo’s local producers to wider markets.**
 
-A community-centred marketplace prototype for **South Omo Zone, Southern Ethiopia**. Producers, guides, and producer groups publish products and services with clear unit pricing; buyers submit inquiries; groups pool quantities to serve bulk buyers; producers see a shared transport cost split. The build runs end-to-end in **demo mode** so it works without any paid credentials, and ships SQL migrations + Row Level Security policies ready for Supabase.
+A community-centred marketplace for **South Omo Zone, Southern Ethiopia**. Producers, guides, and producer groups publish products and services with clear unit pricing; buyers submit inquiries; groups pool quantities to serve bulk buyers; producers see a shared transport cost split. The build runs end-to-end in **demo mode** with no credentials, and can run against **Supabase Postgres + Supabase Auth** when `DATA_MODE=supabase` and the project keys are provided.
 
 ---
 
@@ -18,8 +18,9 @@ A community-centred marketplace prototype for **South Omo Zone, Southern Ethiopi
 | Price calculator (markup vs margin) | ✅ working | Integer-cents math throughout |
 | Offline PWA + IndexedDB drafts | ✅ working | Service worker caches shell + visited pages; drafts survive refresh |
 | Admin verifications + reports | ✅ working | **Simulated** — every action labelled |
-| Supabase integration | ⚠️ not connected | Schema and policy migrations exist, but this build has no Supabase client, repository, or Auth integration |
-| Supabase Auth | ⚠️ not wired | Demo sign-in only |
+| Supabase repository | ✅ implemented, ⚠️ unverified against a live project | `src/lib/supabase/repository.ts` implements the full `Repo` interface over PostgREST; no Supabase project exists yet, so it has never executed against real data |
+| Supabase Auth | ✅ implemented, ⚠️ unverified | Password sign-in/sign-up, cookie sessions via `@supabase/ssr`, email-confirmation callback |
+| Row Level Security | ⚠️ written, not exercised | 30+ policies in `0002_rls.sql`; unapplied and untested against a running database |
 | SMS / USSD gateway | ❌ not implemented | A web app cannot claim SMS without a real gateway |
 | Payment processing | ❌ not implemented | Never marked as paid |
 | Hamer / Dasenech / Tsamai translations | ❌ not fabricated | Selector shows “not yet available” |
@@ -29,8 +30,9 @@ A community-centred marketplace prototype for **South Omo Zone, Southern Ethiopi
 - **Next.js 14** App Router, **TypeScript** strict, **React 18**
 - **Tailwind CSS** custom earth-tone palette
 - **qrcode** (local generation)
+- **@supabase/supabase-js** + **@supabase/ssr** — only used when `DATA_MODE=supabase`
 - **Node** ≥ 18.17. Runs cleanly on Node 24.
-- No external runtime services required to run the app.
+- Demo mode needs no external service at all.
 
 ## Quick start
 
@@ -61,6 +63,7 @@ To sign in as a demo producer, use the “Sign in” button and pick any sample 
 | `npm run start` | Serve the production build |
 | `npm run typecheck` | `tsc --noEmit` strict type pass |
 | `npm run lint` | ESLint via `next lint` |
+| `npm test` | 26 unit tests via the Node test runner and `tsx` |
 
 ## Project layout
 
@@ -92,9 +95,15 @@ public/
 
 ## Data mode and safety
 
-In **demo mode** the app uses an in-memory store seeded by `src/lib/demo-data.ts`. Every record is flagged with `isDemo: true` and rendered with a visible “Sample data” badge. Mutations from the UI (create listing, submit inquiry, contribute, verify) live in that store only. They are lost on a server cold restart — this is a documented limitation, not a bug.
+In **demo mode** (`DATA_MODE=demo`, the default) the app uses an in-memory store seeded by `src/lib/demo-data.ts`. Every record is flagged with `isDemo: true` and rendered with a visible “Sample data” badge, and a banner states demo mode is active. Mutations from the UI (create listing, submit inquiry, contribute, verify) live in that store only. They are lost on a server cold restart — this is a documented limitation, not a bug.
 
-`DATA_MODE=supabase` is not implemented in this build. Selecting it fails closed with an error instead of silently falling back to demo data, even if Supabase credentials are present. The SQL schema and RLS policies are starter migrations only; they have not been applied to a Supabase project or verified against an authenticated client. Do not treat the database as production-ready until the policies are security-reviewed, migrations are applied to the intended project, and access tests pass.
+In **Supabase mode** (`DATA_MODE=supabase`) the same `Repo` interface is served by `src/lib/supabase/repository.ts` against Postgres, sessions come from Supabase Auth, and every row is mapped with `isDemo: false`, so the sample-data badge disappears. There is no silent mixing:
+
+- Missing or half-set credentials throw at startup with the exact variable names to fix.
+- Only the **anon key** is ever used, so PostgREST evaluates every request under Row Level Security. `SUPABASE_SERVICE_ROLE_KEY` is deliberately not read anywhere in this codebase.
+- Profile ownership is taken from the authenticated user, never from the request body.
+
+**The Supabase path has never been executed against a real project.** Migrations are unapplied and the RLS policies are unexercised, so treat the schema as reviewed-but-unverified until `supabase db push` and the access tests below have actually run.
 
 **Never** commit `.env.local` or real keys. The `.gitignore` excludes them.
 
@@ -120,7 +129,9 @@ In **demo mode** the app uses an in-memory store seeded by `src/lib/demo-data.ts
 
 ## Testing report
 
-Run locally, all pass against a fresh `npm run dev`:
+Automated: `npm test` → **26 passing, 0 failing** (money parsing, markup vs margin, row→domain mapping, consent handling, config fail-closed rules, and Supabase repository behaviour against a stubbed client). `npm run typecheck`, `npm run lint`, and `npm run build` all pass.
+
+Manual run against a fresh `npm run dev` in demo mode:
 
 | Test | Result | Notes |
 | --- | --- | --- |
@@ -134,17 +145,28 @@ Run locally, all pass against a fresh `npm run dev`:
 | TEST 8 — Transparent status | **PASS** | Sample tag on every demo record; verification labels explicit |
 | TEST 9 — Responsive | **PASS** | Verified at 360 px, 768 px, 1440 px widths |
 | TEST 10 — Production build | **PASS** | `next build` succeeds; `tsc --noEmit` clean |
-| TEST 11 — Database security | **NOT TESTED** | No Supabase project is configured; migrations are unapplied and policies have not been exercised |
+| TEST 11 — Database security | **BLOCKED** | Supabase repository, Auth and RLS policies are implemented, but no Supabase project exists and this machine has no Postgres or Docker, so migrations are unapplied and no policy has been exercised. Blocked on project credentials — see “Supabase rollout”. |
 | TEST 12 — Error handling | **PASS** | Invalid form input shows inline errors; network failure queues draft instead of crashing |
+
+TEST 11 acceptance once a project is available:
+
+```
+supabase db push                                   # applies 0001_init.sql + 0002_rls.sql
+psql "$DATABASE_URL" -f supabase/seed.sql          # categories only, never demo producers
+# then, as two different authenticated users:
+#   producer A updates producer B's listing  -> must be rejected by RLS
+#   anonymous select of an unpublished listing -> must return 0 rows
+#   buyer reads only their own inquiries       -> enforced by policy
+```
 
 ## Known limitations
 
-1. **No real authentication** — Sign-in is a cookie-based demo. Supabase Auth wiring is a follow-up.
+1. **Supabase mode is unverified** — the code path is written and unit-tested against a stub, but it has never touched a real database. Demo-mode authentication remains a cookie; Supabase Auth only takes effect once a project is configured.
 2. **No SMS / USSD / payments** — these are explicitly out of scope until a real gateway is integrated and tested. We refuse to display a button that pretends to send SMS.
 3. **No local-language translations** — Hamer, Dasenech and Tsamai translations require review by competent speakers. The selector honestly reports “not available” instead of showing invented text.
 4. **Demo store is in-memory** — server cold-restart clears user-created listings, inquiries, contributions, verification decisions, reports. Real Supabase persistence is the intended path.
 5. **Images are abstract SVG placeholders** — no real photographs are used. This avoids the failure mode of presenting generic stock imagery as documentary evidence of a South Omo producer.
-6. **RLS not exercised** — policies ship with the schema but are not exercised in this build because no Supabase instance is connected.
+6. **RLS not exercised** — the policies are written and enabled in `0002_rls.sql`, but no database has run them yet. Until then, the RLS layer is unproven and demo mode remains the only verified experience.
 7. **No map provider** — pickup and meeting points are text-only. Free map tile integration is a roadmap item, not a dependency in this build.
 8. **Rate limiting** — recommended for real deployment; not enforced in demo.
 
@@ -157,16 +179,31 @@ The app deploys on Vercel’s free tier with no additional configuration:
 3. Set `NEXT_PUBLIC_SITE_URL` to the deployed URL. Leave `DATA_MODE=demo` for the hackathon demo, or provision a free Supabase project and add the keys.
 4. Deploy. Verify the URL — do not claim a successful deployment without loading the site.
 
-For an existing Supabase project (not yet supported by the application runtime):
+### Supabase rollout
+
+Provisioning a project needs a human Supabase login, which this machine does not have. The exact remaining steps, from an authenticated terminal:
 
 ```
-supabase login
-supabase link --project-ref <existing-project-ref>
-supabase migration list
-supabase db push             # applies supabase/migrations/*.sql
+npm install -D supabase                # or install the standalone CLI
+npx supabase login                     # browser/device authorisation
+npx supabase projects create omolink   # free tier; reuse an existing project instead if you have one
+npx supabase link --project-ref <ref>
+npx supabase db push                   # applies supabase/migrations/*.sql
+psql "$DATABASE_URL" -f supabase/seed.sql
 ```
 
-Review the migrations and RLS policies before applying them to any shared or production database. This application does not yet use Supabase Auth or a Supabase-backed repository, so setting `DATA_MODE=supabase` currently returns an explicit error; do not set it expecting the site to connect.
+Then create `.env.local`:
+
+```
+DATA_MODE=supabase
+NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+NEXT_PUBLIC_SITE_URL=https://your-deployed-url
+```
+
+Restart the server. The demo banner disappears because no row loaded from Postgres carries `isDemo: true`. Seed data intentionally contains categories only — demo producers, listings and inquiries are never inserted into a real database, so nobody mistakes sample accounts for verified community members.
+
+Review the migrations and RLS policies before applying them to any shared database. Until `supabase db push` and the TEST 11 access checks above have actually run, do not describe the database as secured.
 
 ## Live-demo script (5 minutes)
 
@@ -185,7 +222,7 @@ Review the migrations and RLS policies before applying them to any shared or pro
 
 ## Future integration plan
 
-- **Supabase Auth + storage + Repo**: replace `getRepo()` with a `SupabaseRepository` that maps 1:1 to the shipped schema.
+- **Supabase Storage**: listings still take a data-URL or external `src`. Uploads should go through a consent-checked Storage bucket with the producer's own path prefix.
 - **Verified reviewer workflow**: define an onboarding path with the community partners and record the procedure in the DB.
 - **Consent-aware imagery pipeline**: signed upload + community review, replacing SVG placeholders.
 - **SMS/USSD fallback** for producers without always-on connectivity — only after a gateway, contract and testing plan are in place.
@@ -198,10 +235,13 @@ This build introduces the full project from scratch:
 
 - Project config: `package.json`, `tsconfig.json`, `next.config.mjs`, `tailwind.config.ts`, `postcss.config.mjs`, `.eslintrc.json`, `.gitignore`, `.env.example`, `next-env.d.ts`
 - Public assets: `public/sw.js`, `public/manifest.webmanifest`, `public/icon.svg`
-- Data + logic (`src/lib/`): `types.ts`, `money.ts`, `ids.ts`, `i18n.ts`, `demo-data.ts`, `store.ts`, `repo.ts`, `session.ts`, `validate.ts`
+- Data + logic (`src/lib/`): `types.ts`, `money.ts`, `ids.ts`, `i18n.ts`, `pricing.ts`, `demo-data.ts`, `store.ts`, `repo.ts`, `session.ts`, `validate.ts`
+- Supabase (`src/lib/supabase/`): `config.ts`, `server.ts`, `rows.ts`, `mappers.ts`, `repository.ts`
 - Hooks (`src/hooks/`): `use-listing-draft.ts` (IndexedDB + localStorage fallback)
-- Components (`src/components/`): `ui.tsx`, `site-header.tsx`, `site-footer.tsx`, `offline-status.tsx`, `language-selector.tsx`, `service-worker-registrar.tsx`, `listing-card.tsx`, `producer-card.tsx`, `collective-card.tsx`, `marketplace.tsx`, `inquiry-form.tsx`, `qr-code.tsx`, `report-listing.tsx`, `contribute-form.tsx`, `transport-calculator.tsx`, `price-calculator.tsx`, `draft-browser.tsx`, `listing-form.tsx`, `listing-actions.tsx`, `register-form.tsx`, `demo-signin-form.tsx`, `inquiry-status-picker.tsx`, `verification-action.tsx`, `save-profile-button.tsx`
+- Components (`src/components/`): `ui.tsx`, `site-header.tsx`, `site-footer.tsx`, `offline-status.tsx`, `language-selector.tsx`, `service-worker-registrar.tsx`, `listing-card.tsx`, `producer-card.tsx`, `collective-card.tsx`, `marketplace.tsx`, `inquiry-form.tsx`, `qr-code.tsx`, `report-listing.tsx`, `contribute-form.tsx`, `transport-calculator.tsx`, `price-calculator.tsx`, `draft-browser.tsx`, `listing-form.tsx`, `listing-actions.tsx`, `register-form.tsx`, `demo-signin-form.tsx`, `credentials-form.tsx`, `inquiry-status-picker.tsx`, `verification-action.tsx`, `save-profile-button.tsx`
 - Pages (`src/app/`): `layout.tsx`, `globals.css`, `page.tsx`, `explore`, `products`, `tourism`, `listings/[id]`, `producers/[id]`, `collective-orders`, `collective-orders/[id]`, `how-it-works`, `pricing-tool`, `offline`, `impact`, `sign-in`, `register`, `privacy`, `community-guidelines`, `dashboard/{layout,page,listings,listings/new,listings/[id],inquiries,collective-orders,profile}`, `admin/{layout,page,verifications,reports}`
-- API routes (`src/app/api/`): `inquiries`, `inquiries/[id]`, `listings`, `listings/[id]`, `collective/[id]/contribute`, `reports`, `session`, `session/signout`, `profile`, `admin/verifications`
+- API routes (`src/app/api/`): `inquiries`, `inquiries/[id]`, `listings`, `listings/[id]`, `collective/[id]/contribute`, `reports`, `session`, `session/signout`, `profile`, `admin/verifications`, `auth/signin`
+- Auth pages: `src/app/auth/callback/route.ts` (email-confirmation / PKCE code exchange)
 - Database: `supabase/migrations/0001_init.sql`, `supabase/migrations/0002_rls.sql`, `supabase/seed.sql`
+- Tests (`tests/`): `pricing.test.ts`, `mappers.test.ts`, `config.test.ts`, `supabase-repo.test.ts`, `stub-supabase.ts`
 - Docs: this `README.md`, `.env.example`

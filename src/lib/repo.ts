@@ -1,5 +1,8 @@
+import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { getDemoStore, isDemoMode } from './store';
+import { supabaseServer } from './supabase/server';
+import { createSupabaseRepo } from './supabase/repository';
 import { makeReference } from './ids';
 import { multiplyUnitPrice } from './money';
 import type {
@@ -85,19 +88,23 @@ export type CreateInquiryInput = {
   idempotencyKey?: string;
 };
 
-function assertDemoMode() {
-  if (!isDemoMode()) {
-    throw new Error(
-      'DATA_MODE=supabase was requested, but Supabase Auth and repository integration are not implemented. Refusing to use demo data. Set DATA_MODE=demo or complete the Supabase integration.'
-    );
-  }
-}
-
+/**
+ * Choose the repository for the configured data mode.
+ *
+ * demo -> the in-memory store.
+ * supabase -> Postgres through the anon key, so Row Level Security decides what
+ * the current visitor may see. Building the Supabase client without credentials
+ * throws inside requireSupabaseConfig(): the app never falls back to demo data
+ * while pretending to be live.
+ *
+ * The Supabase client is created per call because it is bound to the current
+ * request's auth cookies; caching it would leak one visitor's session into
+ * another request.
+ */
 export function getRepo(): Repo {
-  assertDemoMode();
-  return demoRepo;
+  if (isDemoMode()) return demoRepo;
+  return createSupabaseRepo(supabaseServer());
 }
-
 const demoRepo: Repo = {
   async listCategories() {
     return [...getDemoStore().categories];

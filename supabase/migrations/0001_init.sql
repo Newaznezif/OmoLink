@@ -1,7 +1,14 @@
 -- OmoLink initial schema
 -- Supabase PostgreSQL — target version: postgres 15
--- Currency values are stored as NUMERIC(12,2) to avoid float arithmetic.
--- Amounts in the app layer are integer cents; the DB stores ETB with two decimals.
+--
+-- Money model: every amount is stored as an INTEGER number of minor units
+-- (cents), 1 ETB = 100 cents. This is decimal-safe (no floating point anywhere)
+-- and matches the application layer exactly, so no rounding happens at the
+-- boundary. PostgREST returns these as JSON numbers, never as numeric strings
+-- that would need parsing.
+--
+-- This migration has not been applied to any project yet; it is edited in place
+-- rather than superseded by a follow-up ALTER migration.
 
 create extension if not exists "pgcrypto";
 
@@ -79,8 +86,8 @@ create table public.listings (
   category_id text not null references public.categories (id) on delete restrict,
   producer_id uuid not null references public.profiles (id) on delete cascade,
   community text not null,
-  -- Explicit unit price. Never includes a hidden fee.
-  unit_price numeric(12,2) not null check (unit_price >= 0),
+  -- Explicit unit price in integer cents. Never includes a hidden fee.
+  unit_price_cents bigint not null check (unit_price_cents >= 0),
   currency text not null default 'ETB' check (currency = 'ETB'),
   unit unit_of_sale not null default 'item',
   available_quantity integer not null default 0 check (available_quantity >= 0),
@@ -120,9 +127,10 @@ create table public.inquiries (
   buyer_contact text not null,
   quantity integer not null check (quantity >= 1),
   unit unit_of_sale not null,
-  -- Snapshot of the price at the time of inquiry to keep totals stable.
-  unit_price_cents numeric(12,2) not null check (unit_price_cents >= 0),
-  estimated_subtotal_cents numeric(14,2) not null check (estimated_subtotal_cents >= 0),
+  -- Snapshot of the price at the time of inquiry, in integer cents,
+  -- so a later price change cannot silently alter an agreed estimate.
+  unit_price_cents bigint not null check (unit_price_cents >= 0),
+  estimated_subtotal_cents bigint not null check (estimated_subtotal_cents >= 0),
   currency text not null default 'ETB' check (currency = 'ETB'),
   preference text not null check (preference in ('pickup','delivery','booking','unsure')),
   preferred_date date,
@@ -157,8 +165,8 @@ create table public.collective_opportunities (
   organizing_group_id uuid references public.producer_groups (id) on delete set null,
   coordinator_profile_id uuid not null references public.profiles (id) on delete restrict,
   target_quantity integer not null check (target_quantity > 0),
-  indicative_group_price numeric(12,2) check (indicative_group_price is null or indicative_group_price >= 0),
-  buyer_offered_price numeric(12,2) check (buyer_offered_price is null or buyer_offered_price >= 0),
+  indicative_group_price_cents bigint check (indicative_group_price_cents is null or indicative_group_price_cents >= 0),
+  buyer_offered_price_cents bigint check (buyer_offered_price_cents is null or buyer_offered_price_cents >= 0),
   currency text not null default 'ETB' check (currency = 'ETB'),
   pickup_plan text not null,
   transport_plan text,
@@ -188,7 +196,7 @@ create index on public.group_contributions (opportunity_id);
 create table public.transport_plans (
   id uuid primary key default gen_random_uuid(),
   opportunity_id uuid not null references public.collective_opportunities (id) on delete cascade,
-  total_cost numeric(12,2) not null check (total_cost >= 0),
+  total_cost_cents bigint not null check (total_cost_cents >= 0),
   total_quantity integer not null check (total_quantity > 0),
   currency text not null default 'ETB' check (currency = 'ETB'),
   quote_confirmed boolean not null default false,

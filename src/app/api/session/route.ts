@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRepo } from '@/lib/repo';
-import { requireRole, writeSession, SESSION_COOKIE } from '@/lib/session';
-import { cookies } from 'next/headers';
+import { writeSession } from '@/lib/session';
+import { isDemoMode } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,24 +15,22 @@ const DEMO_USERS = [
 ];
 
 export async function POST(req: Request) {
+  if (!isDemoMode()) {
+    return NextResponse.json(
+      { error: 'Demo sign-in is disabled while DATA_MODE=supabase. Use the email and password form.' },
+      { status: 400 }
+    );
+  }
   const body = (await req.json().catch(() => ({}))) as { userId?: string };
   const userId = body.userId;
   const candidate = DEMO_USERS.find((u) => u.userId === userId);
   if (!candidate) {
     return NextResponse.json({ error: 'Unknown demo user.' }, { status: 400 });
   }
-  const repo = getRepo();
-  const profile = await repo.getProfileByUserId(candidate.userId);
+  const profile = await getRepo().getProfileByUserId(candidate.userId);
   if (!profile) {
     return NextResponse.json({ error: 'No profile exists for that demo account.' }, { status: 404 });
   }
   writeSession({ userId: candidate.userId, role: candidate.role });
   return NextResponse.json({ ok: true, profile: { id: profile.id, displayName: profile.displayName } });
-}
-
-export async function DELETE() {
-  const session = cookies().get(SESSION_COOKIE);
-  if (session) requireRole(['producer', 'buyer', 'coordinator', 'admin']);
-  // Cookie deletion handled by signout route. Kept for parity.
-  return NextResponse.json({ ok: true });
 }
