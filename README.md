@@ -273,14 +273,16 @@ A producer who sends an inquiry cannot open `/buyer` to watch it, because that a
 
 Apply them in order `0001` → `0002` → `0003` → `0004`. They assume an empty schema; do not run them against a database that already holds data without reading them first.
 
+**Do not set `DATA_MODE=supabase` against a database that has only `0001` and `0002`.** `0002_rls.sql` gives every signed-in user a `for all` policy on their own `profiles` row, which in that state lets a normal account `update public.profiles set role = 'admin'` and hand itself the administrator seat; `0003` is the migration that closes it with the `profiles_privileged_columns` trigger and `guard_admin_insert`. The same `0002` policies also leave contact details and group membership readable (`"Public profiles are readable" … using (true)`, `"Members readable" … using (true)`), which `0003` narrows only partially. Because none of these files have been executed anywhere, treat the sequencing above as unverified until it is applied to a throwaway project and tested with a second, non-administrator account.
+
 ### 8. Environment variables
 
 See `.env.example`; there are no secret values in this repository and none should be added.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `DATA_MODE` | yes (`demo` default) | `demo` or `supabase`. An incomplete Supabase configuration fails at startup rather than falling back to sample data. |
-| `NEXT_PUBLIC_SITE_URL` | no | Base URL for generated links, QR codes, and auth redirect targets. |
+| `DATA_MODE` | yes (`demo` default) | `demo` or `supabase`. An incomplete Supabase configuration refuses the first data-touching request rather than falling back to sample data; it does not stop the server from booting. |
+| `NEXT_PUBLIC_SITE_URL` | yes, for any real deployment | The origin written into account-confirmation and password-reset **links**, plus share links and QR codes. Sign-in, sign-out and `/auth/callback` no longer use it (they redirect relatively), but an emailed link built without this value points at `localhost:3000` and cannot be opened by anyone else. |
 | `NEXT_PUBLIC_SUPABASE_URL` | in Supabase mode | Project URL. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | in Supabase mode | Public key; every read and write it makes is still subject to RLS. |
 | `SUPABASE_SERVICE_ROLE_KEY` | **never** | The application does not read it, by design: it bypasses RLS and has no place in a request path a browser can influence. |
@@ -289,7 +291,7 @@ See `.env.example`; there are no secret values in this repository and none shoul
 
 ### 9. Tests actually run, and their results
 
-All commands were run on 2026-10-17 on Windows. The HTTP suites were run against `next start` serving the production build on a local port (earlier runs used `next dev`); they are parameterised by `SMOKE_BASE`. Each suite needs a freshly started server because it mutates the in-memory demo store.
+All commands were run on 2026-10-17 and re-run on 2026-10-18 (section 9.1) on Windows. The HTTP suites were run against `next start` serving the production build on a local port (earlier runs used `next dev`); they are parameterised by `SMOKE_BASE`. Each suite needs a freshly started server because it mutates the in-memory demo store.
 
 | Command | Result |
 | --- | --- |
@@ -299,6 +301,7 @@ All commands were run on 2026-10-17 on Windows. The HTTP suites were run against
 | `node tests/http/admin-smoke.mjs` | **49/49 PASS** — administrator surface, refusals for non-admins, last-admin guards, public page renders, 404 page. |
 | `node tests/http/buyer-smoke.mjs` | **82/82 PASS** — buyer area access, guest inquiry, buyer-side statuses, suspension matrix, role-escalation attempts. |
 | `node tests/http/producer-smoke.mjs` | **112/112 PASS** — every selling route, listing ownership matrix, lifecycle, pictures, inquiry loop, delete guard, profile/settings, coordinator and contribution rules, suspension matrix, demo-mode honesty of the auth help pages, 404s. |
+| `node tests/http/workflow-smoke.mjs` | **20/20 PASS** — the admin-to-public workflow as one repeatable suite: category created, read back through the public filter, listing created unpublished (public 404, inquiry refused), published, rendered with the stored price, guest inquiry accepted, edited, price change visible publicly, unpublished again, foreign producer 403, anonymous 401, category deactivated and still protected from deletion, record still owned by its producer. |
 | `npm run build` | **Succeeded** (see section 10). |
 
 Manual browser checks on the production build, in a real browser tab at a 510px viewport:
@@ -319,9 +322,32 @@ Notes on how to read those numbers:
 - Each suite mutates the in-memory store (it deletes listings, suspends accounts, changes roles), so run one suite per freshly started server. Running two against the same process produces failures that belong to the leftover state, not to the code.
 - **Not tested:** everything requiring a live Supabase project — RLS policy outcomes, migration application, `SECURITY DEFINER` behaviour, real password reset email, email confirmation, magic-link exchange in `/auth/callback`, and the onboarding path behind real auth. Those are marked accordingly above rather than counted as passes.
 
+### 9.1 Stabilization audit (2026-10-18)
+
+The whole tree, both repositories, the migrations and the deployment surface were re-inspected and the checks above were re-run on the current commit. Everything listed here is an observed result, with the command that produced it.
+
+Re-run results: `npx tsc --noEmit` clean; `npx next lint` **1 warning, 0 errors** (the deliberate `<img>` in `src/components/listing-images.tsx` — producer pictures are external links and cannot go through `next/image` without a configured image domain); `npx next lint --quiet` clean; `npm test` **46/46**; `npm run build` exit **0**; `node tests/http/admin-smoke.mjs` **49/49**, `buyer-smoke.mjs` **82/82**, `producer-smoke.mjs` **112/112**, `workflow-smoke.mjs` **20/20**, each on its own freshly started `next start` process.
+
+The admin-to-public workflow was traced over HTTP rather than read in the source, and is now a permanent suite: `tests/http/workflow-smoke.mjs`. It covers administrator creates a category → it appears in the public category filter → producer creates a listing in it **unpublished** → public page 404s → publishing makes it render with the stored price → an inquiry is accepted → the title and price edit propagate to the public page → unpublishing 404s again → a second producer and an anonymous caller are refused (403/401) → deactivating the category removes it from browsing while the listing record survives for its owner → deleting it is refused while a listing still uses it. **20 checks, 20 passed.** It mutates the demo store, so it needs its own freshly started server like the other three suites.
+
+Fixed in this pass, each followed by the full check set above:
+
+- **Demo mode accepted an inquiry on an unpublished listing.** `src/lib/supabase/repository.ts` refused it (`This listing is not published.`) and `src/lib/demo-repo.ts` did not, so the two modes answered the same request differently. The check is now in both, and the workflow trace above proves the demo refusal.
+- **Signing out, and `/auth/callback` and the Supabase sign-in redirect, pointed at `http://localhost:3000`** whenever `NEXT_PUBLIC_SITE_URL` was unset — correct in development, broken for a visitor on a deployed host. All three now reply with a **relative** `Location`, which the browser resolves against the site it is already on. Falling back to the request's own origin was tried first and rejected: inside a route handler `req.url` reports the address `next start` bound itself to, not the address the visitor used, so it returned `http://localhost:3000/` even when the request arrived with `Host: omotab.example.com`. Verified after the change: sign-out returns `Location: /` and `/auth/callback` returns `Location: /sign-in?error=missing_code` under that same foreign Host header, and following the redirect resolves to the site actually being served. The confirmation and password-reset **links mailed to users** are still built from `NEXT_PUBLIC_SITE_URL` (they must be absolute, and they are composed inside server actions) — see section 13.
+- **`.env.example` and the README said an incomplete Supabase configuration "fails at startup".** It does not: `requireSupabaseConfig()` runs when the Supabase client is built, which is per request. A misconfigured deployment boots cleanly and then errors on the first page that reads data. The wording now says what happens.
+
+Public pages are not hardcoded. `src/app/page.tsx`, `/products`, `/tourism`, `/listings/[id]` and `/producers/[id]` each call `getRepo()` per request, and no page or component imports the seed module (`src/lib/demo-data.ts` is reachable only through the demo repository and the reset helper). The workflow suite proves it from the outside: a record created through the API becomes visible on the public page, changes there when edited, and disappears when unpublished — which mock markup could not do.
+
+Left open on purpose, because each needs a live Supabase project or a decision rather than a local edit:
+
+- `0002_rls.sql` keeps `"Public profiles are readable" … using (true)` and `"Members readable" … using (true)`, so anyone with the anon key can read profile rows and group membership. `0003` narrows the profile policy but nothing narrows `group_members`. Writing another migration that cannot be executed against a real project would replace a known gap with an unverified claim.
+- Postgres enforces `listings.category_id references categories(id) on delete restrict`; demo mode stores any string. A typo'd or stale category id therefore fails loudly in Supabase mode and silently in demo mode.
+- `DATA_MODE` is parsed in two places (`getDataMode()` in `src/lib/supabase/config.ts` and `isDemoMode()` in `src/lib/store.ts`). They agree today; they are two chances to disagree later.
+- Inquiry, contact, report and review endpoints have no rate limit, and consent statements and picture links are recorded rather than verified (section 14).
+
 ### 10. Production build status
 
-`npm run build` completed successfully with the current tree: 59 pages and 27 route handlers compiled, no type or lint errors, and every data-bearing route emitted as dynamic (`ƒ`) because both repositories read per request. `npm run start` then serves that build. The build was produced from a clean `.next` directory.
+`npm run build` completed successfully with the current tree: 59 pages and 27 route handlers compiled, no type or lint errors, and every data-bearing route emitted as dynamic (`ƒ`) because both repositories read per request. `npm run start` then serves that build. The build was produced from a clean `.next` directory (`rm -rf .next` first) on 2026-10-17 and again on 2026-10-18 after the audit fixes; both exited 0. `npx next lint` without `--quiet` reports one warning and no errors: the deliberate `<img>` in `src/components/listing-images.tsx`, which stays a plain tag because producer pictures are external links that `next/image` cannot optimize without a configured domain.
 
 ### 11. Setting up the first administrator, securely
 
@@ -378,16 +404,18 @@ npm run dev                                  # leave this running
 SMOKE_BASE=http://localhost:3000 node tests/http/admin-smoke.mjs
 ```
 
-Then stop the server, start it again, and run `tests/http/buyer-smoke.mjs`; repeat for `tests/http/producer-smoke.mjs`. On Windows, set the variable for one command with `$env:SMOKE_BASE="http://localhost:3000"; node tests/http/admin-smoke.mjs`.
+Then stop the server, start it again, and run `tests/http/buyer-smoke.mjs`; repeat for `tests/http/producer-smoke.mjs` and `tests/http/workflow-smoke.mjs`. On Windows, set the variable for one command with `$env:SMOKE_BASE="http://localhost:3000"; node tests/http/admin-smoke.mjs`.
 
 ### 13. Deployment
 
 1. Deploy to any Node 18.17+ host that runs `npm run build` and `npm run start` (Vercel, a container, or a plain Node host). No provider is configured in this repository, and nothing has been deployed from it.
-2. Set `NEXT_PUBLIC_SITE_URL` to the public origin, then `DATA_MODE=supabase` with the project URL and anon key once the database exists.
-3. In the Supabase dashboard, add the deployed origin to the allowed redirect URLs for email confirmation and password recovery; `/auth/callback` reads the site URL from configuration and only accepts `next` paths under `/dashboard`, `/admin`, or `/buyer`.
-4. Apply migrations in order (section 7), seed categories, and provision the first administrator (section 11).
+2. Apply **all four** migrations in order (section 7), seed categories, and provision the first administrator (section 11) **before** switching the application to the database. `DATA_MODE=supabase` is the last value you set, not the second: a project holding only `0001` and `0002` still lets a signed-in account promote itself to administrator through its own profile row.
+3. Set `NEXT_PUBLIC_SITE_URL` to the public origin, then `DATA_MODE=supabase` with the project URL and anon key. `NEXT_PUBLIC_SITE_URL` is not optional once real accounts exist: the confirmation and password-reset links are built from it, and unset it emails a link to `localhost:3000`. `NEXT_PUBLIC_*` values are read at build time, so a host that injects them at runtime still needs a rebuild.
+4. In the Supabase dashboard, add the deployed origin to the allowed redirect URLs for email confirmation and password recovery. `/auth/callback` redirects on relative paths, so it returns the visitor to whichever origin they arrived on; the only absolute address it depends on is the `emailRedirectTo` built during registration (step 3). It accepts a `?next=` only under `/dashboard`, `/admin`, or `/buyer`.
 5. Confirm after deployment that `/api/session` refuses demo sign-in (it returns 400 when `DATA_MODE=supabase`), that a suspended account loses write access, and that no `SUPABASE_SERVICE_ROLE_KEY` exists in the host's environment.
-6. Until step 4 has actually been performed by someone with credentials, treat any deployed instance as demo data — the README status line at the top should be updated only when it is not.
+6. Until step 2 has actually been performed by someone with credentials, treat any deployed instance as demo data — the README status line at the top should be updated only when it is not.
+
+**On Vercel specifically.** Nothing is configured for it in this repository: there is no `vercel.json`, no `.github/workflows`, and no project has ever been deployed from here, so all of the following is a checklist, not a verified deployment. Vercel detects Next.js 14 automatically and needs no override for build (`npm run build`), output (`.next`) or start. Set `DATA_MODE`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `NEXT_PUBLIC_SITE_URL` as environment variables **for the Production environment before the first build**, because `NEXT_PUBLIC_*` is inlined at build time and changing one later requires a redeploy. Never add `SUPABASE_SERVICE_ROLE_KEY` — the application does not read it, and its presence on the host is an accident waiting to happen. Then add both `https://<project>.vercel.app` and the production domain (if any) to Supabase Auth's redirect Allow list, and set SMTP before enabling email confirmation or password recovery; without SMTP those two flows cannot complete, and the pages already say so in demo mode. There is no object storage configured, so pictures stay external links and `public/sw.js` caching is the only asset cache in play. `package.json` declares no `engines` field; the build was produced on Node 24 locally, so pin a version on the host rather than assuming Vercel's default matches.
 
 ### 14. Known security and integration limitations
 

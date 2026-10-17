@@ -12,24 +12,27 @@ export const dynamic = 'force-dynamic';
  * Only two explicit next values are trusted (/reset-password and /onboarding)
  * plus the account areas safeNext() already allows, so this endpoint cannot be
  * turned into an open redirect.
+ *
+ * Every redirect is relative on purpose. An absolute target needs an origin, and
+ * neither candidate is trustworthy: NEXT_PUBLIC_SITE_URL is easy to leave unset on
+ * a first deployment, and req.url inside a route handler reports the server's own
+ * address rather than the address the visitor used — both send the visitor to a
+ * dead localhost. The browser resolves a relative Location against the site it is
+ * already on, and safeNext() refuses '//', so no target can become a
+ * protocol-relative redirect either.
  */
 export async function GET(req: Request) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
   const url = new URL(req.url);
   const code = url.searchParams.get('code');
   const requestedNext = url.searchParams.get('next') ?? '';
 
-  if (!code) {
-    return NextResponse.redirect(new URL('/sign-in?error=missing_code', siteUrl), { status: 302 });
-  }
+  const go = (path: string) => new NextResponse(null, { status: 302, headers: { location: path } });
+
+  if (!code) return go('/sign-in?error=missing_code');
 
   const client = supabaseServer();
   const { error } = await client.auth.exchangeCodeForSession(code);
-  if (error) {
-    return NextResponse.redirect(new URL(`/sign-in?error=${encodeURIComponent(error.message)}`, siteUrl), { status: 302 });
-  }
-
-  const go = (path: string) => NextResponse.redirect(new URL(path, siteUrl), { status: 302 });
+  if (error) return go(`/sign-in?error=${encodeURIComponent(error.message)}`);
 
   // A recovery link means the old password is known to be compromised or
   // forgotten: send the visitor straight to the new-password form.

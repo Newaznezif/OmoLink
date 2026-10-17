@@ -12,7 +12,8 @@ export async function POST() {
   } else {
     await supabaseServer().auth.signOut();
   }
-  return NextResponse.redirect(new URL('/', process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'), {
-    status: 302
-  });
+  // Relative so the visitor returns to the origin they actually used. Building
+  // an absolute URL needed either configuration or the server's own address, and
+  // a wrong one of those sends a signed-out visitor to a dead localhost.
+  return new NextResponse(null, { status: 302, headers: { location: '/' } });
 }

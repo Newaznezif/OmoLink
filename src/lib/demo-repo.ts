@@ -232,6 +232,7 @@ export const demoRepo: Repo = {
     }
     const listing = store.listings.find((l) => l.id === input.listingId);
     if (!listing) throw new Error('Listing not found.');
+    if (!listing.published) throw new Error('This listing is not published.');
     if (!Number.isInteger(input.quantity) || input.quantity < listing.minOrderQuantity) {
       throw new Error(`Quantity must be a whole number of at least ${listing.minOrderQuantity}.`);
     }

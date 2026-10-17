@@ -40,7 +40,11 @@ export async function POST(req: Request) {
     .maybeSingle();
   const raw = profile as { role: string } | null;
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
   const fallback = !raw ? '/onboarding' : raw.role === 'admin' ? '/admin' : raw.role === 'buyer' ? '/buyer' : '/dashboard';
-  return NextResponse.redirect(new URL(requestedNext ?? fallback, siteUrl), { status: 303 });
+  // Relative target: an absolute one would have to be built from configuration
+  // (easy to forget on a first deployment) or from req.url, which reports the
+  // server's own address rather than the address the visitor used. Both land a
+  // signed-in user on a dead localhost. requestedNext is already limited to
+  // same-site paths by safeNext().
+  return new NextResponse(null, { status: 303, headers: { location: requestedNext ?? fallback } });
 }
