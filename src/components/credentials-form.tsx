@@ -3,7 +3,15 @@
 import { useState } from 'react';
 import { Button, Field, Input } from './ui';
 
-export function CredentialsForm({ submitPath, submitLabel }: { submitPath: string; submitLabel: string }) {
+export function CredentialsForm({
+  submitPath,
+  submitLabel,
+  next
+}: {
+  submitPath: string;
+  submitLabel: string;
+  next?: string;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -12,10 +20,12 @@ export function CredentialsForm({ submitPath, submitLabel }: { submitPath: strin
     setBusy(true);
     setError(null);
     const form = new FormData(event.currentTarget);
+    // The server re-checks this value with safeNext(); it is a hint, not trusted.
+    if (next) form.set('next', next);
     try {
       const res = await fetch(submitPath, { method: 'POST', body: form });
       if (res.ok) {
-        window.location.assign('/dashboard');
+        window.location.assign(next ?? '/dashboard');
         return;
       }
       const json = await res.json().catch(() => ({}));

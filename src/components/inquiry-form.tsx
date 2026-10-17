@@ -16,7 +16,7 @@ export type InquiryListingInfo = {
   availability: AvailabilityStatus;
 };
 
-export function InquiryForm({ listing }: { listing: InquiryListingInfo }) {
+export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingInfo; recordsPath?: string }) {
   const router = useRouter();
   const [qty, setQty] = useState<number>(listing.minOrderQuantity);
   const [name, setName] = useState('');
@@ -26,7 +26,9 @@ export function InquiryForm({ listing }: { listing: InquiryListingInfo }) {
   const [preferredDate, setPreferredDate] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; reference?: string; message?: string } | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; reference?: string; inquiryId?: string; message?: string } | null>(
+    null
+  );
   const idempotencyRef = useRef<string>('');
 
   useEffect(() => {
@@ -99,7 +101,7 @@ export function InquiryForm({ listing }: { listing: InquiryListingInfo }) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? 'Failed to submit inquiry.');
-      setResult({ ok: true, reference: json.inquiry?.reference });
+      setResult({ ok: true, reference: json.inquiry?.reference, inquiryId: json.inquiry?.id });
       router.refresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong. Please retry.';
@@ -206,6 +208,14 @@ export function InquiryForm({ listing }: { listing: InquiryListingInfo }) {
             <>
               <p className="font-semibold">Inquiry submitted.</p>
               <p>Reference: <span className="font-mono">{result.reference}</span>. The producer will see it in their dashboard. Nothing has been paid.</p>
+              {recordsPath && result.inquiryId && (
+                <p className="mt-1">
+                  <a href={`${recordsPath}/${result.inquiryId}`} className="underline font-semibold">
+                    Open it in your records
+                  </a>{' '}
+                  to follow up or cancel it.
+                </p>
+              )}
             </>
           ) : (
             <p>{result.message}</p>

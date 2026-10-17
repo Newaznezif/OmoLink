@@ -19,6 +19,9 @@ const profileRow: ProfileRow = {
   verification: 'pending_review',
   verification_note: null,
   role: 'producer',
+  account_kind: 'producer',
+  status: 'active',
+  organization_name: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z'
 };
@@ -42,6 +45,8 @@ const listingRow: ListingWithImagesRow = {
   delivery_available: false,
   tourism_meta: null,
   published: true,
+  featured: false,
+  archived: false,
   verification: 'unverified',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-03T00:00:00Z',
@@ -83,6 +88,20 @@ test('database rows are never labelled demo data', () => {
   assert.equal(mapProfile(profileRow).isDemo, false);
   assert.equal(mapListing(listingRow).isDemo, false);
   assert.equal(mapOpportunity(opportunityRow, 0).isDemo, false);
+});
+
+test('privileged account fields come from the row', () => {
+  const profile = mapProfile(profileRow);
+  assert.equal(profile.role, 'producer');
+  assert.equal(profile.accountKind, 'producer');
+  assert.equal(profile.status, 'active');
+  assert.equal(profile.organizationName, undefined);
+});
+
+test('listing moderation flags survive the mapping', () => {
+  assert.equal(mapListing(listingRow).featured, false);
+  assert.equal(mapListing(listingRow).archived, false);
+  assert.equal(mapListing({ ...listingRow, featured: true, archived: true }).featured, true);
 });
 
 test('prices arrive as integer cents with no float drift', () => {

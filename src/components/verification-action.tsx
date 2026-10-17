@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Field, Textarea } from './ui';
 
-export function VerificationAction({ profileId, simulated }: { profileId: string; simulated: boolean }) {
+export function VerificationAction({ profileId, sampleRecords }: { profileId: string; sampleRecords: boolean }) {
   const router = useRouter();
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState<null | 'approved' | 'rejected' | 'needs_more_info'>(null);
@@ -26,7 +26,7 @@ export function VerificationAction({ profileId, simulated }: { profileId: string
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error ?? 'Failed to record decision.');
-      setMessage(simulated ? 'Simulated decision recorded.' : 'Decision recorded against this profile.');
+      setMessage(sampleRecords ? 'Decision recorded against sample data.' : 'Decision recorded against this profile.');
       setReason('');
       router.refresh();
     } catch (err: unknown) {
@@ -43,13 +43,13 @@ export function VerificationAction({ profileId, simulated }: { profileId: string
       </Field>
       <div className="mt-2 flex flex-wrap gap-2">
         <Button size="sm" onClick={() => submit('approved')} disabled={busy !== null}>
-          {busy === 'approved' ? 'Recording…' : 'Simulate approval'}
+          {busy === 'approved' ? 'Recording…' : 'Approve'}
         </Button>
         <Button size="sm" variant="secondary" onClick={() => submit('needs_more_info')} disabled={busy !== null}>
           {busy === 'needs_more_info' ? 'Recording…' : 'Request more info'}
         </Button>
         <Button size="sm" variant="danger" onClick={() => submit('rejected')} disabled={busy !== null}>
-          {busy === 'rejected' ? 'Recording…' : 'Simulate rejection'}
+          {busy === 'rejected' ? 'Recording…' : 'Reject'}
         </Button>
       </div>
       {message && <p className="mt-2 text-sm text-ink-700">{message}</p>}

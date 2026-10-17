@@ -1,14 +1,24 @@
 import { NextResponse } from 'next/server';
 import { getRepo } from '@/lib/repo';
-import { getSessionProfile } from '@/lib/session';
+import { authErrorResponse, requireRole, type Actor } from '@/lib/session';
 import { makeId } from '@/lib/ids';
 import { parseDecimalAmount } from '@/lib/money';
-import type { AvailabilityStatus, Listing, ListingKind, UnitOfSale } from '@/lib/types';
+import { UNIT_OF_SALES, type AvailabilityStatus, type Listing, type ListingKind, type UnitOfSale } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  const producer = await getSessionProfile();
+  let actor: Actor;
+  try {
+    // requireRole reads the role and the account status back from the stored
+    // profile, so a buyer, a suspended account or an edited cookie cannot reach
+    // this write.
+    actor = await requireRole(['producer', 'coordinator']);
+  } catch (err) {
+    const { body, status } = authErrorResponse(err, 'Sign in as a producer first.');
+    return NextResponse.json(body, { status });
+  }
+  const producer = await getRepo().getProfile(actor.profileId);
   if (!producer) return NextResponse.json({ error: 'Sign in as a producer first.' }, { status: 401 });
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
@@ -19,7 +29,9 @@ export async function POST(req: Request) {
   const availableQuantity = Number(body.availableQuantity);
   const minOrderQuantity = Number(body.minOrderQuantity);
   const kind = (body.kind === 'service' ? 'service' : 'product') as ListingKind;
-  const unitOfSale = String(body.unitOfSale ?? 'item') as UnitOfSale;
+  const unitOfSale = UNIT_OF_SALES.includes(body.unitOfSale as UnitOfSale)
+    ? (body.unitOfSale as UnitOfSale)
+    : 'item';
   const availability = String(body.availability ?? 'available') as AvailabilityStatus;
   const pickupOptions = String(body.pickupOptions ?? '')
     .split('\n')
@@ -27,9 +39,9 @@ export async function POST(req: Request) {
     .filter(Boolean);
   const deliveryAvailable = body.deliveryAvailable === true || body.deliveryAvailable === 'true';
   const publish = body.publish === true || body.publish === 'true';
-  const producerId = String(body.producerId ?? producer.id);
+  // Ownership comes from the session, never from the request body.
+  const producerId = producer.id;
 
-  if (producerId !== producer.id) return NextResponse.json({ error: 'You can only publish under your own profile.' }, { status: 403 });
   if (!title || !description || !categoryId || priceCents === null) {
     return NextResponse.json({ error: 'Fill in every required field with a valid price.' }, { status: 400 });
   }

@@ -1,6 +1,8 @@
 import type {
+  AuditLogEntry,
   Category,
   CollectiveOpportunity,
+  ContactMessage,
   GroupContribution,
   Inquiry,
   Listing,
@@ -9,9 +11,11 @@ import type {
   ProducerGroup,
   Profile,
   Review,
+  SiteSettings,
   TransportPlan,
   VerificationReview
 } from './types';
+import { HOMEPAGE_SECTIONS } from './types';
 
 /**
  * Realistic seed content for OmoLink. Every record here is a sample. Producers,
@@ -42,6 +46,9 @@ export function buildSeed() {
     {
       id: 'prof_artisan_basket',
       userId: 'demo_user_basket',
+      role: 'producer',
+      accountKind: 'producer',
+      status: 'active',
       displayName: 'Sample basket-weaver profile (South Omo)',
       producerType: 'artisan',
       community: 'Sample community — Jinka woreda (illustrative)',
@@ -62,6 +69,9 @@ export function buildSeed() {
     {
       id: 'prof_honey_group',
       userId: 'demo_user_honey',
+      role: 'coordinator',
+      accountKind: 'group_or_cooperative',
+      status: 'active',
       displayName: 'Sample honey producers group',
       producerType: 'producer_group',
       community: 'Sample community — Debub Omo area (illustrative)',
@@ -82,6 +92,9 @@ export function buildSeed() {
     {
       id: 'prof_guide_local',
       userId: 'demo_user_guide',
+      role: 'producer',
+      accountKind: 'producer',
+      status: 'active',
       displayName: 'Sample local guide profile',
       producerType: 'guide',
       community: 'Sample community — Key Afer area (illustrative)',
@@ -101,6 +114,9 @@ export function buildSeed() {
     {
       id: 'prof_textile_household',
       userId: 'demo_user_textile',
+      role: 'producer',
+      accountKind: 'producer',
+      status: 'active',
       displayName: 'Sample textile household',
       producerType: 'household',
       community: 'Sample community — Arbaminch area (illustrative)',
@@ -119,6 +135,9 @@ export function buildSeed() {
     {
       id: 'prof_admin',
       userId: 'demo_user_admin',
+      role: 'admin',
+      accountKind: 'platform_admin',
+      status: 'active',
       displayName: 'Sample authorised reviewer',
       producerType: 'other',
       community: 'Platform administration (sample)',
@@ -138,6 +157,9 @@ export function buildSeed() {
     {
       id: 'prof_dairy_farmer',
       userId: 'demo_user_dairy',
+      role: 'producer',
+      accountKind: 'producer',
+      status: 'active',
       displayName: 'Sample smallholder dairy farmer',
       producerType: 'farmer',
       community: 'Sample community — Boloso Sore area (illustrative)',
@@ -151,6 +173,51 @@ export function buildSeed() {
       groupIds: ['grp_honey_pool'],
       createdAt: daysAgo(30),
       updatedAt: daysAgo(2),
+      isDemo: true
+    },
+    {
+      id: 'prof_tourist_visitor',
+      userId: 'demo_user_tourist',
+      role: 'buyer',
+      accountKind: 'tourist',
+      status: 'active',
+      displayName: 'Sample visitor account',
+      producerType: 'other',
+      community: 'Visiting — sample origin (illustrative)',
+      operatingArea: 'Travelling in the South Omo area',
+      preferredLanguage: 'en',
+      contactMethod: { kind: 'in_app' },
+      shortBio:
+        'Demonstrates a tourist account that sends booking inquiries and follows their own booking status. Sample data only.',
+      categories: [],
+      consentToPublish: false,
+      verification: 'unverified',
+      groupIds: [],
+      createdAt: daysAgo(20),
+      updatedAt: daysAgo(20),
+      isDemo: true
+    },
+    {
+      id: 'prof_hotel_buyer',
+      userId: 'demo_user_hotel',
+      role: 'buyer',
+      accountKind: 'business_buyer',
+      organizationName: 'Sample town hotel (illustrative)',
+      status: 'active',
+      displayName: 'Sample hotel purchasing account',
+      producerType: 'other',
+      community: 'Buying for a hotel — sample location (illustrative)',
+      operatingArea: 'Regular weekly purchases',
+      preferredLanguage: 'en',
+      contactMethod: { kind: 'in_app' },
+      shortBio:
+        'Demonstrates a business buyer (hotel, restaurant, retailer or institution) placing bulk inquiries. Sample data only.',
+      categories: [],
+      consentToPublish: false,
+      verification: 'unverified',
+      groupIds: [],
+      createdAt: daysAgo(15),
+      updatedAt: daysAgo(4),
       isDemo: true
     }
   ];
@@ -446,10 +513,47 @@ export function buildSeed() {
     }
   ];
 
+  categories.forEach((category, index) => {
+    category.sortOrder = (index + 1) * 10;
+    category.active = true;
+  });
+
   const inquiries: Inquiry[] = [];
   const reviews: Review[] = [];
   const reports: ListingReport[] = [];
   const verificationReviews: VerificationReview[] = [];
+  const contactMessages: ContactMessage[] = [];
+
+  /**
+   * Homepage copy that an administrator can edit at runtime. These strings are
+   * descriptive of the platform, not claims about real transactions, partners,
+   * or impact, and the featured ids point at the sample records above.
+   */
+  const siteSettings: SiteSettings = {
+    siteName: 'OmoLink',
+    tagline: 'A community marketplace for South Omo producers, guides and buyers.',
+    heroTitle: 'Sell directly. Price transparently. Deliver together.',
+    heroDescription:
+      'OmoLink connects producers, artisan groups, and local guides in the South Omo area with visitors, shops, hotels and institutions. This build runs on sample data: nothing here represents a real product, price, or verified community.',
+    announcementBar: {
+      enabled: true,
+      text: 'Pilot build — all listings on this site are labelled sample data. No payment is taken and no sale is recorded.'
+    },
+    featuredProductIds: ['lst_forest_honey', 'lst_basket_set'],
+    featuredServiceIds: ['lst_valley_walk'],
+    featuredProducerIds: ['prof_honey_group', 'prof_artisan_basket', 'prof_guide_local'],
+    homepageSections: HOMEPAGE_SECTIONS.map((id) => ({ id, visible: true })),
+    contactEmail: 'hello@omolink.example',
+    contactPhone: '',
+    addressNote: 'Sample coordination point: Jinka weekly market, South Omo (illustrative).',
+    socialLinks: [],
+    footerNote: 'Built for a community-led pilot. Producer data is never sold.',
+    accentColor: '#b2542a',
+    updatedAt: now,
+    isDemo: true
+  };
+
+  const auditLog: AuditLogEntry[] = [];
 
   return {
     categories,
@@ -462,7 +566,10 @@ export function buildSeed() {
     inquiries,
     reviews,
     reports,
-    verificationReviews
+    verificationReviews,
+    contactMessages,
+    siteSettings,
+    auditLog
   };
 }
 
@@ -491,4 +598,7 @@ export type DB = {
   reviews: Review[];
   reports: ListingReport[];
   verificationReviews: VerificationReview[];
+  contactMessages: ContactMessage[];
+  siteSettings: SiteSettings;
+  auditLog: AuditLogEntry[];
 };

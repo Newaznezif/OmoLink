@@ -9,7 +9,9 @@ export const dynamic = 'force-dynamic';
 export default async function ProducerPage({ params }: { params: { id: string } }) {
   const repo = getRepo();
   const profile = await repo.getProfile(params.id);
-  if (!profile) notFound();
+  // A buyer’s or an administrator’s profile is private: only a selling account
+  // that consented to be published has a public page, whatever its id is.
+  if (!profile || !profile.consentToPublish || (profile.role !== 'producer' && profile.role !== 'coordinator')) notFound();
   const listings = (await repo.listListingsByProducer(profile.id)).filter((l) => l.published);
   const groups = await repo.listGroups();
   const memberOf = groups.filter((g) => g.memberProfileIds.includes(profile.id));

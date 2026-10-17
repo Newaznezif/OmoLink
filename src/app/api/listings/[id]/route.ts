@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getRepo } from '@/lib/repo';
-import { getSessionProfile } from '@/lib/session';
+import { authErrorResponse, requireRole, type Actor } from '@/lib/session';
 import { parseDecimalAmount } from '@/lib/money';
-import type { AvailabilityStatus, Listing, UnitOfSale } from '@/lib/types';
+import { UNIT_OF_SALES, type AvailabilityStatus, type Listing, type UnitOfSale } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const producer = await getSessionProfile();
+  let actor: Actor;
+  try {
+    actor = await requireRole(['producer', 'coordinator']);
+  } catch (err) {
+    const { body, status } = authErrorResponse(err, 'Not signed in.');
+    return NextResponse.json(body, { status });
+  }
+  const producer = await getRepo().getProfile(actor.profileId);
   if (!producer) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const repo = getRepo();
@@ -45,7 +52,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!Number.isInteger(min) || min < 1) return NextResponse.json({ error: 'Invalid minimum order quantity.' }, { status: 400 });
     patch.minOrderQuantity = min;
   }
-  if (typeof body.unitOfSale === 'string') patch.unitOfSale = body.unitOfSale as UnitOfSale;
+  if (typeof body.unitOfSale === 'string') {
+    if (!UNIT_OF_SALES.includes(body.unitOfSale as UnitOfSale)) {
+      return NextResponse.json({ error: 'Invalid unit of sale.' }, { status: 400 });
+    }
+    patch.unitOfSale = body.unitOfSale as UnitOfSale;
+  }
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });

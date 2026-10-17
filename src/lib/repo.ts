@@ -1,34 +1,43 @@
 import 'server-only';
-import { randomUUID } from 'node:crypto';
-import { getDemoStore, isDemoMode } from './store';
+import { isDemoMode } from './store';
+import { demoRepo } from './demo-repo';
 import { supabaseServer } from './supabase/server';
 import { createSupabaseRepo } from './supabase/repository';
-import { makeReference } from './ids';
-import { multiplyUnitPrice } from './money';
 import type {
+  AccountStatus,
+  AuditLogEntry,
   Category,
   CollectiveOpportunity,
+  ContactMessage,
   GroupContribution,
   Inquiry,
-  InquiryEvent,
   InquiryStatus,
   Listing,
   ListingReport,
   ProducerGroup,
   Profile,
+  Review,
+  Role,
+  SiteSettings,
   VerificationReview
 } from './types';
+import type { Actor } from './session';
 
 /**
- * Repository layer. In demo mode this reads/writes the in-memory store.
- * When Supabase credentials are configured the same interface is used to
- * query Postgres via the service-role client (server-side only). This module
- * is not safe to import from client components — the `next/server` cookie
- * helpers and Node APIs are used here.
+ * Repository layer.
+ *
+ * This module is the public entry point and is not safe to import from client
+ * components: it carries the `server-only` marker, reads request cookies through
+ * `next/headers`, and uses Node APIs. The demo implementation lives in
+ * ./demo-repo.ts and the Supabase one in ./supabase/repository.ts; both are kept
+ * importable from the test suite by leaving them free of this marker.
  */
 
 export type Repo = {
+  /** Active categories in display order — what a shopper sees. */
   listCategories(): Promise<Category[]>;
+  /** Every category including deactivated ones; administrator areas only. */
+  listAllCategories(): Promise<Category[]>;
   listPublicListings(): Promise<Listing[]>;
   getListing(id: string): Promise<Listing | undefined>;
   getListingBySlug(slug: string): Promise<Listing | undefined>;
@@ -75,6 +84,85 @@ export type Repo = {
     collectiveTarget: number;
     verified: number;
   }>;
+
+  /** Counts the admin overview needs, including queues by state. */
+  adminStats(): Promise<{
+    byRole: Record<Role, number>;
+    suspended: number;
+    pendingVerifications: number;
+    openReports: number;
+    newInquiries: number;
+    openOpportunities: number;
+    publishedListings: number;
+    archivedListings: number;
+    hiddenReviews: number;
+    unreadMessages: number;
+  }>;
+
+  // --- Accounts and roles (administrator only; enforced again inside each method) ---
+  listAllProfiles(): Promise<Profile[]>;
+  setProfileRole(profileId: string, role: Role, actor: Actor): Promise<Profile>;
+  setProfileStatus(profileId: string, status: AccountStatus, actor: Actor): Promise<Profile>;
+
+  // --- Listing moderation ---
+  listAllListings(): Promise<Listing[]>;
+  getInquiry(id: string): Promise<Inquiry | undefined>;
+  setListingFeatured(id: string, featured: boolean, actor: Actor): Promise<Listing>;
+  setListingPublished(id: string, published: boolean, actor: Actor): Promise<Listing>;
+  archiveListing(id: string, actor: Actor): Promise<Listing>;
+  deleteListing(id: string, actor: Actor): Promise<void>;
+
+  // --- Categories ---
+  saveCategory(input: Category, actor: Actor): Promise<Category>;
+  deleteCategory(id: string, actor: Actor): Promise<void>;
+
+  // --- Collective selling, coordinator side ---
+  saveOpportunity(
+    input: Omit<CollectiveOpportunity, 'aggregateQuantity' | 'createdAt' | 'updatedAt' | 'isDemo'> & {
+      id?: string;
+    },
+    actor: Actor
+  ): Promise<CollectiveOpportunity>;
+  setOpportunityStatus(id: string, status: CollectiveOpportunity['status'], actor: Actor): Promise<CollectiveOpportunity>;
+  updateContribution(contributionId: string, quantity: number, actor: Actor): Promise<GroupContribution>;
+  withdrawContribution(contributionId: string, actor: Actor): Promise<GroupContribution>;
+  confirmContribution(contributionId: string, actor: Actor): Promise<GroupContribution>;
+
+  // --- Buyer accounts ---
+  listInquiriesForBuyer(buyerProfileId: string): Promise<Inquiry[]>;
+
+  /** Platform-wide arrangement queue for the administrator area. */
+  listAllInquiries(): Promise<Inquiry[]>;
+
+  // --- Reviews ---
+  listReviews(input?: { listingId?: string; includeHidden?: boolean }): Promise<Review[]>;
+  createReview(input: {
+    listingId: string;
+    inquiryId: string;
+    rating: number;
+    comment: string;
+    actor: Actor | undefined;
+    authorName: string;
+  }): Promise<Review>;
+  setReviewStatus(id: string, status: Review['status'], note: string, actor: Actor): Promise<Review>;
+
+  // --- Moderation of reports ---
+  updateReport(id: string, status: ListingReport['status'], adminNote: string, actor: Actor): Promise<ListingReport>;
+
+  // --- Site content and appearance ---
+  getSiteSettings(): Promise<SiteSettings>;
+  saveSiteSettings(patch: Partial<SiteSettings>, actor: Actor): Promise<SiteSettings>;
+
+  // --- Audit trail and messages ---
+  listAuditLogs(limit?: number): Promise<AuditLogEntry[]>;
+  createContactMessage(input: {
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+  }): Promise<ContactMessage>;
+  listContactMessages(): Promise<ContactMessage[]>;
+  setContactMessageStatus(id: string, status: ContactMessage['status'], actor: Actor): Promise<ContactMessage>;
 };
 
 export type CreateInquiryInput = {
@@ -86,12 +174,15 @@ export type CreateInquiryInput = {
   preferredDate?: string;
   message: string;
   idempotencyKey?: string;
+  /** Set by the API route from the signed-in actor, never by the browser. */
+  buyerProfileId?: string;
 };
 
 /**
  * Choose the repository for the configured data mode.
  *
- * demo -> the in-memory store.
+ * demo -> the in-memory store, where the repository itself is the enforcement
+ * point because no Row Level Security sits behind it.
  * supabase -> Postgres through the anon key, so Row Level Security decides what
  * the current visitor may see. Building the Supabase client without credentials
  * throws inside requireSupabaseConfig(): the app never falls back to demo data
@@ -105,279 +196,3 @@ export function getRepo(): Repo {
   if (isDemoMode()) return demoRepo;
   return createSupabaseRepo(supabaseServer());
 }
-const demoRepo: Repo = {
-  async listCategories() {
-    return [...getDemoStore().categories];
-  },
-  async listPublicListings() {
-    return getDemoStore().listings.filter((l) => l.published);
-  },
-  async getListing(id) {
-    return getDemoStore().listings.find((l) => l.id === id);
-  },
-  async getListingBySlug(slug) {
-    return getDemoStore().listings.find((l) => l.slug === slug);
-  },
-  async listListingsByProducer(profileId) {
-    return getDemoStore().listings.filter((l) => l.producerId === profileId);
-  },
-  async relatedListings(listing) {
-    const store = getDemoStore();
-    return store.listings
-      .filter(
-        (l) =>
-          l.published &&
-          l.id !== listing.id &&
-          (l.categoryId === listing.categoryId || l.producerId === listing.producerId)
-      )
-      .slice(0, 4);
-  },
-  async getProfile(id) {
-    return getDemoStore().profiles.find((p) => p.id === id);
-  },
-  async getProfileByUserId(userId) {
-    return getDemoStore().profiles.find((p) => p.userId === userId);
-  },
-  async listPublicProfiles() {
-    return getDemoStore().profiles;
-  },
-  async upsertProfile(profile) {
-    const store = getDemoStore();
-    const idx = store.profiles.findIndex((p) => p.id === profile.id);
-    const next = { ...profile, updatedAt: new Date().toISOString() };
-    if (idx >= 0) store.profiles[idx] = next;
-    else store.profiles.push(next);
-    return next;
-  },
-  async createListing(listing) {
-    const store = getDemoStore();
-    if (store.listings.some((l) => l.id === listing.id || l.slug === listing.slug)) {
-      throw new Error('A listing with this id or slug already exists.');
-    }
-    store.listings.push(listing);
-    return listing;
-  },
-  async updateListing(id, patch, actorProfileId) {
-    const store = getDemoStore();
-    const idx = store.listings.findIndex((l) => l.id === id);
-    if (idx < 0) throw new Error('Listing not found.');
-    const current = store.listings[idx]!;
-    if (current.producerId !== actorProfileId) {
-      throw new Error('Not allowed to edit another producer’s listing.');
-    }
-    const next: Listing = { ...current, ...patch, id: current.id, lastUpdated: new Date().toISOString() };
-    store.listings[idx] = next;
-    return next;
-  },
-  async listGroups() {
-    return [...getDemoStore().groups];
-  },
-  async getGroup(id) {
-    return getDemoStore().groups.find((g) => g.id === id);
-  },
-  async listOpportunities() {
-    const store = getDemoStore();
-    return store.opportunities.map((o) => ({
-      ...o,
-      aggregateQuantity: store.contributions
-        .filter((c) => c.opportunityId === o.id && c.status !== 'withdrawn')
-        .reduce((sum, c) => sum + c.quantity, 0)
-    }));
-  },
-  async getOpportunity(idOrSlug) {
-    const store = getDemoStore();
-    const found = store.opportunities.find((o) => o.id === idOrSlug || o.slug === idOrSlug);
-    if (!found) return undefined;
-    const aggregate = store.contributions
-      .filter((c) => c.opportunityId === found.id && c.status !== 'withdrawn')
-      .reduce((sum, c) => sum + c.quantity, 0);
-    return { ...found, aggregateQuantity: aggregate };
-  },
-  async listContributions(opportunityId) {
-    return getDemoStore().contributions.filter((c) => c.opportunityId === opportunityId);
-  },
-  async contribute({ opportunityId, producerProfileId, quantity, note }) {
-    const store = getDemoStore();
-    if (!Number.isInteger(quantity) || quantity <= 0) throw new Error('Quantity must be a positive whole number.');
-    const opp = store.opportunities.find((o) => o.id === opportunityId);
-    if (!opp) throw new Error('Opportunity not found.');
-    if (opp.status === 'closed' || opp.status === 'fulfilled' || opp.status === 'cancelled') {
-      throw new Error('This opportunity is not accepting contributions.');
-    }
-    const producerListings = store.listings.filter((l) => l.producerId === producerProfileId && l.categoryId === opp.categoryId);
-    const availableStock = producerListings.reduce((sum, l) => sum + (l.availability === 'unavailable' ? 0 : l.availableQuantity), 0);
-    if (availableStock <= 0) throw new Error('No stock in a matching category to contribute.');
-    const existing = store.contributions.find(
-      (c) => c.opportunityId === opportunityId && c.producerProfileId === producerProfileId && c.status !== 'withdrawn'
-    );
-    const alreadyCommitted = existing?.quantity ?? 0;
-    if (alreadyCommitted + quantity > availableStock) {
-      throw new Error(
-        `Only ${availableStock - alreadyCommitted} units left to contribute from your stock of ${availableStock}.`
-      );
-    }
-    const aggregate = store.contributions
-      .filter((c) => c.opportunityId === opportunityId && c.status !== 'withdrawn')
-      .reduce((sum, c) => sum + c.quantity, 0);
-    if (aggregate + quantity > opp.targetQuantity * 2) {
-      throw new Error('Contribution would exceed twice the target quantity. Please coordinate with the group.');
-    }
-    const record: GroupContribution = {
-      id: `con_${randomUUID().slice(0, 8)}`,
-      opportunityId,
-      producerProfileId,
-      quantity,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      note,
-      isDemo: true
-    };
-    if (existing) {
-      existing.quantity += quantity;
-      existing.updatedAt = new Date().toISOString();
-      return existing;
-    }
-    store.contributions.push(record);
-    opp.updatedAt = new Date().toISOString();
-    return record;
-  },
-  async listInquiriesForListing(listingId) {
-    return getDemoStore().inquiries.filter((i) => i.listingId === listingId);
-  },
-  async listInquiriesForSeller(sellerProfileId) {
-    const store = getDemoStore();
-    const listingIds = new Set(store.listings.filter((l) => l.producerId === sellerProfileId).map((l) => l.id));
-    return store.inquiries.filter((i) => listingIds.has(i.listingId));
-  },
-  async createInquiry(input) {
-    const store = getDemoStore();
-    if (input.idempotencyKey) {
-      const dup = store.inquiries.find((i) => i.idempotencyKey === input.idempotencyKey);
-      if (dup) return dup;
-    }
-    const listing = store.listings.find((l) => l.id === input.listingId);
-    if (!listing) throw new Error('Listing not found.');
-    if (!Number.isInteger(input.quantity) || input.quantity < listing.minOrderQuantity) {
-      throw new Error(`Quantity must be a whole number of at least ${listing.minOrderQuantity}.`);
-    }
-    if (listing.availability === 'unavailable') throw new Error('This listing is currently unavailable.');
-    if (input.quantity > listing.availableQuantity && listing.availability !== 'made_to_order') {
-      throw new Error(`Only ${listing.availableQuantity} ${listing.unitOfSale} available right now.`);
-    }
-    const subtotal = multiplyUnitPrice(listing.unitPrice.cents, input.quantity);
-    const nowIso = new Date().toISOString();
-    const createdEvent: InquiryEvent = {
-      id: `ev_${randomUUID().slice(0, 8)}`,
-      inquiryId: '',
-      at: nowIso,
-      actor: 'buyer',
-      kind: 'created',
-      detail: `Inquiry submitted for ${input.quantity} ${listing.unitOfSale}.`
-    };
-    const inquiry: Inquiry = {
-      id: `inq_${randomUUID().slice(0, 8)}`,
-      reference: makeReference(),
-      listingId: listing.id,
-      buyerName: input.buyerName.trim(),
-      buyerContact: input.buyerContact.trim(),
-      quantity: input.quantity,
-      unitOfSale: listing.unitOfSale,
-      estimatedSubtotalCents: subtotal,
-      currency: listing.unitPrice.currency,
-      preference: input.preference,
-      preferredDate: input.preferredDate,
-      message: input.message.trim(),
-      status: 'new',
-      createdAt: nowIso,
-      updatedAt: nowIso,
-      events: [{ ...createdEvent, inquiryId: '' }],
-      isDemo: true,
-      idempotencyKey: input.idempotencyKey
-    };
-    inquiry.events[0]!.inquiryId = inquiry.id;
-    store.inquiries.push(inquiry);
-    return inquiry;
-  },
-  async updateInquiryStatus(inquiryId, status, actor, detail) {
-    const store = getDemoStore();
-    const idx = store.inquiries.findIndex((i) => i.id === inquiryId);
-    if (idx < 0) throw new Error('Inquiry not found.');
-    const current = store.inquiries[idx]!;
-    if (current.status === 'completed' || current.status === 'cancelled') {
-      throw new Error('Cannot change a closed inquiry.');
-    }
-    const next: Inquiry = {
-      ...current,
-      status,
-      updatedAt: new Date().toISOString(),
-      events: [
-        ...current.events,
-        {
-          id: `ev_${randomUUID().slice(0, 8)}`,
-          inquiryId: current.id,
-          at: new Date().toISOString(),
-          actor,
-          kind: 'status_changed',
-          detail
-        }
-      ]
-    };
-    store.inquiries[idx] = next;
-    return next;
-  },
-  async listReports() {
-    return getDemoStore().reports;
-  },
-  async createReport(input) {
-    const store = getDemoStore();
-    const report: ListingReport = {
-      ...input,
-      id: `rep_${randomUUID().slice(0, 8)}`,
-      createdAt: new Date().toISOString(),
-      status: 'open',
-      isDemo: true
-    };
-    store.reports.push(report);
-    return report;
-  },
-  async listVerificationReviews() {
-    return getDemoStore().verificationReviews;
-  },
-  async recordVerificationReview(input) {
-    const store = getDemoStore();
-    const record: VerificationReview = {
-      id: `vr_${randomUUID().slice(0, 8)}`,
-      profileId: input.profileId,
-      reviewerProfileId: input.reviewerProfileId,
-      decision: input.decision,
-      reason: input.reason,
-      createdAt: new Date().toISOString(),
-      isDemo: true
-    };
-    store.verificationReviews.push(record);
-    const profile = store.profiles.find((p) => p.id === input.profileId);
-    if (profile) {
-      profile.verification =
-        input.decision === 'approved' ? 'verified' : input.decision === 'rejected' ? 'unverified' : 'pending_review';
-      profile.verificationNote = input.reason;
-      profile.updatedAt = new Date().toISOString();
-    }
-    return record;
-  },
-  async getTransportPlan(opportunityId) {
-    return getDemoStore().transportPlans.find((t) => t.opportunityId === opportunityId);
-  },
-  async aggregateStats() {
-    const store = getDemoStore();
-    return {
-      listings: store.listings.filter((l) => l.published).length,
-      producers: store.profiles.length,
-      groups: store.groups.length,
-      inquiries: store.inquiries.length,
-      opportunities: store.opportunities.length,
-      collectiveContributed: store.contributions.filter((c) => c.status !== 'withdrawn').reduce((s, c) => s + c.quantity, 0),
-      collectiveTarget: store.opportunities.reduce((s, o) => s + o.targetQuantity, 0),
-      verified: store.profiles.filter((p) => p.verification === 'verified').length
-    };
-  }
-};

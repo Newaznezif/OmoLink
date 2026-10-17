@@ -1,12 +1,14 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
+import { getSessionActor } from '@/lib/session';
 import { formatMoney } from '@/lib/money';
 import { Badge, Card, CardBody, Empty, SampleTag, Section, VerificationLabel } from '@/components/ui';
 import { ListingCard } from '@/components/listing-card';
 import { InquiryForm } from '@/components/inquiry-form';
 import { QrCode } from '@/components/qr-code';
 import { ReportListingButton } from '@/components/report-listing';
+import { ListingReviews } from '@/components/listing-reviews';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +21,8 @@ export default async function ListingPage({ params }: { params: { id: string } }
   const related = await repo.relatedListings(listing);
   const profiles = await repo.listPublicProfiles();
   const producerById = new Map(profiles.map((p) => [p.id, p]));
+  const actor = await getSessionActor();
+  const buyerRecordsPath = actor && actor.role === 'buyer' && actor.status === 'active' ? '/buyer/inquiries' : undefined;
 
   const publicUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/listings/${listing.id}`;
 
@@ -89,7 +93,8 @@ export default async function ListingPage({ params }: { params: { id: string } }
                 </div>
               </div>
             )}
-          </div>
+            <ListingReviews listingId={listing.id} producerName={producer?.displayName ?? 'the seller'} />
+        </div>
 
           <aside className="space-y-4">
             <Card>
@@ -102,6 +107,7 @@ export default async function ListingPage({ params }: { params: { id: string } }
               </CardBody>
             </Card>
             <InquiryForm
+              recordsPath={buyerRecordsPath}
               listing={{
                 id: listing.id,
                 title: listing.title,

@@ -9,6 +9,9 @@ export type ProfileRow = {
   user_id: string;
   display_name: string;
   producer_type: string;
+  account_kind: string;
+  status: string;
+  organization_name: string | null;
   community: string;
   operating_area: string;
   preferred_language: string;
@@ -30,6 +33,9 @@ export type CategoryRow = {
   slug: string;
   kind: string;
   description: string | null;
+  icon: string | null;
+  sort_order: number;
+  active: boolean;
 };
 
 export type ListingRow = {
@@ -51,6 +57,8 @@ export type ListingRow = {
   delivery_available: boolean;
   tourism_meta: unknown;
   published: boolean;
+  featured: boolean;
+  archived: boolean;
   verification: string;
   created_at: string;
   updated_at: string;
@@ -169,5 +177,47 @@ export type VerificationReviewRow = {
   reviewer_profile_id: string;
   decision: string;
   reason: string;
+  created_at: string;
+};
+
+export type ReviewRow = {
+  id: string;
+  listing_id: string;
+  producer_profile_id: string;
+  inquiry_id: string;
+  rating: number;
+  comment: string | null;
+  author_name: string;
+  author_profile_id: string | null;
+  status: string;
+  moderation_note: string | null;
+  created_at: string;
+};
+
+export type AuditLogRow = {
+  id: string;
+  at: string;
+  actor_profile_id: string | null;
+  actor_name: string;
+  action: string;
+  record_type: string;
+  record_id: string;
+  summary: string;
+};
+
+export type SiteSettingsRow = {
+  id: string;
+  settings: unknown;
+  updated_at: string;
+  updated_by_profile_id: string | null;
+};
+
+export type ContactMessageRow = {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: string;
   created_at: string;
 };

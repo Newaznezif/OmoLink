@@ -4,6 +4,22 @@
 
 :root {
   --focus: #b96a2c;
+  /* Admin-editable accent. The fallback keeps every accent surface readable on
+     pages that render outside the app layout, where the value is not injected. */
+  --accent: #b2542a;
+  --accent-contrast: #ffffff;
+}
+
+.accent-bg {
+  /* --accent-contrast is derived from the hex in src/lib/settings.ts, so a
+     light accent never produces white-on-white text. */
+  background-color: var(--accent);
+  color: var(--accent-contrast, #ffffff);
+}
+
+a.accent-bg:hover,
+button.accent-bg:hover {
+  filter: brightness(0.93);
 }
 
 html,

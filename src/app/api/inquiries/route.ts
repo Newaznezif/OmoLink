@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRepo } from '@/lib/repo';
+import { getSessionActor } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,13 @@ export async function POST(req: Request) {
 
   try {
     const repo = getRepo();
+    // Signed-in buyers get the arrangement in their own records, so the link comes
+    // from the session rather than from anything the browser sent.
+    const actor = await getSessionActor();
+    if (actor && actor.status !== 'active') {
+      return NextResponse.json({ error: 'This account is suspended. Contact an administrator.' }, { status: 403 });
+    }
+    const buyerProfileId = actor?.role === 'buyer' ? actor.profileId : undefined;
     const inquiry = await repo.createInquiry({
       listingId: input.listingId,
       buyerName: input.buyerName,
@@ -46,6 +54,7 @@ export async function POST(req: Request) {
       preference: input.preference as 'pickup' | 'delivery' | 'booking' | 'unsure',
       preferredDate: typeof input.preferredDate === 'string' ? input.preferredDate : undefined,
       message: input.message,
+      buyerProfileId,
       idempotencyKey: typeof input.idempotencyKey === 'string' ? input.idempotencyKey : undefined
     });
     return NextResponse.json({ inquiry }, { status: 201 });

@@ -14,7 +14,9 @@ const buttonBase =
   'inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-colors border select-none disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-3';
 
 const variantCls: Record<NonNullable<ButtonBase['variant']>, string> = {
-  primary: 'bg-clay-700 text-white border-clay-700 hover:bg-clay-800',
+  // "primary" follows the administrator's accent (see .accent-bg in globals.css)
+  // instead of a build-time Tailwind shade, so the setting is genuinely applied.
+  primary: 'accent-bg border-transparent',
   secondary: 'bg-white text-ink-900 border-ink-100 hover:bg-clay-50',
   ghost: 'bg-transparent text-ink-900 border-transparent hover:bg-clay-50',
   danger: 'bg-red-700 text-white border-red-700 hover:bg-red-800'

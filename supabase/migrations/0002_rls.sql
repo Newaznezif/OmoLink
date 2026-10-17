@@ -21,13 +21,20 @@ alter table public.listing_reports enable row level security;
 alter table public.verification_reviews enable row level security;
 
 -- Helper functions.
+--
+-- These run SECURITY DEFINER on purpose. A policy expression that reads
+-- public.profiles would otherwise have RLS applied to it again, which Postgres
+-- reports as "infinite recursion detected in policy for relation". Running as
+-- the function owner (the migration role, not the anon key) keeps the lookup to
+-- a single pass. They return values derived from auth.uid() only, so they widen
+-- no access: they still describe the caller.
 create or replace function public.current_profile_id()
-returns uuid language sql stable as $$
+returns uuid language sql stable security definer set search_path = public as $$
   select id from public.profiles where user_id = auth.uid()
 $$;
 
 create or replace function public.is_admin()
-returns boolean language sql stable as $$
+returns boolean language sql stable security definer set search_path = public as $$
   select coalesce(
     (select role = 'admin' from public.profiles where user_id = auth.uid()),
     false
@@ -35,7 +42,7 @@ returns boolean language sql stable as $$
 $$;
 
 create or replace function public.in_group(group uuid)
-returns boolean language sql stable as $$
+returns boolean language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from public.group_members gm
     where gm.group_id = "group"

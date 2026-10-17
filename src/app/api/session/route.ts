@@ -5,15 +5,12 @@ import { isDemoMode } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 
-const DEMO_USERS = [
-  { userId: 'demo_user_basket', role: 'producer' as const },
-  { userId: 'demo_user_honey', role: 'producer' as const },
-  { userId: 'demo_user_guide', role: 'producer' as const },
-  { userId: 'demo_user_textile', role: 'producer' as const },
-  { userId: 'demo_user_dairy', role: 'producer' as const },
-  { userId: 'demo_user_admin', role: 'admin' as const }
-];
-
+/**
+ * Demo sign-in only. There is no role in the request or the cookie: the session
+ * stores a user id, and every later request reads role and status back from the
+ * stored profile. A suspended demo account can still sign in and see its own
+ * data, but requireRole() blocks it from acting.
+ */
 export async function POST(req: Request) {
   if (!isDemoMode()) {
     return NextResponse.json(
@@ -22,15 +19,17 @@ export async function POST(req: Request) {
     );
   }
   const body = (await req.json().catch(() => ({}))) as { userId?: string };
-  const userId = body.userId;
-  const candidate = DEMO_USERS.find((u) => u.userId === userId);
-  if (!candidate) {
+  const userId = typeof body.userId === 'string' ? body.userId : '';
+  if (!userId.startsWith('demo_user_')) {
     return NextResponse.json({ error: 'Unknown demo user.' }, { status: 400 });
   }
-  const profile = await getRepo().getProfileByUserId(candidate.userId);
+  const profile = await getRepo().getProfileByUserId(userId);
   if (!profile) {
     return NextResponse.json({ error: 'No profile exists for that demo account.' }, { status: 404 });
   }
-  writeSession({ userId: candidate.userId, role: candidate.role });
-  return NextResponse.json({ ok: true, profile: { id: profile.id, displayName: profile.displayName } });
+  writeSession({ userId });
+  return NextResponse.json({
+    ok: true,
+    profile: { id: profile.id, displayName: profile.displayName, role: profile.role }
+  });
 }

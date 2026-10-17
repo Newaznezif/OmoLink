@@ -1,8 +1,11 @@
 import type {
+  AccountKind,
   AvailabilityStatus,
+  AuditLogEntry,
   Category,
   CollectiveOpportunity,
   ContactMethod,
+  ContactMessage,
   GroupContribution,
   Inquiry,
   InquiryEvent,
@@ -16,13 +19,20 @@ import type {
   ProducerGroup,
   ProducerType,
   Profile,
+  Review,
+  Role,
+  SiteSettings,
   TourismMeta,
   UnitOfSale,
   VerificationReview,
   VerificationStatus
 } from '../types';
+import { HOMEPAGE_SECTIONS } from '../types';
+import { DEFAULT_SITE_SETTINGS } from '../settings';
 import type {
+  AuditLogRow,
   CategoryRow,
+  ContactMessageRow,
   ContributionRow,
   GroupMemberRow,
   InquiryEventRow,
@@ -33,6 +43,8 @@ import type {
   OpportunityRow,
   ProducerGroupRow,
   ProfileRow,
+  ReviewRow,
+  SiteSettingsRow,
   TransportPlanRow,
   VerificationReviewRow
 } from './rows';
@@ -96,6 +108,10 @@ export function mapProfile(row: ProfileRow, groupIds: string[] = []): Profile {
     userId: row.user_id,
     displayName: row.display_name,
     producerType: row.producer_type as ProducerType,
+    role: row.role as Role,
+    accountKind: row.account_kind as AccountKind,
+    organizationName: row.organization_name ?? undefined,
+    status: row.status === 'suspended' ? 'suspended' : 'active',
     community: row.community,
     operatingArea: row.operating_area,
     preferredLanguage: row.preferred_language as LanguageCode,
@@ -146,6 +162,8 @@ export function mapListing(row: ListingWithImagesRow): Listing {
     createdAt: row.created_at,
     verification: row.verification as VerificationStatus,
     published: row.published,
+    featured: row.featured,
+    archived: row.archived,
     tourism: mapTourismMeta(row.tourism_meta),
     images: row.listing_images.map(mapImage),
     isDemo: NOT_DEMO
@@ -172,6 +190,8 @@ export function listingToRow(listing: Listing): Record<string, unknown> {
     delivery_available: listing.deliveryAvailable,
     tourism_meta: listing.tourism ?? null,
     published: listing.published,
+    featured: listing.featured ?? false,
+    archived: listing.archived ?? false,
     verification: listing.verification
   };
 }
@@ -182,7 +202,23 @@ export function mapCategory(row: CategoryRow): Category {
     name: row.name,
     slug: row.slug,
     kind: row.kind as Category['kind'],
-    description: row.description ?? ''
+    description: row.description ?? '',
+    icon: row.icon ?? undefined,
+    sortOrder: row.sort_order,
+    active: row.active
+  };
+}
+
+export function categoryToRow(category: Category): Record<string, unknown> {
+  return {
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+    kind: category.kind,
+    description: category.description,
+    icon: category.icon ?? null,
+    sort_order: category.sortOrder ?? 0,
+    active: category.active ?? true
   };
 }
 
@@ -193,6 +229,7 @@ export function mapInquiry(row: InquiryRow, events: InquiryEventRow[]): Inquiry 
     listingId: row.listing_id,
     buyerName: row.buyer_name,
     buyerContact: row.buyer_contact,
+    buyerProfileId: row.buyer_profile_id ?? undefined,
     quantity: row.quantity,
     unitOfSale: row.unit as UnitOfSale,
     estimatedSubtotalCents: row.estimated_subtotal_cents,
@@ -309,11 +346,14 @@ export function mapVerificationReview(row: VerificationReviewRow): VerificationR
   };
 }
 
-export function profileToRow(profile: Profile): Record<string, unknown> {  return {
+export function profileToRow(profile: Profile): Record<string, unknown> {
+  return {
     id: profile.id,
     user_id: profile.userId,
     display_name: profile.displayName,
     producer_type: profile.producerType,
+    account_kind: profile.accountKind,
+    organization_name: profile.organizationName ?? null,
     community: profile.community,
     operating_area: profile.operatingArea,
     preferred_language: profile.preferredLanguage,
@@ -323,6 +363,116 @@ export function profileToRow(profile: Profile): Record<string, unknown> {  retur
     image_url: profile.imageUrl ?? null,
     consent_to_publish: profile.consentToPublish,
     verification: profile.verification,
-    verification_note: profile.verificationNote ?? null
+    verification_note: profile.verificationNote ?? null,
+    // Written on insert only. The profiles_privileged_columns trigger rejects a
+    // row that changes role, verification, or status without an admin behind it.
+    role: profile.role,
+    status: profile.status
   };
+}
+
+export function mapReview(row: ReviewRow): Review {
+  return {
+    id: row.id,
+    listingId: row.listing_id,
+    producerProfileId: row.producer_profile_id,
+    inquiryId: row.inquiry_id,
+    rating: Math.min(5, Math.max(1, Math.round(row.rating))) as Review['rating'],
+    comment: row.comment ?? '',
+    authorName: row.author_name,
+    authorProfileId: row.author_profile_id ?? undefined,
+    status: row.status === 'hidden' ? 'hidden' : 'published',
+    moderationNote: row.moderation_note ?? undefined,
+    createdAt: row.created_at,
+    isDemo: NOT_DEMO
+  };
+}
+
+export function mapAuditLog(row: AuditLogRow): AuditLogEntry {
+  return {
+    id: row.id,
+    at: row.at,
+    actorProfileId: row.actor_profile_id ?? '',
+    actorName: row.actor_name,
+    action: row.action as AuditLogEntry['action'],
+    recordType: row.record_type as AuditLogEntry['recordType'],
+    recordId: row.record_id,
+    summary: row.summary,
+    isDemo: NOT_DEMO
+  };
+}
+
+export function mapContactMessage(row: ContactMessageRow): ContactMessage {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    subject: row.subject,
+    message: row.message,
+    status: row.status === 'handled' ? 'handled' : 'new',
+    createdAt: row.created_at,
+    isDemo: NOT_DEMO
+  };
+}
+
+/**
+ * The stored document is unvalidated JSON, so every field is checked against the
+ * expected type and falls back to the default. A bad row can therefore never take
+ * the homepage down or smuggle markup into the page.
+ */
+export function mapSiteSettings(row: SiteSettingsRow | null): SiteSettings {
+  const raw = (row?.settings && typeof row.settings === 'object' ? row.settings : {}) as Record<string, unknown>;
+  const text = (key: keyof SiteSettings, fallback: string) =>
+    typeof raw[key] === 'string' ? (raw[key] as string) : fallback;
+  const list = (key: keyof SiteSettings): string[] =>
+    Array.isArray(raw[key]) ? (raw[key] as unknown[]).filter((v): v is string => typeof v === 'string') : [];
+
+  const sections = Array.isArray(raw.homepageSections)
+    ? (raw.homepageSections as unknown[])
+        .map((entry) => (entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : null))
+        .filter((entry): entry is Record<string, unknown> => entry !== null)
+        .filter((entry) => HOMEPAGE_SECTIONS.includes(entry.id as never))
+        .map((entry) => ({ id: entry.id as SiteSettings['homepageSections'][number]['id'], visible: entry.visible !== false }))
+    : [];
+
+  return {
+    siteName: text('siteName', DEFAULT_SITE_SETTINGS.siteName),
+    tagline: text('tagline', DEFAULT_SITE_SETTINGS.tagline),
+    heroTitle: text('heroTitle', DEFAULT_SITE_SETTINGS.heroTitle),
+    heroDescription: text('heroDescription', DEFAULT_SITE_SETTINGS.heroDescription),
+    announcementBar:
+      raw.announcementBar && typeof raw.announcementBar === 'object'
+        ? {
+            enabled: (raw.announcementBar as Record<string, unknown>).enabled === true,
+            text: typeof (raw.announcementBar as Record<string, unknown>).text === 'string'
+              ? ((raw.announcementBar as Record<string, unknown>).text as string)
+              : ''
+          }
+        : DEFAULT_SITE_SETTINGS.announcementBar,
+    featuredProductIds: list('featuredProductIds'),
+    featuredServiceIds: list('featuredServiceIds'),
+    featuredProducerIds: list('featuredProducerIds'),
+    homepageSections: sections.length > 0 ? sections : DEFAULT_SITE_SETTINGS.homepageSections,
+    contactEmail: text('contactEmail', DEFAULT_SITE_SETTINGS.contactEmail),
+    contactPhone: text('contactPhone', DEFAULT_SITE_SETTINGS.contactPhone),
+    addressNote: text('addressNote', DEFAULT_SITE_SETTINGS.addressNote),
+    socialLinks: Array.isArray(raw.socialLinks)
+      ? (raw.socialLinks as unknown[])
+          .map((entry) => (entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : null))
+          .filter((entry): entry is Record<string, unknown> => entry !== null)
+          .filter((entry) => typeof entry.url === 'string' && /^(https?:)\/\//i.test(entry.url as string))
+          .map((entry) => ({ label: String(entry.label ?? ''), url: entry.url as string }))
+      : [],
+    footerNote: text('footerNote', DEFAULT_SITE_SETTINGS.footerNote),
+    accentColor: /^#[0-9a-fA-F]{6}$/.test(text('accentColor', '')) ? text('accentColor', '#b2542a') : DEFAULT_SITE_SETTINGS.accentColor,
+    updatedAt: row?.updated_at ?? new Date().toISOString(),
+    updatedByProfileId: row?.updated_by_profile_id ?? undefined,
+    // A live row is real content, so it never carries the sample badge.
+    isDemo: NOT_DEMO
+  };
+}
+
+export function siteSettingsToRow(settings: SiteSettings): Record<string, unknown> {
+  const { updatedAt: _updatedAt, updatedByProfileId: _updatedBy, isDemo: _isDemo, ...document } = settings;
+  return { settings: document };
 }

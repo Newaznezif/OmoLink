@@ -19,6 +19,44 @@ export function RegisterForm({ categories, mode }: { categories: Category[]; mod
       <Field label="Display name or group name" htmlFor="displayName" required>
         <Input id="displayName" name="displayName" required maxLength={120} />
       </Field>
+      <fieldset>
+        <legend className="text-sm font-semibold text-ink-900 mb-1">What do you want to do on OmoLink?</legend>
+        <p className="text-xs text-ink-500 mb-2">
+          This chooses the shape of your account. It does not give you administrative rights — an administrator has to
+          assign those separately.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-2">
+          {[
+            { value: 'producer', label: 'Sell my products or services' },
+            { value: 'group_or_cooperative', label: 'Represent a group or cooperative' },
+            { value: 'individual_buyer', label: 'Buy as an individual' },
+            { value: 'business_buyer', label: 'Buy for a business (shop, hotel, institution)' },
+            { value: 'tourist', label: 'Visit the area and book experiences' }
+          ].map((option, index) => (
+            <label
+              key={option.value}
+              className="flex gap-2 items-center text-sm rounded-lg border border-ink-100 px-3 py-2"
+            >
+              <input
+                type="radio"
+                name="accountKind"
+                value={option.value}
+                defaultChecked={index === 0}
+                className="w-4 h-4"
+                required
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <Field
+        label="Organisation name"
+        htmlFor="organizationName"
+        hint="Only for a business buyer or a registered group. Leave empty otherwise."
+      >
+        <Input id="organizationName" name="organizationName" maxLength={120} />
+      </Field>
       <div className="grid md:grid-cols-2 gap-4">
         <Field label="Producer type" htmlFor="producerType" required>
           <Select id="producerType" name="producerType" defaultValue="artisan">
@@ -29,7 +67,7 @@ export function RegisterForm({ categories, mode }: { categories: Category[]; mod
             <option value="guide">Guide</option>
             <option value="tourism_operator">Tourism operator</option>
             <option value="household">Household</option>
-            <option value="other">Other</option>
+            <option value="other">Other (buyers and visitors)</option>
           </Select>
         </Field>
         <Field label="Preferred language" htmlFor="preferredLanguage" required>
