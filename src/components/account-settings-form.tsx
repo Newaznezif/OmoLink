@@ -29,7 +29,40 @@ function draftFrom(profile: Profile): Draft {
   };
 }
 
-export function BuyerSettingsForm({ profile }: { profile: Profile }) {
+/** The same four fields mean different things to each side of a sale. */
+const COPY = {
+  buyer: {
+    details: 'Your details',
+    name: 'Name you want people to see',
+    nameHint: 'Sellers receive this on an inquiry.',
+    area: 'Where you usually are',
+    areaHint: 'Helps a seller judge pickup or meeting point.',
+    bio: 'A note about what you are looking for',
+    bioHint: 'Optional here, but sellers see it when you inquire. 20 characters minimum.',
+    contact: 'How sellers reach you',
+    in_app: 'Only through the platform inquiry form',
+    phone: 'Add my phone number to each inquiry I send',
+    email: 'Add my email address to each inquiry I send',
+    none: 'Do not share a direct contact detail'
+  },
+  seller: {
+    details: 'How you appear to buyers',
+    name: 'Display name',
+    nameHint: 'Shown on your public seller page and on every listing.',
+    area: 'Where buyers can collect or meet you',
+    areaHint: 'Shown beside your listings so pickup expectations are clear.',
+    bio: 'About your work',
+    bioHint: 'Shown on your public seller page. 20 characters minimum. No identity documents are ever stored here.',
+    contact: 'How buyers reach you',
+    in_app: 'Only through the inquiry form on my listings',
+    phone: 'Publish my phone number on my listings',
+    email: 'Publish my email address on my listings',
+    none: 'Do not publish a direct contact detail'
+  }
+} as const;
+
+export function AccountSettingsForm({ profile, variant }: { profile: Profile; variant: 'buyer' | 'seller' }) {
+  const copy = COPY[variant];
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(() => draftFrom(profile));
   const [busy, setBusy] = useState(false);
@@ -74,9 +107,9 @@ export function BuyerSettingsForm({ profile }: { profile: Profile }) {
     <div className="space-y-4">
       <Card>
         <CardBody className="space-y-4">
-          <h2 className="font-semibold text-ink-900">Your details</h2>
+          <h2 className="font-semibold text-ink-900">{copy.details}</h2>
           <div className="grid md:grid-cols-2 gap-4">
-            <Field label="Name you want people to see" htmlFor="displayName" hint="Sellers receive this on an inquiry.">
+            <Field label={copy.name} htmlFor="displayName" hint={copy.nameHint}>
               <Input
                 id="displayName"
                 value={draft.displayName}
@@ -87,7 +120,7 @@ export function BuyerSettingsForm({ profile }: { profile: Profile }) {
             <Field label="Community or town" htmlFor="community">
               <Input id="community" value={draft.community} maxLength={120} onChange={(e) => set('community', e.target.value)} />
             </Field>
-            <Field label="Where you usually are" htmlFor="operatingArea" hint="Helps a seller judge pickup or meeting point.">
+            <Field label={copy.area} htmlFor="operatingArea" hint={copy.areaHint}>
               <Input
                 id="operatingArea"
                 value={draft.operatingArea}
@@ -121,11 +154,7 @@ export function BuyerSettingsForm({ profile }: { profile: Profile }) {
               </p>
             </Field>
           </div>
-          <Field
-            label="A note about what you are looking for"
-            htmlFor="shortBio"
-            hint="Optional here, but sellers see it when you inquire. 20 characters minimum."
-          >
+          <Field label={copy.bio} htmlFor="shortBio" hint={copy.bioHint}>
             <Textarea id="shortBio" value={draft.shortBio} maxLength={1200} onChange={(e) => set('shortBio', e.target.value)} />
           </Field>
         </CardBody>
@@ -133,14 +162,14 @@ export function BuyerSettingsForm({ profile }: { profile: Profile }) {
 
       <Card>
         <CardBody className="space-y-4">
-          <h2 className="font-semibold text-ink-900">How sellers reach you</h2>
+          <h2 className="font-semibold text-ink-900">{copy.contact}</h2>
           <div className="space-y-2 text-sm">
             {(
               [
-                ['in_app', 'Only through the platform inquiry form'],
-                ['phone', 'Add my phone number to each inquiry I send'],
-                ['email', 'Add my email address to each inquiry I send'],
-                ['none', 'Do not share a direct contact detail']
+                ['in_app', copy.in_app],
+                ['phone', copy.phone],
+                ['email', copy.email],
+                ['none', copy.none]
               ] as const
             ).map(([kind, label]) => (
               <label key={kind} htmlFor={`contact-${kind}`} className="flex items-start gap-2">
@@ -178,8 +207,8 @@ export function BuyerSettingsForm({ profile }: { profile: Profile }) {
                   className="mt-1 h-4 w-4"
                 />
                 <span>
-                  I agree that this contact detail is shared with the seller on each inquiry I send. It is not published
-                  on any public page.
+                  I agree that this contact detail is shared with the other side of each arrangement. It is not published
+                  anywhere else.
                 </span>
               </label>
             </>
@@ -188,11 +217,11 @@ export function BuyerSettingsForm({ profile }: { profile: Profile }) {
       </Card>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" onClick={save} disabled={busy}>
-          {busy ? 'Saving…' : 'Save settings'}
+        <Button onClick={save} disabled={busy}>
+          {busy ? 'Saving…' : 'Save changes'}
         </Button>
         {message && (
-          <p role={message.ok ? 'status' : 'alert'} className={`text-sm ${message.ok ? 'text-moss-700' : 'text-red-700'}`}>
+          <p role={message.ok ? 'status' : 'alert'} className={message.ok ? 'text-sm text-moss-700' : 'text-sm text-red-700'}>
             {message.text}
           </p>
         )}

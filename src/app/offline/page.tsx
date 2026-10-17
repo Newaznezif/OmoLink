@@ -5,7 +5,7 @@ export default function OfflinePage() {
   return (
     <Section
       eyebrow="Offline and low connectivity"
-      title="How OmoLink behaves when the network is unreliable"
+      title="How OmoNETAB behaves when the network is unreliable"
       description="A practical design for intermittent internet and electricity in South Omo."
     >
       <div className="grid md:grid-cols-3 gap-4">

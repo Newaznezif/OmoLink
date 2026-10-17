@@ -1,8 +1,8 @@
 {
-  "name": "omolink",
+  "name": "omonetab",
   "version": "0.1.0",
   "private": true,
-  "description": "OmoLink — a rural marketplace connecting South Omo producers with buyers, tourism operators, and collective-selling partners.",
+  "description": "OmoNETAB — a digital bridge for rural entrepreneurs and community tourism in South Omo.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

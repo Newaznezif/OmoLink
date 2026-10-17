@@ -2,14 +2,14 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { isDemoMode } from '@/lib/store';
 import { requireArea } from '@/lib/area';
-import { BuyerSettingsForm } from '@/components/buyer-settings-form';
+import { AccountSettingsForm } from '@/components/account-settings-form';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Account settings',
-  description: 'Change your details, choose how sellers contact you, and see what OmoLink holds about you.'
+  description: 'Change your details, choose how sellers contact you, and see what OmoNETAB holds about you.'
 };
 
 export default async function BuyerSettingsPage() {
@@ -38,11 +38,11 @@ export default async function BuyerSettingsPage() {
       title="Settings"
       description="Your details, your contact choice, and an honest list of what this platform stores about you."
     >
-      <BuyerSettingsForm profile={profile} />
+      <AccountSettingsForm profile={profile} variant="buyer" />
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">What OmoLink stores about you</h2>
+          <h2 className="font-semibold text-ink-900">What OmoNETAB stores about you</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-ink-700">
             <li>Your profile record: name, community, area, language, the contact method above, and consent flags.</li>
             <li>Each inquiry you send, with its status history — visible to you, the seller on that listing, and an administrator.</li>

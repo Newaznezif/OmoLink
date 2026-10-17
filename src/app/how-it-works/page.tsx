@@ -5,7 +5,7 @@ export default function HowItWorksPage() {
     <Section
       eyebrow="How it works"
       title="A practical journey from producer to buyer"
-      description="OmoLink focuses on a working end-to-end journey: publish clearly, receive an inquiry, coordinate the exchange honestly. Payments and delivery happen outside the platform during the pilot."
+      description="OmoNETAB supports a working end-to-end journey: publish clearly, receive an inquiry, and coordinate the exchange honestly. Payments and delivery happen outside the platform during the pilot."
     >
       <div className="grid md:grid-cols-3 gap-4">
         <Step n={1} title="Producer registers">

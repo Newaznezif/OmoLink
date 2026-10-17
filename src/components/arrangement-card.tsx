@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Badge, Card, CardBody, SampleTag } from './ui';
 import { BuyerArrangementActions } from './buyer-arrangement-actions';
+import { InquiryStatusPicker } from './inquiry-status-picker';
 import { formatMoney } from '@/lib/money';
 import type { Inquiry, Listing } from '@/lib/types';
 
@@ -16,19 +17,23 @@ export function arrangementLabel(status: string): string {
 }
 
 /**
- * One inquiry rendered for the buyer who sent it. Amounts are the estimate the
- * server computed from the listing price at the time — never a claim of payment.
+ * One inquiry, rendered for whichever party owns the record. Amounts are the
+ * estimate the server computed from the listing price at the time — never a
+ * claim of payment. The seller's copy shows the reply contact the buyer
+ * submitted for exactly that purpose.
  */
 export function ArrangementCard({
   inquiry,
   listing,
   canAct = false,
-  showHistory = false
+  showHistory = false,
+  side = 'buyer'
 }: {
   inquiry: Inquiry;
   listing?: Listing;
   canAct?: boolean;
   showHistory?: boolean;
+  side?: 'buyer' | 'seller';
 }) {
   return (
     <Card>
@@ -76,6 +81,19 @@ export function ArrangementCard({
           </div>
         </dl>
 
+        {side === 'seller' && (
+          <dl className="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt className="text-ink-500">From</dt>
+              <dd className="text-ink-900 font-medium">{inquiry.buyerName}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-500">Reply to</dt>
+              <dd className="text-ink-900">{inquiry.buyerContact}</dd>
+            </div>
+          </dl>
+        )}
+
         {inquiry.message && !showHistory && (
           <p className="mt-3 text-sm text-ink-700 line-clamp-2 whitespace-pre-line">{inquiry.message}</p>
         )}
@@ -97,15 +115,21 @@ export function ArrangementCard({
           </ul>
         )}
 
-        {canAct && (
+        {canAct && side === 'buyer' && (
           <div className="mt-3">
             <BuyerArrangementActions inquiryId={inquiry.id} current={inquiry.status} />
           </div>
         )}
+        {canAct && side === 'seller' && (
+          <div className="mt-3">
+            <InquiryStatusPicker inquiryId={inquiry.id} current={inquiry.status} />
+          </div>
+        )}
 
         <p className="mt-3 text-xs text-ink-500">
-          No money has changed hands through OmoLink: the estimate is what the listing price times your quantity came to
-          when you sent the request.
+          {side === 'seller'
+            ? 'No money has changed hands through OmoNETAB: the estimate is the listing price at the time of the request times the quantity asked for. Agree payment terms yourself, then record what actually happened.'
+            : 'No money has changed hands through OmoNETAB: the estimate is what the listing price times your quantity came to when you sent the request.'}
         </p>
       </CardBody>
     </Card>

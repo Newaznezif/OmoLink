@@ -1,7 +1,7 @@
 import type { LanguageCode } from './types';
 
 /**
- * OmoLink UI strings. Only English is complete. Amharic is a partial draft and
+ * OmoNETAB UI strings. Only English is complete. Amharic is a partial draft and
  * is clearly labelled review-pending in the UI. Hamer, Dasenech and Tsamai
  * have no verified translations yet — we surface that honestly rather than
  * fabricate text.

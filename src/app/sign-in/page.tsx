@@ -41,6 +41,10 @@ export default async function SignInPage({
               <a className="underline font-semibold" href="/forgot-password">
                 Reset it
               </a>
+              . Never got the confirmation email?{' '}
+              <a className="underline font-semibold" href="/verify-email">
+                Resend it
+              </a>
               .
             </p>
           </CardBody>
@@ -63,7 +67,7 @@ export default async function SignInPage({
     <Section
       eyebrow="Sign in"
       title="Sign in as a demo account"
-      description="Demo mode: sign-in is simulated with clearly labelled sample accounts and a cookie that stores only a user id. Roles and suspension are read back from the stored profile on every request, so editing the cookie grants nothing. Real sign-in runs when DATA_MODE=supabase and the Supabase keys are configured."
+      description="Demo mode: sign-in is simulated with clearly labelled sample accounts. The session cookie carries only a user id, never a role — role and suspension are read back from the stored profile on every request. It is still not real authentication: in this mode whoever can set that cookie acts as that sample account, which is why demo data is the only thing it can reach. Real sign-in runs when DATA_MODE=supabase and the Supabase keys are configured."
     >
       {searchParams.error && (
         <p role="alert" className="mb-3 text-sm text-red-700">

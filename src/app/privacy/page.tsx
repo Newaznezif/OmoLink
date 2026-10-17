@@ -2,7 +2,7 @@ import { Card, CardBody, Section } from '@/components/ui';
 
 export default function PrivacyPage() {
   return (
-    <Section eyebrow="Privacy" title="Data minimisation and consent" description="OmoLink collects the minimum information needed to run a marketplace. This page is a placeholder that will be finalised with the community partners and legal counsel before a live pilot.">
+    <Section eyebrow="Privacy" title="Data minimisation and consent" description="OmoNETAB is designed to collect information needed to run a marketplace. This page is a placeholder that will be finalised with community input and legal review before a live pilot.">
       <div className="grid md:grid-cols-2 gap-4 text-sm">
         <Card>
           <CardBody>

@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase/server';
+import { isDemoMode } from '@/lib/store';
 import { safeNext } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  // Demo mode has no password store, so this endpoint must refuse rather than
+  // reach for Supabase credentials that are not configured.
+  if (isDemoMode()) {
+    return NextResponse.json(
+      { error: 'This build runs in demo mode: use the sample-account picker on the sign-in page instead.' },
+      { status: 400 }
+    );
+  }
   const form = await req.formData().catch(() => null);
   const email = String(form?.get('email') ?? '').trim();
   const password = String(form?.get('password') ?? '');

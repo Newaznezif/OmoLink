@@ -28,7 +28,7 @@ export function BuyerArrangementActions({ inquiryId, current }: { inquiryId: str
       setMessage(
         status === 'completed'
           ? 'Recorded as completed on your side. The seller confirms it too when they deliver.'
-          : 'Recorded as cancelled. Nothing was charged — OmoLink does not take payment.'
+          : 'Recorded as cancelled. Nothing was charged — OmoNETAB does not take payment.'
       );
       router.refresh();
     } catch (err: unknown) {

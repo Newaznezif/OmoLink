@@ -9,7 +9,7 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 export const metadata = {
   title: 'Sellers and guides',
-  description: 'Browse the producers, artisan groups and local guides who list on OmoLink.'
+  description: 'Browse the producers, artisan groups and local guides who list on OmoNETAB.'
 };
 
 export default async function ProducersPage({ searchParams }: { searchParams?: SearchParams }) {
@@ -175,7 +175,7 @@ export default async function ProducersPage({ searchParams }: { searchParams?: S
         </Link>{' '}
         and choose a selling account type, or read{' '}
         <Link href="/how-it-works" className="underline font-semibold text-clay-700">
-          how OmoLink works
+          how OmoNETAB works
         </Link>
         .
       </p>

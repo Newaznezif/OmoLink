@@ -18,7 +18,7 @@ import type {
 import { HOMEPAGE_SECTIONS } from './types';
 
 /**
- * Realistic seed content for OmoLink. Every record here is a sample. Producers,
+ * Illustrative seed content for OmoNETAB. Every record here is a sample. Producers,
  * communities, prices and quantities do not represent real verified market
  * data. In demo mode the UI labels every sample record explicitly.
  *
@@ -530,11 +530,11 @@ export function buildSeed() {
    * or impact, and the featured ids point at the sample records above.
    */
   const siteSettings: SiteSettings = {
-    siteName: 'OmoLink',
-    tagline: 'A community marketplace for South Omo producers, guides and buyers.',
+    siteName: 'OmoNETAB',
+    tagline: 'A digital bridge for rural entrepreneurs and community tourism in South Omo.',
     heroTitle: 'Sell directly. Price transparently. Deliver together.',
     heroDescription:
-      'OmoLink connects producers, artisan groups, and local guides in the South Omo area with visitors, shops, hotels and institutions. This build runs on sample data: nothing here represents a real product, price, or verified community.',
+      'OmoNETAB helps rural entrepreneurs, local producers, artisans, and community tourism providers in South Omo present their offerings and receive inquiries from potential customers. This build runs on sample data: nothing here represents a real product, price, or verified community.',
     announcementBar: {
       enabled: true,
       text: 'Pilot build — all listings on this site are labelled sample data. No payment is taken and no sale is recorded.'
@@ -543,7 +543,7 @@ export function buildSeed() {
     featuredServiceIds: ['lst_valley_walk'],
     featuredProducerIds: ['prof_honey_group', 'prof_artisan_basket', 'prof_guide_local'],
     homepageSections: HOMEPAGE_SECTIONS.map((id) => ({ id, visible: true })),
-    contactEmail: 'hello@omolink.example',
+    contactEmail: 'hello@omonetab.example',
     contactPhone: '',
     addressNote: 'Sample coordination point: Jinka weekly market, South Omo (illustrative).',
     socialLinks: [],

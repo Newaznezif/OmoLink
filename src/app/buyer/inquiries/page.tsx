@@ -12,7 +12,7 @@ const STATUSES = ['new', 'accepted', 'awaiting_confirmation', 'fulfillment_arran
 
 export const metadata = {
   title: 'My inquiries',
-  description: 'Every request you have sent through OmoLink, with what has been recorded since.'
+  description: 'Every request you have sent through OmoNETAB, with what has been recorded since.'
 };
 
 export default async function BuyerInquiriesPage({ searchParams }: { searchParams?: SearchParams }) {

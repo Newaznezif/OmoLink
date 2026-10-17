@@ -43,6 +43,17 @@ export default async function ListingPage({ params }: { params: { id: string } }
             <Card>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={listing.images[0]?.src} alt={listing.images[0]?.alt ?? listing.title} className="w-full aspect-[4/3] object-cover" />
+              {listing.images.length > 1 && (
+                <ul className="grid grid-cols-3 gap-2 p-3">
+                  {listing.images.slice(1).map((img) => (
+                    <li key={img.id}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.src} alt={img.alt} className="w-full aspect-square object-cover rounded-lg border border-ink-100" />
+                      <p className="mt-1 text-xs text-ink-500">{img.caption || img.alt}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Card>
             <Card>
               <CardBody>

@@ -1,18 +1,35 @@
 import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
-import { getSessionProfile } from '@/lib/session';
+import { requireArea } from '@/lib/area';
 import { formatMoney } from '@/lib/money';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 import { InquiryStatusPicker } from '@/components/inquiry-status-picker';
 
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardInquiriesPage() {
-  const profile = await getSessionProfile();
-  if (!profile) return null;
+const STATUSES = ['new', 'accepted', 'awaiting_confirmation', 'fulfillment_arranged', 'completed', 'cancelled'] as const;
+
+export default async function DashboardInquiriesPage({
+  searchParams
+}: {
+  searchParams: { listing?: string; status?: string };
+}) {
+  const actor = await requireArea('/dashboard', ['producer', 'coordinator']);
   const repo = getRepo();
-  const inquiries = (await repo.listInquiriesForSeller(profile.id)).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  const listings = await repo.listListingsByProducer(profile.id);
+  const all = await repo.listInquiriesForSeller(actor.profileId);
+  const listings = await repo.listListingsByProducer(actor.profileId);
+
+  // Filters change the rows that are rendered, so the links on the listing page
+  // and the status chips below are working navigation, not decoration.
+  const listingFilter = typeof searchParams.listing === 'string' ? searchParams.listing : '';
+  const statusFilter = STATUSES.includes(searchParams.status as (typeof STATUSES)[number]) ? searchParams.status : undefined;
+  const inquiries = all
+    .filter((i) => (listingFilter ? i.listingId === listingFilter : true))
+    .filter((i) => (statusFilter ? i.status === statusFilter : true))
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
+  const needsReply = all.filter((i) => i.status === 'new').length;
+  const filteredListing = listings.find((l) => l.id === listingFilter);
 
   return (
     <Section
@@ -20,8 +37,60 @@ export default async function DashboardInquiriesPage() {
       title="Incoming inquiries"
       description="Each inquiry is a request, not a confirmed sale. Nothing here has been paid. Update status honestly as you and the buyer arrange pickup, delivery or booking."
     >
+      <div className="flex flex-wrap gap-2 items-center text-sm">
+        <span className="font-semibold text-ink-900">Filter by status</span>
+        {STATUSES.map((s) =>
+          s === statusFilter ? (
+            <Link
+              key={s}
+              href={listingFilter ? `/dashboard/inquiries?listing=${listingFilter}` : '/dashboard/inquiries'}
+              className="rounded-full bg-clay-700 px-3 py-1 font-semibold text-white"
+            >
+              {s.replace(/_/g, ' ')} ✕
+            </Link>
+          ) : (
+            <Link
+              key={s}
+              href={`/dashboard/inquiries?status=${s}${listingFilter ? `&listing=${listingFilter}` : ''}`}
+              className="rounded-full border border-ink-100 bg-white px-3 py-1 hover:bg-clay-50"
+            >
+              {s.replace(/_/g, ' ')}
+            </Link>
+          )
+        )}
+        <Badge tone={needsReply > 0 ? 'warning' : 'neutral'}>{needsReply} awaiting a first reply</Badge>
+      </div>
+
+      {filteredListing && (
+        <p className="mt-2 text-sm text-ink-700">
+          Showing records for{' '}
+          <Link href={`/listings/${filteredListing.id}`} className="underline font-semibold text-clay-700">
+            {filteredListing.title}
+          </Link>{' '}
+          ·{' '}
+          <Link href="/dashboard/inquiries" className="underline text-ink-500">
+            show all listings
+          </Link>
+        </p>
+      )}
+      {!filteredListing && listingFilter && (
+        <p className="mt-2 text-sm text-ink-500">
+          Filtered to a listing you do not manage, so nothing matches.{' '}
+          <Link href="/dashboard/inquiries" className="underline text-clay-700">
+            Clear the filter
+          </Link>
+        </p>
+      )}
+
       {inquiries.length === 0 ? (
-        <Empty title="No inquiries yet" body="Once a buyer submits an inquiry on one of your listings it will appear here." />
+        <Empty
+          title={all.length === 0 ? 'No inquiries yet' : 'Nothing matches this filter'}
+          body={
+            all.length === 0
+              ? 'Once a buyer submits an inquiry on one of your listings it will appear here.'
+              : 'No inquiry for this listing has that status. Widen the filter or show all listings.'
+          }
+        />
       ) : (
         <ul className="space-y-3">
           {inquiries.map((i) => {
@@ -68,13 +137,16 @@ export default async function DashboardInquiriesPage() {
                     {i.message && (
                       <p className="mt-3 text-sm text-ink-700 whitespace-pre-line rounded-lg bg-clay-50 p-3">{i.message}</p>
                     )}
-                    {listing && (
-                      <p className="mt-3 text-sm">
-                        <Link href={`/listings/${listing.id}`} className="underline text-clay-800 font-semibold">
-                          Open listing →
+                    <p className="mt-3 text-sm flex flex-wrap gap-4">
+                      <Link href={`/dashboard/inquiries/${i.id}`} className="underline text-clay-800 font-semibold">
+                        Open the record →
+                      </Link>
+                      {listing && (
+                        <Link href={`/listings/${listing.id}`} className="underline text-ink-500">
+                          See the listing
                         </Link>
-                      </p>
-                    )}
+                      )}
+                    </p>
                     <div className="mt-3">
                       <InquiryStatusPicker inquiryId={i.id} current={i.status} />
                     </div>

@@ -110,7 +110,7 @@ export default async function RegisterPage({
   return (
     <Section
       eyebrow="Register"
-      title="Create your OmoLink account"
+      title="Create your OmoNETAB account"
       description="A short form that works on a slow connection. Identity documents are never required. A new account always starts unverified, and only an administrator can change what an account is allowed to do — registering here cannot make you an administrator or a group coordinator."
     >
       <Card>

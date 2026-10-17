@@ -1,5 +1,5 @@
 /**
- * Postgres row shapes for the OmoLink schema (supabase/migrations/0001_init.sql).
+ * Postgres row shapes for the OmoNETAB schema (supabase/migrations/0001_init.sql).
  * These mirror column names exactly; the domain types in src/lib/types.ts are
  * mapped to and from these in mappers.ts.
  */

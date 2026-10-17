@@ -1,7 +1,7 @@
 {
-  "name": "OmoLink",
-  "short_name": "OmoLink",
-  "description": "Connecting South Omo's local producers to wider markets.",
+  "name": "OmoNETAB",
+  "short_name": "OmoNETAB",
+  "description": "A digital bridge for rural entrepreneurs and community tourism in South Omo.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

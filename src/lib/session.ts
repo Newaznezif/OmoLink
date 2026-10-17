@@ -12,8 +12,10 @@ export type DemoSession = { userId: string };
  *
  * demo:     the signed-in demo account, resolved from the session cookie to the
  *           stored profile. The cookie only carries a user id — the role and the
- *           account status are read back from the profile, so editing a cookie
- *           cannot grant privileges.
+ *           account status are read back from the profile, so a cookie cannot
+ *           invent a privilege. It is not authentication: forging it lets the
+ *           holder act as that sample account, which is acceptable only because
+ *           demo mode holds throwaway sample data and nothing else.
  * supabase: the Supabase Auth user, with role and status read from their profile
  *           row.
  *

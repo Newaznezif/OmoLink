@@ -48,7 +48,7 @@ async function offlineFallback() {
   const cached = await caches.match('/offline');
   if (cached) return cached;
   return new Response(
-    '<!doctype html><meta charset="utf-8"><title>OmoLink offline</title><body style="font-family:system-ui;padding:2rem;background:#fbf5ef;color:#331b0f"><h1>You are offline</h1><p>Cached listings will show when you revisit them. Drafts stay saved on this device.</p></body>',
+    '<!doctype html><meta charset="utf-8"><title>OmoNETAB offline</title><body style="font-family:system-ui;padding:2rem;background:#fbf5ef;color:#331b0f"><h1>You are offline</h1><p>Cached listings will show when you revisit them. Drafts stay saved on this device.</p></body>',
     { headers: { 'Content-Type': 'text/html' }, status: 503 }
   );
 }

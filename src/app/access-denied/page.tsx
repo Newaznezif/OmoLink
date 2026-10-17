@@ -7,7 +7,7 @@ export default function AccessDeniedPage() {
     <Section
       eyebrow="Not available"
       title="Your account cannot open this area"
-      description="You are signed in, but this part of OmoLink is limited to a different account type. Nothing was changed and nothing was exposed. If you believe you should have access, ask an administrator to review your account role."
+      description="You are signed in, but this part of OmoNETAB is limited to a different account type. Nothing was changed and nothing was exposed. If you believe you should have access, ask an administrator to review your account role."
     >
       <Card>
         <CardBody className="space-y-3">

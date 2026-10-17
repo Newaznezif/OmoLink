@@ -252,7 +252,7 @@ function CollectivePreview({ opportunities }: { opportunities: CollectiveOpportu
 
 function HowItWorksTeaser() {
   return (
-    <Section id="how" eyebrow="Direct selling" title="How OmoLink helps a producer sell directly">
+    <Section id="how" eyebrow="Direct selling" title="How OmoNETAB helps a producer connect with customers">
       <div className="grid md:grid-cols-3 gap-4">
         <Card>
           <CardBody>
@@ -292,7 +292,7 @@ function CollectiveExplainer() {
       id="collective"
       eyebrow="Collective selling"
       title="Pooling supply for bulk buyers"
-      description="A differentiator of OmoLink: producers join a group opportunity, contribute available quantity, and coordinate shared transport."
+      description="Producers can join a group opportunity, contribute available quantity, and coordinate shared transport."
     >
       <div className="grid md:grid-cols-2 gap-4">
         <Card>

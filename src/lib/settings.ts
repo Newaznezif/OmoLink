@@ -12,11 +12,11 @@ import { HOMEPAGE_SECTIONS } from './types';
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
 export const DEFAULT_SITE_SETTINGS: Omit<SiteSettings, 'updatedAt'> = {
-  siteName: 'OmoLink',
-  tagline: 'A community marketplace for South Omo producers, guides and buyers.',
+  siteName: 'OmoNETAB',
+  tagline: 'A digital bridge for rural entrepreneurs and community tourism in South Omo.',
   heroTitle: 'Sell directly. Price transparently. Deliver together.',
   heroDescription:
-    'OmoLink connects producers, artisan groups, and local guides in the South Omo area with visitors, shops, hotels and institutions.',
+    'OmoNETAB helps rural entrepreneurs, local producers, artisans, and community tourism providers in South Omo present their offerings and receive inquiries from potential customers.',
   announcementBar: { enabled: false, text: '' },
   featuredProductIds: [],
   featuredServiceIds: [],

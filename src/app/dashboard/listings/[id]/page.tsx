@@ -1,19 +1,18 @@
 import { notFound } from 'next/navigation';
 import { getRepo } from '@/lib/repo';
-import { getSessionProfile } from '@/lib/session';
-import { parseDecimalAmount } from '@/lib/money';
+import { requireArea } from '@/lib/area';
 import { Section } from '@/components/ui';
 import { ListingForm, type ListingFormValues } from '@/components/listing-form';
+import { ListingImages } from '@/components/listing-images';
 
 export const dynamic = 'force-dynamic';
 
 export default async function EditListingPage({ params }: { params: { id: string } }) {
-  const profile = await getSessionProfile();
-  if (!profile) return null;
+  const actor = await requireArea('/dashboard', ['producer', 'coordinator']);
   const repo = getRepo();
   const listing = await repo.getListing(params.id);
   if (!listing) notFound();
-  if (listing.producerId !== profile.id) {
+  if (listing.producerId !== actor.profileId) {
     return (
       <Section eyebrow="Authorization required" title="You cannot edit this listing">
         <p className="text-ink-700">This listing belongs to another producer. Only its creator can edit it.</p>
@@ -47,10 +46,10 @@ export default async function EditListingPage({ params }: { params: { id: string
         }
       : undefined
   };
-  void parseDecimalAmount;
   return (
     <Section eyebrow="Dashboard" title={`Edit “${listing.title}”`}>
-      <ListingForm categories={categories} producerId={profile.id} initial={initial} listingId={listing.id} />
+      <ListingForm categories={categories} producerId={actor.profileId} initial={initial} listingId={listing.id} />
+      <ListingImages listing={listing} />
     </Section>
   );
 }

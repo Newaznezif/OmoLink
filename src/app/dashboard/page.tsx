@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getSessionProfile } from '@/lib/session';
+import { requireArea } from '@/lib/area';
 import { getRepo } from '@/lib/repo';
 import { Badge, Card, CardBody, Empty, SampleTag, Section } from '@/components/ui';
 import { formatMoney } from '@/lib/money';
@@ -7,16 +7,15 @@ import { formatMoney } from '@/lib/money';
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardHome() {
-  const profile = await getSessionProfile();
+  const actor = await requireArea('/dashboard', ['producer', 'coordinator']);
+  const profile = await getRepo().getProfile(actor.profileId);
   if (!profile) return null;
   const repo = getRepo();
   const listings = await repo.listListingsByProducer(profile.id);
   const inquiries = await repo.listInquiriesForSeller(profile.id);
-  const opportunities = await repo.listOpportunities();
-  const contributions = opportunities.flatMap((o) => o); // to keep tree simple
-  void contributions;
 
   const openInquiries = inquiries.filter((i) => i.status === 'new' || i.status === 'accepted' || i.status === 'awaiting_confirmation');
+  const goods = inquiries.filter((i) => i.status !== 'cancelled' && i.status !== 'completed');
 
   return (
     <Section eyebrow="Dashboard" title={`Welcome, ${profile.displayName}`}>
@@ -30,11 +29,17 @@ export default async function DashboardHome() {
         <Link href="/dashboard/inquiries" className="rounded-lg border border-ink-100 bg-white px-4 py-2 min-h-11 font-semibold hover:bg-clay-50">
           Inquiries ({openInquiries.length} open)
         </Link>
+        <Link href="/dashboard/orders" className="rounded-lg border border-ink-100 bg-white px-4 py-2 min-h-11 font-semibold hover:bg-clay-50">
+          Orders to arrange
+        </Link>
         <Link href="/dashboard/collective-orders" className="rounded-lg border border-ink-100 bg-white px-4 py-2 min-h-11 font-semibold hover:bg-clay-50">
           Collective contributions
         </Link>
         <Link href="/dashboard/profile" className="rounded-lg border border-ink-100 bg-white px-4 py-2 min-h-11 font-semibold hover:bg-clay-50">
-          Profile
+          Profile preview
+        </Link>
+        <Link href="/dashboard/settings" className="rounded-lg border border-ink-100 bg-white px-4 py-2 min-h-11 font-semibold hover:bg-clay-50">
+          Settings
         </Link>
       </div>
 
@@ -65,17 +70,25 @@ export default async function DashboardHome() {
                 <dd className="font-semibold">{inquiries.length}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-ink-500">Est. demand across open inquiries</dt>
+                <dt className="text-ink-500">Open inquiries (goods and visits)</dt>
+                <dd className="font-semibold">{goods.length}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-ink-500">Sum of their listing-price estimates</dt>
                 <dd className="font-semibold">
                   {formatMoney({
                     cents: inquiries
-                      .filter((i) => i.status !== 'cancelled')
+                      .filter((i) => i.status !== 'cancelled' && i.status !== 'completed')
                       .reduce((s, i) => s + i.estimatedSubtotalCents, 0),
                     currency: 'ETB'
                   })}
                 </dd>
               </div>
             </dl>
+            <p className="mt-2 text-xs text-ink-500">
+              That figure is not money owed to you and not a ledger: it is each listing’s unit price at the time the
+              request arrived, multiplied by the quantity asked for. OmoNETAB moves no payment.
+            </p>
           </CardBody>
         </Card>
 
@@ -122,7 +135,11 @@ export default async function DashboardHome() {
                   <Card>
                     <CardBody>
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <div className="font-semibold">{i.reference}</div>
+                        <div className="font-semibold">
+                          <Link href={`/dashboard/inquiries/${i.id}`} className="underline text-clay-700">
+                            {i.reference}
+                          </Link>
+                        </div>
                         <div className="text-sm text-ink-700">{listing?.title ?? 'Listing removed'}</div>
                       </div>
                       <div className="mt-1 text-sm">

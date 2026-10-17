@@ -2,7 +2,7 @@ import { Card, CardBody, Section } from '@/components/ui';
 
 export default function CommunityGuidelinesPage() {
   return (
-    <Section eyebrow="Community" title="Community guidelines" description="How producers, buyers and coordinators treat one another on OmoLink. Drafted for pilot validation with community partners.">
+    <Section eyebrow="Community" title="Community guidelines" description="How producers, buyers and coordinators treat one another on OmoNETAB. Drafted for pilot validation with community partners.">
       <div className="grid md:grid-cols-2 gap-4 text-sm">
         <Card>
           <CardBody>

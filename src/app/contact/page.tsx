@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Contact',
-  description: 'Send a message to the OmoLink team about a product, a booking, or a concern.'
+  description: 'Send a message to the OmoNETAB team about a product, a service, or a concern.'
 };
 
 export default async function ContactPage() {
@@ -15,7 +15,7 @@ export default async function ContactPage() {
   return (
     <Section
       eyebrow="Contact"
-      title="Talk to the OmoLink team"
+      title="Talk to the OmoNETAB team"
       description="Use this form for anything the marketplace itself: a listing that looks wrong, help contacting a producer, a group that wants to organise a collective order, or feedback from a pilot area. Messages reach an administrator, not the producer — a producer answers you through the inquiry on their listing."
     >
       <div className="grid lg:grid-cols-3 gap-4 items-start">
@@ -60,7 +60,7 @@ export default async function ContactPage() {
               </ul>
               <Badge tone="info">No SMS or phone integration is connected</Badge>
               <p className="text-xs text-ink-500">
-                OmoLink does not send or receive SMS, USSD, or payment messages in this build. Where such a service is
+                OmoNETAB does not send or receive SMS, USSD, or payment messages in this build. Where such a service is
                 added later, the provider must be configured and tested before it is described as working.
               </p>
             </CardBody>
