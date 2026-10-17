@@ -16,6 +16,61 @@ export type InquiryListingInfo = {
   availability: AvailabilityStatus;
 };
 
+type PendingInquiry = {
+  listingId: string;
+  buyerName: string;
+  buyerContact: string;
+  quantity: number;
+  message: string;
+  preference: 'pickup' | 'delivery' | 'booking' | 'unsure';
+  preferredDate: string;
+  idempotencyKey: string;
+};
+
+// One record per listing: a single shared slot would let a second offline
+// inquiry overwrite the first one.
+const PENDING_PREFIX = 'omonetab_pending_inquiry:';
+
+function readPendingInquiry(listingId: string): PendingInquiry | null {
+  try {
+    const raw = window.localStorage.getItem(PENDING_PREFIX + listingId);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || typeof parsed.idempotencyKey !== 'string') return null;
+    return {
+      listingId,
+      buyerName: String(parsed.buyerName ?? ''),
+      buyerContact: String(parsed.buyerContact ?? ''),
+      quantity: Number.isInteger(parsed.quantity) ? parsed.quantity : 0,
+      message: String(parsed.message ?? ''),
+      preference: parsed.preference === 'delivery' || parsed.preference === 'booking' || parsed.preference === 'unsure' ? parsed.preference : 'pickup',
+      preferredDate: String(parsed.preferredDate ?? ''),
+      idempotencyKey: parsed.idempotencyKey
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePendingInquiry(record: PendingInquiry) {
+  try {
+    window.localStorage.setItem(PENDING_PREFIX + record.listingId, JSON.stringify(record));
+  } catch {
+    /* private mode or full storage: the inquiry simply is not queued */
+  }
+}
+
+function clearPendingInquiry(listingId: string) {
+  try {
+    window.localStorage.removeItem(PENDING_PREFIX + listingId);
+  } catch {
+    /* nothing to clear */
+  }
+}
+
+function newIdempotencyKey() {
+  return `idem_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingInfo; recordsPath?: string }) {
   const router = useRouter();
   const [qty, setQty] = useState<number>(listing.minOrderQuantity);
@@ -30,11 +85,26 @@ export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingI
     null
   );
   const idempotencyRef = useRef<string>('');
+  const [queuedOffline, setQueuedOffline] = useState(false);
 
   useEffect(() => {
-    // Idempotency key stable per mount so retries don't duplicate.
-    idempotencyRef.current = `idem_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-  }, []);
+    // A queued inquiry keeps its key so that sending it again after the
+    // connection returns is matched against the same idempotency key by the
+    // repository instead of creating a second inquiry.
+    const stored = readPendingInquiry(listing.id);
+    if (!stored) {
+      idempotencyRef.current = newIdempotencyKey();
+      return;
+    }
+    idempotencyRef.current = stored.idempotencyKey;
+    setName(stored.buyerName);
+    setContact(stored.buyerContact);
+    setMessage(stored.message);
+    setPreference(stored.preference);
+    setPreferredDate(stored.preferredDate);
+    setQty(stored.quantity);
+    setQueuedOffline(true);
+  }, [listing.id]);
 
   const subtotal = useMemo(() => multiplyUnitPrice(listing.unitPriceCents, qty), [qty, listing.unitPriceCents]);
   const maxQty = listing.availability === 'made_to_order' ? listing.availableQuantity + 999 : listing.availableQuantity;
@@ -58,30 +128,24 @@ export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingI
     }
 
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      // Cache the inquiry payload locally so it can be resubmitted when online.
-      try {
-        localStorage.setItem(
-          'omolink_pending_inquiry',
-          JSON.stringify({
-            listingId: listing.id,
-            buyerName: name,
-            buyerContact: contact,
-            quantity: qty,
-            message,
-            preference,
-            preferredDate,
-            idempotencyKey: idempotencyRef.current
-          })
-        );
-        setResult({
-          ok: false,
-          message: 'You are offline. This inquiry has been queued on your device and can be retried when a connection returns.'
-        });
-        setSubmitting(false);
-        return;
-      } catch {
-        /* ignore storage failures */
-      }
+      writePendingInquiry({
+        listingId: listing.id,
+        buyerName: name,
+        buyerContact: contact,
+        quantity: qty,
+        message,
+        preference,
+        preferredDate,
+        idempotencyKey: idempotencyRef.current
+      });
+      setQueuedOffline(true);
+      setResult({
+        ok: false,
+        message:
+          'You are offline. This inquiry is saved on this device, and the form keeps its contents. Sending it again once a connection returns reuses the same reference, so the producer will not receive it twice.'
+      });
+      setSubmitting(false);
+      return;
     }
 
     try {
@@ -101,6 +165,8 @@ export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingI
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? 'Failed to submit inquiry.');
+      clearPendingInquiry(listing.id);
+      setQueuedOffline(false);
       setResult({ ok: true, reference: json.inquiry?.reference, inquiryId: json.inquiry?.id });
       router.refresh();
     } catch (err: unknown) {
@@ -191,6 +257,13 @@ export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingI
       <Field label="Message to producer (optional)" htmlFor="message">
         <Textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} />
       </Field>
+
+      {queuedOffline && (
+        <p role="status" className="rounded-lg border border-ochre-100 bg-ochre-50 p-3 text-sm text-ochre-700">
+          This inquiry is waiting on this device. It has not reached the producer yet: send it again once a connection
+          returns.
+        </p>
+      )}
 
       <Button type="submit" disabled={submitting}>
         {submitting ? 'Submitting…' : 'Submit inquiry'}

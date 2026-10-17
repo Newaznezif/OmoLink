@@ -45,7 +45,7 @@ The product is a prototype and these value propositions have not been establishe
 | Price calculator | **Implemented** | Cost, markup, and margin calculations; this is a planning aid, not price verification. |
 | Contact and review workflows | **Implemented** | In-app message/review records depend on the configured repository. They do not imply email delivery or external moderation. |
 | Administration | **Implemented, with demo limitations** | Admin screens and role-protected actions cover site settings, homepage content, listings, categories, messages, reports, reviews, and account roles. Demo-mode changes exist only in the in-memory store; some verification/report actions are explicitly simulated. |
-| Offline support | **Partially implemented** | A service worker caches selected pages and listing drafts are saved on-device with IndexedDB/local-storage fallback. It is not a general offline transaction or guaranteed background-sync system. |
+| Offline support | **Implemented for reading, verified in a production build** | A service worker caches the app shell and the pages you browsed while it controlled the tab; a listing revisited without a connection still renders and its inquiry form still recalculates the subtotal. Listing drafts and queued inquiries are saved on-device. It is not a background-sync queue: nothing is sent to a server later that was not already waiting on the device. |
 | Authentication and persistence | **Partially implemented** | Demo accounts use the demo session flow. Supabase Auth and the Postgres repository are implemented, but migrations and policies have not been verified against a live Supabase project. |
 | PWA installation | **Partially implemented** | A web manifest and service worker are included; store distribution is not provided. |
 | SMS, USSD, mobile money, and payment processing | **Planned / not implemented** | No gateway, payment provider, or transaction processing is included. |
@@ -193,7 +193,7 @@ Two removals were deliberate:
 | Administrative authorization model (no self-assignment, server-side checks) | **Complete and verified** (demo mode); **implemented but not tested** at database level | Registration can only produce `buyer` or `producer`; role/status/verification are re-read from the stored profile every request; `0003` triggers mirror the same rules in Postgres. |
 | Schema, RLS policies, migrations | **Implemented but not tested** | `0001`–`0003` reviewed; `0004_inquiry_status_guard.sql` has never been applied anywhere, so its SQL is unverified. |
 | Order/inquiry status rules and recomputed totals | **Complete and verified** (demo mode) | Amounts are computed server-side from the listing price at submission time; a buyer cannot record acceptance. |
-| Offline support | **Partially implemented** | Selected pages cached, on-device listing drafts. No background sync queue, no claim of offline writes reaching a server later. |
+| Offline support | **Complete and verified** (production build, browser-tested) | Shell plus browsed pages served from cache with the origin unreachable; on-device listing drafts, a per-listing queued inquiry that keeps its reference across a reload, and duplicate-submit refusals. No background sync queue, and no claim that an offline write reaches a server later. |
 | Accessibility | **Partially implemented** | Landmarks, skip link, labelled fields, `role=status`/`role=alert` feedback, and a required alt description for every new picture are verified; no formal audit (no screen-reader or keyboard sweep) was performed. |
 | Languages | **Partially implemented** | English is complete. Amharic is a partial, review-pending draft. Hamer, Dasenech and Tsamai are **missing** — deliberately, because no competent-speaker review exists. |
 | Payments, SMS, USSD, mobile money, telecom | **Missing** | Nothing in this build moves money or sends a message, and no screen claims otherwise. |
@@ -201,7 +201,7 @@ Two removals were deliberate:
 
 ### 3. Pages and routes
 
-59 pages, 27 route handlers, 4 layouts. New in this pass (all currently uncommitted work in the working tree):
+59 pages, 27 route handlers, 4 layouts. New in this pass (committed as `72644b5`, plus the offline work committed after it):
 
 ```text
 /forgot-password            /reset-password           /verify-email
@@ -252,11 +252,12 @@ A producer who sends an inquiry cannot open `/buyer` to watch it, because that a
 - Producer order board at `/dashboard/orders`: goods and sessions separated, an honest sum-of-estimates line, and the closed records listed rather than merely counted.
 - Inquiry filtering by listing and status that actually reduces the rows, with visible chips for each filter.
 - Admin enforcement details: role assignment requires confirmation, the last active administrator cannot be demoted or suspended, and audit entries carry summaries only.
+- Offline path repaired: the worker is now valid browser JavaScript (it had never once installed), registers on a page that already finished loading, precaches the shell without letting one failing route empty the cache, keeps pages network-first so an online buyer never sees a stale price, and falls back to the `/offline` explainer. A queued inquiry is stored per listing, keeps its reference across a reload, restores its fields, and clears when the server accepts it. Creating a listing while offline now says it needs a connection instead of firing a doomed request, and three submit attempts create one listing rather than three.
 
 ### 6. Incomplete, blocked, or missing
 
 - **Blocked by credentials:** applying `0001`–`0004` to a live project, verifying every RLS policy with a second tenant, and exercising real sign-in, email confirmation, and password recovery. This is the single biggest open item; see section 11.
-- **Partially implemented:** offline drafts (no retry queue), Amharic (draft strings only), reviews and verification (records exist; nothing verifies a real person).
+- **Partially implemented:** Amharic (draft strings only), reviews and verification (records exist; nothing verifies a real person). Offline reading is verified; offline *writes* stop at the device — a queued inquiry waits for you to press send again rather than being delivered by a background worker.
 - **Missing by decision:** payment, SMS, USSD, and any telecom path; object storage for uploaded files; a self-service account deletion (the other party's inquiry is their evidence, so removal is an administrator action); a buyer area for sellers who buy.
 - **Not performed:** a formal accessibility audit, load testing, browser matrix testing, and a security review by a third party.
 
@@ -288,7 +289,7 @@ See `.env.example`; there are no secret values in this repository and none shoul
 
 ### 9. Tests actually run, and their results
 
-All commands were run on 2026-10-17 on Windows against `next dev` on a local port; the suites are parameterised by `SMOKE_BASE`.
+All commands were run on 2026-10-17 on Windows. The HTTP suites were run against `next start` serving the production build on a local port (earlier runs used `next dev`); they are parameterised by `SMOKE_BASE`. Each suite needs a freshly started server because it mutates the in-memory demo store.
 
 | Command | Result |
 | --- | --- |
@@ -299,6 +300,18 @@ All commands were run on 2026-10-17 on Windows against `next dev` on a local por
 | `node tests/http/buyer-smoke.mjs` | **82/82 PASS** — buyer area access, guest inquiry, buyer-side statuses, suspension matrix, role-escalation attempts. |
 | `node tests/http/producer-smoke.mjs` | **112/112 PASS** — every selling route, listing ownership matrix, lifecycle, pictures, inquiry loop, delete guard, profile/settings, coordinator and contribution rules, suspension matrix, demo-mode honesty of the auth help pages, 404s. |
 | `npm run build` | **Succeeded** (see section 10). |
+
+Manual browser checks on the production build, in a real browser tab at a 510px viewport:
+
+| Check | Result |
+| --- | --- |
+| Worker installs by itself on an ordinary page load | **PASS** — registration reached `activated`, cache `omonetab-shell-v2` held the 8 shell routes. |
+| Origin unreachable, revisit a page loaded while controlled | **PASS** — `/listings/lst_forest_honey` rendered from cache (title, 68.00 ETB price) and the inquiry form still worked: quantity 8 recomputed the subtotal to 544.00 ETB. |
+| Origin unreachable, route never loaded while controlled | **PARTIAL** — the cached HTML can arrive without its JS chunks, and React then replaces the page with its client-exception message. Serving the `/offline` explainer instead requires knowing which chunks each page needs; not implemented. |
+| Queued inquiry survives a reload | **PASS** — the saved name, contact, quantity, message, and date were restored, the outgoing request reused the stored reference `idem_seed_verify_001`, and the device record cleared once the server accepted it. |
+| Duplicate submission refusal | **PASS** — three submit attempts fired back to back on the new-listing form created **one** listing (2 → 3 records). Before this pass the same sequence created three. |
+| Offline indicator on a phone-width screen | **PASS** — the offline chip computes to a visible `flex` at 510px; the online chip stays desktop-only by design. |
+| Real airplane-mode / interface-down offline state | **NOT TESTED** — the tooling available cannot switch the device network off; `navigator.onLine` was simulated, and `onLine` stays true when only the origin is down. |
 
 Notes on how to read those numbers:
 
@@ -388,9 +401,13 @@ Then stop the server, start it again, and run `tests/http/buyer-smoke.mjs`; repe
 - **No account deletion self-service**, no data-export path, and no retention policy yet; the privacy page is a placeholder that must be finalised with legal review before real data.
 - **Two names for one product are still in the tree.** The interface, manifest, and this README call it **OmoNETAB**, while some internal identifiers (`omolink_demo_session`, the migration comments) and the site-settings row that `0003` seeds (`siteName: "OmoLink"`) say **OmoLink**. Nothing breaks — an administrator can change the displayed name under **Admin → Site settings** — but settle on one name before a real pilot, because a database created from `0003` will show a different brand than the code defaults do.
 
+- **Offline reading works for pages you actually browsed.** The service worker registers only in a production build (development bundle URLs keep their name while their contents change, so caching them would hide new code). A page loaded while the worker controlled the tab is readable and interactive afterwards without a network. A page whose HTML was precached but never browsed that way can arrive without the JavaScript chunks it needs, and React then shows its client-exception message instead of the cached text; the fix would be a per-page chunk manifest, which is not implemented. See the browser table in section 9.
+- **`navigator.onLine` is weaker than it looks.** It means the device has a network interface, not that OmoNETAB can be reached. With the origin down but Wi-Fi up, the header chip still reads "Online" even though the app is serving from cache.
+- **Local queues are device-local and unencrypted.** Queued inquiries and listing drafts sit in `localStorage`/IndexedDB for whoever holds that phone, and clearing site data deletes them. They are not delivered to anybody until the buyer presses send again with a connection.
+
 ### 15. Three-minute demonstration script
 
-Run in demo mode (`npm run dev`), which resets on restart, so it can be shown repeatedly.
+Run in demo mode (`npm run dev`), which resets on restart, so it can be shown repeatedly. For step 7 only, use `npm run build && npm start` instead — the offline worker deliberately does not register in development.
 
 1. **Public side, signed out** — `/` → open a basket listing → show the labelled sample placeholder, the unit price in ETB, and the note that no payment moves. Send an inquiry for 3 bundles as a guest and point at the reference number.
 2. **Seller side** — sign in as the basket producer → `/dashboard/orders` shows it under "Goods to supply", `/dashboard/inquiries` filters by listing → accept it, move it to "Fulfillment arranged", and note that the status says nothing was delivered yet.
@@ -398,7 +415,7 @@ Run in demo mode (`npm run dev`), which resets on restart, so it can be shown re
 4. **Buyer side** — sign in as the hotel account → `/buyer/orders` shows the same record from the other side, with the buyer's own confirm/cancel actions and the same "not a receipt" wording.
 5. **Group selling** — sign in as the coordinator account → open a collective opportunity, watch contributions aggregate toward the target, confirm one contribution, and show that withdrawing it recomputes the total. Show the transport figure labelled as an estimate.
 6. **Administration** — sign in as the reviewer → `/admin/users` suspend the buyer account → show, in the buyer's own tab, that reads still work but every write is refused → reactivate. Try to promote an account without the confirmation checkbox, then attempt to demote the last administrator and show the refusal.
-7. Close on `/offline` and the draft picker to show the low-connectivity path, then say plainly what is not real: no payment, no SMS, no verified producers, and no live database yet.
+7. **Low connectivity** — on the production build, open a listing, then stop the server (or turn the device off the network) and revisit that same listing: it still renders, and changing the quantity still recomputes the subtotal, from the cache. Then visit a page you never opened and show the `/offline` explainer, plus the draft picker and the queued-inquiry notice. Say plainly what is not real: no payment, no SMS, no verified producers, no live database yet, and an offline write waits on the phone until someone sends it.
 
 ## Project status and roadmap
 

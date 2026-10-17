@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Category, UnitOfSale } from '@/lib/types';
 import { Button, Card, CardBody, Field, Input, Select, Textarea, Badge } from './ui';
@@ -71,6 +71,10 @@ export function ListingForm({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
   const { status, saveDraft, clearDraft, sync } = useListingDraft(producerId, listingId);
+  const [created, setCreated] = useState(false);
+  // React state lands a tick late, so two submits fired back to back would both
+  // read busy as false; this ref is checked synchronously instead.
+  const inFlightRef = useRef(false);
 
   function update<K extends keyof ListingFormValues>(key: K, value: ListingFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -83,12 +87,28 @@ export function ListingForm({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (inFlightRef.current) return;
+    // A create is not idempotent: the server has no request id to deduplicate
+    // against, so a second POST would publish a second listing.
+    if (created) {
+      setMessage({ tone: 'ok', text: 'This listing has already been created. Open it from the listing list to change it.' });
+      return;
+    }
+    if (!listingId && typeof navigator !== 'undefined' && navigator.onLine === false) {
+      setMessage({
+        tone: 'err',
+        text: 'Creating a listing needs a connection: the server has to receive it. Use “Save draft on device” now and sync it when the network returns.'
+      });
+      return;
+    }
+    inFlightRef.current = true;
     setBusy(true);
     setErrors({});
     setMessage(null);
     const errs = validate(values);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      inFlightRef.current = false;
       setBusy(false);
       return;
     }
@@ -102,17 +122,21 @@ export function ListingForm({
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error ?? 'Failed to save listing.');
       clearDraft();
+      if (!listingId) setCreated(true);
       setMessage({ tone: 'ok', text: listingId ? 'Listing updated.' : 'Listing created.' });
       router.push('/dashboard/listings');
       router.refresh();
     } catch (err: unknown) {
       setMessage({ tone: 'err', text: err instanceof Error ? err.message : 'Something went wrong.' });
     } finally {
+      inFlightRef.current = false;
       setBusy(false);
     }
   }
 
   async function onSync() {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setBusy(true);
     try {
       await sync(values);
@@ -121,6 +145,7 @@ export function ListingForm({
     } catch (err: unknown) {
       setMessage({ tone: 'err', text: err instanceof Error ? err.message : 'Sync failed. Try again.' });
     } finally {
+      inFlightRef.current = false;
       setBusy(false);
     }
   }
@@ -256,8 +281,8 @@ export function ListingForm({
       )}
 
       <div className="flex flex-wrap gap-2 items-center">
-        <Button type="submit" disabled={busy}>
-          {busy ? 'Saving…' : listingId ? 'Save changes' : 'Create listing'}
+        <Button type="submit" disabled={busy || created}>
+          {created ? 'Listing created' : busy ? 'Saving…' : listingId ? 'Save changes' : 'Create listing'}
         </Button>
         <Button type="button" variant="secondary" onClick={onSaveDraft}>
           Save draft on device

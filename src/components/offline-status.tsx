@@ -24,8 +24,11 @@ export function OfflineStatus() {
       aria-live="polite"
       title={online ? 'Connected to the network.' : 'You are offline. Cached listings remain readable; drafts are saved locally.'}
       className={
-        'hidden md:inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-full border ' +
-        (online ? 'bg-moss-50 text-moss-700 border-moss-100' : 'bg-ochre-50 text-ochre-700 border-ochre-100')
+        // The offline warning has to survive a small screen — a phone is the
+        // device most likely to lose connectivity — while the calm online chip
+        // can stay desktop-only.
+        'items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-full border ' +
+        (online ? 'hidden md:inline-flex bg-moss-50 text-moss-700 border-moss-100' : 'inline-flex bg-ochre-50 text-ochre-700 border-ochre-100')
       }
     >
       <span aria-hidden className="w-2 h-2 rounded-full bg-current" />

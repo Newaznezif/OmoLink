@@ -3,19 +3,31 @@
 import { useEffect } from 'react';
 
 /**
- * Registers the service worker after hydration. Only does so in production or
- * when explicitly enabled. Fails silently in unsupported environments so the
- * app keeps working when the browser lacks SW support.
+ * Registers the service worker so the app shell and visited pages can be read
+ * offline. Production only: dev chunk URLs stay the same while their contents
+ * change, so a cached copy would quietly serve yesterday’s code back to the
+ * developer. It waits for the load event only if the page is still loading: by
+ * the time React hydrates on a slow connection that event has often fired
+ * already, and a listener alone would leave the worker unregistered.
  */
 export function ServiceWorkerRegistrar() {
   useEffect(() => {
-    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    if (process.env.NODE_ENV !== 'production') return;
+    if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
-        // Offline shell is unavailable in this browser — no user-facing error.
+
+    const register = () => {
+      navigator.serviceWorker.register('/sw.js').catch((error) => {
+        // Online use is unaffected; only the offline shell is missing.
+        console.warn('Offline shell unavailable: the service worker did not register.', error);
       });
-    });
+    };
+
+    if (document.readyState === 'complete') register();
+    else window.addEventListener('load', register, { once: true });
+
+    return () => window.removeEventListener('load', register);
   }, []);
+
   return null;
 }
