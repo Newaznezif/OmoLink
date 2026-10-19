@@ -1,9 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import type { LanguageCode } from '@/lib/types';
+import { t } from '@/lib/i18n';
 import { Button, Field, Input, Textarea } from './ui';
 
-export function ContactForm({ prefillName, prefillEmail }: { prefillName?: string; prefillEmail?: string }) {
+export function ContactForm({
+  lang,
+  prefillName,
+  prefillEmail
+}: {
+  lang: LanguageCode;
+  prefillName?: string;
+  prefillEmail?: string;
+}) {
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
 
@@ -24,13 +34,13 @@ export function ContactForm({ prefillName, prefillEmail }: { prefillName?: strin
         })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error ?? 'The message could not be sent.');
+      if (!res.ok) throw new Error(json?.error ?? t(lang, 'contact.formFailed'));
       setStatus('sent');
-      setMessage('Thank you. Your message is recorded for an administrator to read. It is not an order or a booking.');
+      setMessage(t(lang, 'contact.formSent'));
       (event.currentTarget as HTMLFormElement).reset();
     } catch (err: unknown) {
       setStatus('error');
-      setMessage(err instanceof Error ? err.message : 'Network problem — the message stayed on your device.');
+      setMessage(err instanceof Error ? err.message : t(lang, 'contact.formNetwork'));
     }
   }
 
@@ -45,21 +55,21 @@ export function ContactForm({ prefillName, prefillEmail }: { prefillName?: strin
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid md:grid-cols-2 gap-4">
-        <Field label="Your name" htmlFor="name" required>
+        <Field label={t(lang, 'contact.formName')} htmlFor="name" required>
           <Input id="name" name="name" required maxLength={120} defaultValue={prefillName} autoComplete="name" />
         </Field>
-        <Field label="Email we can reply to" htmlFor="email" required>
+        <Field label={t(lang, 'contact.formEmail')} htmlFor="email" required>
           <Input id="email" name="email" type="email" required maxLength={200} defaultValue={prefillEmail} autoComplete="email" />
         </Field>
       </div>
-      <Field label="Subject" htmlFor="subject" hint="For example: a product question, a booking, or a reporting concern.">
-        <Input id="subject" name="subject" maxLength={120} defaultValue="General enquiry" />
+      <Field label={t(lang, 'contact.formSubject')} htmlFor="subject" hint={t(lang, 'contact.formSubjectHint')}>
+        <Input id="subject" name="subject" maxLength={120} defaultValue={t(lang, 'contact.formSubjectDefault')} />
       </Field>
-      <Field label="Message" htmlFor="message" required hint="At least 10 characters. Please do not send ID documents or payment details.">
+      <Field label={t(lang, 'contact.formMessage')} htmlFor="message" required hint={t(lang, 'contact.formMessageHint')}>
         <Textarea id="message" name="message" required minLength={10} maxLength={2000} />
       </Field>
       <Button type="submit" disabled={status === 'sending'}>
-        {status === 'sending' ? 'Sending…' : 'Send message'}
+        {status === 'sending' ? t(lang, 'contact.formSending') : t(lang, 'contact.formSubmit')}
       </Button>
       {status === 'error' && (
         <p role="alert" className="text-sm text-red-700">

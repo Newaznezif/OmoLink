@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { isDemoMode } from '@/lib/store';
 import { requireArea } from '@/lib/area';
-import { Badge, Card, CardBody, Empty, Section, VerificationLabel } from '@/components/ui';
+import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
+import { VerificationLabel } from '@/components/status-labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -150,7 +151,7 @@ export default async function DashboardProfilePage() {
             <li>Your role and account status — set by an administrator, never editable by you.</li>
             <li>Verification decisions, and the audit trail behind them.</li>
             <li>Buyer names, contacts and inquiry terms from other accounts.</li>
-            <li>Any identity document number. OmoNETAB does not store or demand one for a basic seller account.</li>
+            <li>Any identity document number. OmoNetTab does not store or demand one for a basic seller account.</li>
           </ul>
           {profile.consentToPublish ? (
             <p className="mt-2 text-sm text-ink-700">

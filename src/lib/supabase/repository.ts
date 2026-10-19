@@ -1,7 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { multiplyUnitPrice } from '../money';
-import { makeReference } from '../ids';
+import { formatMoney, multiplyUnitPrice } from '../money';
+import { makePaymentReference, makeReference } from '../ids';
 import { validateSiteSettings } from '../settings';
+import {
+  PAYMENT_BLOCKER_MESSAGES,
+  PaymentConfigurationError,
+  amountMatches,
+  canMovePaymentStatus,
+  paymentEligibility
+} from '../payments';
 import type {
   AuditAction,
   AuditLogEntry,
@@ -9,6 +16,7 @@ import type {
   CollectiveOpportunity,
   Inquiry,
   Listing,
+  Payment,
   Profile,
   ProducerGroup,
   Review,
@@ -30,12 +38,14 @@ import {
   mapInquiry,
   mapListing,
   mapOpportunity,
+  mapPayment,
   mapProfile,
   mapReport,
   mapReview,
   mapSiteSettings,
   mapTransportPlan,
   mapVerificationReview,
+  paymentToRow,
   profileToRow,
   siteSettingsToRow
 } from './mappers';
@@ -50,6 +60,8 @@ import type {
   ListingReportRow,
   ListingWithImagesRow,
   OpportunityRow,
+  PaymentEventRow,
+  PaymentRow,
   ProfileRow,
   ProducerGroupRow,
   ReviewRow,
@@ -259,7 +271,9 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
   }
 
   async function writeAudit(
-    actor: Actor,
+    // Only the profile id is ever used; typed this way so a write caused by a
+    // provider notification can be audited without inventing a session object.
+    actor: { profileId: string },
     action: AuditAction,
     recordType: AuditLogEntry['recordType'],
     recordId: string,
@@ -285,6 +299,54 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
     const rows = (data ?? []) as InquiryRow[];
     const events = await eventsFor(rows.map((r) => r.id));
     return rows.map((row) => mapInquiry(row, events.filter((e) => e.inquiry_id === row.id)));
+  }
+
+  async function paymentsRaw(apply: (q: any) => any): Promise<Payment[]> {
+    const base = client.from('payments').select('*').order('created_at', { ascending: false });
+    const { data, error } = await apply(base);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as PaymentRow[];
+    const events = await paymentEventsFor(rows.map((r) => r.id));
+    return rows.map((row) => mapPayment(row, events.filter((e) => e.payment_id === row.id)));
+  }
+
+  async function paymentEventsFor(paymentIds: string[]): Promise<PaymentEventRow[]> {
+    if (paymentIds.length === 0) return [];
+    const { data, error } = await client
+      .from('payment_events')
+      .select('*')
+      .in('payment_id', paymentIds)
+      .order('at', { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as PaymentEventRow[];
+  }
+
+  /**
+   * Looks a payment up by our id or our merchant reference. Two separate
+   * equality filters rather than an PostgREST `or=` expression, because a
+   * reference arrives from a URL and its punctuation must not be able to change
+   * the shape of the query.
+   */
+  async function fetchPayment(idOrReference: string): Promise<Payment | undefined> {
+    const value = (idOrReference ?? '').trim();
+    if (!value) return undefined;
+    const query = UUID_RE.test(value)
+      ? client.from('payments').select('*').eq('id', value)
+      : client.from('payments').select('*').eq('reference', value);
+    const { data, error } = await query.maybeSingle();
+    if (error) throw new Error(error.message);
+    const row = data as PaymentRow | null;
+    if (!row) return undefined;
+    return mapPayment(row, await paymentEventsFor([row.id]));
+  }
+
+  /** The stored row when this profile is a live administrator; nothing otherwise. */
+  async function administratorRow(profileId: string | undefined): Promise<ProfileRow | undefined> {
+    if (!profileId) return undefined;
+    const rows = await profileRows((q: any) =>
+      q.eq('id', profileId).eq('role', 'admin').neq('status', 'suspended').limit(1)
+    );
+    return rows[0];
   }
 
   async function stockFor(producerProfileId: string, categoryId: string): Promise<number> {
@@ -759,7 +821,12 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
           .eq('status', 'active');
         if ((count ?? 0) <= 1) throw new Error('This is the last active administrator. Promote another account first.');
       }
-      const { data, error } = await client.from('profiles').update({ role }).eq('id', profileId).select('*').single();
+      // profiles_admin_kind_check ties role 'admin' to account_kind
+      // 'platform_admin', so a promotion has to write both columns or Postgres
+      // refuses the row. Demotion leaves the label alone: role is what gates power.
+      const patch: Record<string, unknown> = { role };
+      if (role === 'admin') patch.account_kind = 'platform_admin';
+      const { data, error } = await client.from('profiles').update(patch).eq('id', profileId).select('*').single();
       if (error) throw new Error(rlsHint(error.message, 'Only an existing administrator can change roles.'));
       await writeAudit(actor, 'role_changed', 'profile', profileId, `Role changed from ${target.role} to ${role}.`);
       return loadProfile(data as ProfileRow);
@@ -1031,6 +1098,165 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
       // Row Level Security limits this to what the current account may see: an
       // administrator reads the queue, anyone else gets their own records only.
       return inquiriesRaw((q) => q);
+    },
+
+    async createPayment({ inquiryId, actorProfileId, provider }) {
+      const inquiry = await fetchInquiry(inquiryId);
+      const check = paymentEligibility({
+        inquiry,
+        actorProfileId,
+        existing: await paymentsRaw((q: any) => q.eq('inquiry_id', inquiryId))
+      });
+      if (!check.eligible) throw new Error(PAYMENT_BLOCKER_MESSAGES[check.reason]);
+      if (provider === 'demo_simulated') {
+        throw new PaymentConfigurationError(
+          'Simulated payments exist only while DATA_MODE=demo. This store is a live database, so a simulated attempt cannot be recorded in it — and 0006 refuses the label in the schema as well.'
+        );
+      }
+      // paymentToRow carries the reference and the inquiry and nothing else. The
+      // amount, the currency and both parties are copied from the stored inquiry
+      // by the insert trigger, so a hand-made request has no money field to
+      // change and no owner to claim.
+      const { data, error } = await client
+        .from('payments')
+        .insert(paymentToRow({ reference: makePaymentReference(), inquiryId, provider }))
+        .select('*')
+        .single();
+      if (error) throw new Error(rlsHint(error.message, 'This payment attempt could not be opened on that inquiry.'));
+
+      const row = data as PaymentRow;
+      const { error: eventError } = await client.from('payment_events').insert({
+        payment_id: row.id,
+        actor: 'buyer',
+        kind: 'created',
+        detail: `Payment attempt opened for ${formatMoney({ cents: row.amount_cents, currency: 'ETB' })}.`
+      });
+      if (eventError) throw new Error(`Payment attempt saved but the event log failed: ${eventError.message}`);
+      return mapPayment(row, await paymentEventsFor([row.id]));
+    },
+
+    async getPayment(idOrReference) {
+      return fetchPayment(idOrReference ?? '');
+    },
+
+    async listPaymentsForBuyer(buyerProfileId) {
+      return paymentsRaw((q: any) => q.eq('buyer_profile_id', buyerProfileId));
+    },
+
+    async listPaymentsForInquiry(inquiryId) {
+      return paymentsRaw((q: any) => q.eq('inquiry_id', inquiryId));
+    },
+
+    async listAllPayments() {
+      // The reporting ledger. Row Level Security lets an administrator see every
+      // row and anyone else only their own, so a non-administrator calling this
+      // gets a partial list rather than the platform's — which is why the reports
+      // area checks the role again, the way the other admin lists do.
+      return paymentsRaw((q: any) => q);
+    },
+
+    async attachCheckout(paymentId, checkout, buyerProfileId) {
+      const current = await fetchPayment(paymentId);
+      if (!current) throw new Error('Payment not found.');
+      if (current.buyerProfileId !== buyerProfileId) throw new Error('Not allowed to change another buyer’s payment.');
+      if (current.status !== 'pending') throw new Error('Only an open payment attempt can take a checkout address.');
+
+      const { data, error } = await client
+        .from('payments')
+        .update({
+          checkout_url: checkout.checkoutUrl,
+          checkout_expires_at: checkout.expiresAt ?? current.checkoutExpiresAt ?? null,
+          provider_reference: checkout.providerReference ?? current.providerReference ?? null
+        })
+        .eq('id', current.id)
+        .select('*')
+        .single();
+      if (error) throw new Error(rlsHint(error.message, 'The checkout address could not be stored for this payment attempt.'));
+
+      const row = data as PaymentRow;
+      const { error: eventError } = await client.from('payment_events').insert({
+        payment_id: row.id,
+        actor: 'provider',
+        kind: 'checkout_ready',
+        detail: 'Checkout address received from the payment provider.'
+      });
+      if (eventError) throw new Error(`Checkout address saved but the event log failed: ${eventError.message}`);
+      return mapPayment(row, await paymentEventsFor([row.id]));
+    },
+
+    async settlePayment(input) {
+      const current = await fetchPayment(input.merchantReference);
+      if (!current) throw new Error('Payment not found.');
+
+      const admin = await administratorRow(input.actorProfileId);
+      const isOwningBuyer = Boolean(input.actorProfileId) && input.actorProfileId === current.buyerProfileId;
+
+      // Idempotency first: a notification we have already recorded changes
+      // nothing, and returns the record as it stands rather than a second
+      // confirmation, receipt or ledger line.
+      if (input.providerEventId && current.events.some((e) => e.providerEventId === input.providerEventId)) {
+        return current;
+      }
+
+      if (input.reportedAmount !== undefined || input.reportedCurrency !== undefined) {
+        if (!amountMatches(current, input.reportedAmount, input.reportedCurrency)) {
+          throw new Error(
+            'The amount reported by the payment provider does not match the amount this attempt was opened for.'
+          );
+        }
+      }
+
+      if (!canMovePaymentStatus(current.status, input.status)) {
+        throw new Error(`Cannot move a ${current.status} payment to ${input.status}.`);
+      }
+
+      if (input.status === 'refunded' && !admin) throw new Error('Only an administrator can record a refund.');
+
+      // The fail-closed half of 0006. A buyer may cancel their own open attempt
+      // and an administrator may refund a confirmed one, because those are
+      // claims about their own actions. Everything else is the provider's answer,
+      // and this deployment signs every write with the visitor's own session.
+      const buyerOrAdminCancel = input.status === 'cancelled' && (isOwningBuyer || Boolean(admin));
+      if (!buyerOrAdminCancel && input.status !== 'refunded') {
+        throw new PaymentConfigurationError(
+          `${
+            input.actorProfileId
+              ? `A ${input.status} outcome is the provider's answer, not something this account can attest to.`
+              : `A ${input.status} outcome arrived from the provider, but nothing in this deployment may write it.`
+          } Every database write here is signed with the visitor's own session and the project intentionally holds no service-role credential, so Row Level Security cannot tell our verified provider answer from a hand-made request with the same key — see supabase/migrations/0006_payments.sql. Live payment confirmation is therefore NOT operational: it needs the reviewed server-side write path described in the README, and until that exists and has been tested against a real provider, no record may be marked paid. Nothing was changed.`
+        );
+      }
+
+      if (current.status === input.status && !input.providerEventId) return current;
+
+      const { data, error } = await client
+        .from('payments')
+        .update({ status: input.status })
+        .eq('id', current.id)
+        .select('*')
+        .single();
+      if (error) throw new Error(rlsHint(error.message, 'The payment outcome could not be recorded.'));
+
+      const row = data as PaymentRow;
+      const { error: eventError } = await client.from('payment_events').insert({
+        payment_id: row.id,
+        actor: input.status === 'refunded' ? 'system' : 'buyer',
+        kind: input.status === 'refunded' ? 'refunded' : 'cancelled',
+        detail: input.detail,
+        provider_event_id: input.providerEventId ?? null
+      });
+      if (eventError) throw new Error(`Payment saved but the event log failed: ${eventError.message}`);
+
+      if (input.status === 'refunded' && admin) {
+        await writeAudit(
+          { profileId: admin.id },
+          'payment_recorded',
+          'payment',
+          row.id,
+          `Payment ${row.reference} recorded as refunded (${formatMoney({ cents: row.amount_cents, currency: 'ETB' })}).`
+        );
+      }
+      return mapPayment(row, await paymentEventsFor([row.id]));
     },
 
     async listReviews(input) {

@@ -1,13 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import type { LanguageCode } from '@/lib/types';
+import { t } from '@/lib/i18n';
 import { Button, Field, Input } from './ui';
 
 export function CredentialsForm({
+  lang,
   submitPath,
   submitLabel,
   next
 }: {
+  lang: LanguageCode;
   submitPath: string;
   submitLabel: string;
   next?: string;
@@ -29,9 +33,9 @@ export function CredentialsForm({
         return;
       }
       const json = await res.json().catch(() => ({}));
-      setError(json?.error ?? 'Sign in failed.');
+      setError(json?.error ?? t(lang, 'auth.signInFailed'));
     } catch {
-      setError('Network problem — sign in needs a connection.');
+      setError(t(lang, 'auth.networkProblem'));
     } finally {
       setBusy(false);
     }
@@ -39,14 +43,14 @@ export function CredentialsForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Field label="Email" htmlFor="email" required>
+      <Field label={t(lang, 'auth.email')} htmlFor="email" required>
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </Field>
-      <Field label="Password" htmlFor="password" required hint="Minimum 6 characters.">
+      <Field label={t(lang, 'auth.password')} htmlFor="password" required hint={t(lang, 'auth.passwordHint')}>
         <Input id="password" name="password" type="password" autoComplete="current-password" required minLength={6} />
       </Field>
       <Button type="submit" disabled={busy}>
-        {busy ? 'Signing in…' : submitLabel}
+        {busy ? t(lang, 'auth.signingIn') : submitLabel}
       </Button>
       {error && (
         <p role="alert" className="text-sm text-red-700">

@@ -2,7 +2,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
+import { getLanguage, getT } from '@/lib/i18n/server';
+import { receiptLabelKey } from '@/lib/receipts';
 import { ArrangementCard, arrangementLabel } from '@/components/arrangement-card';
+import { PaymentStatusBadge } from '@/components/payment-panel';
 import { Badge, Card, CardBody, Section } from '@/components/ui';
 import { formatMoney } from '@/lib/money';
 
@@ -24,6 +27,13 @@ export default async function SellerInquiryPage({ params }: { params: { id: stri
 
   const item = await repo.getListing(inquiry.listingId);
   const closed = inquiry.status === 'completed' || inquiry.status === 'cancelled';
+  // Read-only for the seller: the repository returns this record because the
+  // policy says the producer of the listing may see it, and no control here can
+  // move a payment.
+  const payments = await repo.listPaymentsForInquiry(inquiry.id);
+  const latestPayment = [...payments].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const lang = getLanguage();
+  const tr = getT();
 
   return (
     <Section
@@ -33,6 +43,39 @@ export default async function SellerInquiryPage({ params }: { params: { id: stri
       actions={<Badge tone="neutral">{arrangementLabel(inquiry.status)}</Badge>}
     >
       <ArrangementCard inquiry={inquiry} listing={item} canAct={actor.status === 'active'} showHistory side="seller" />
+
+      {latestPayment && (
+        <Card>
+          <CardBody>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-semibold text-ink-900">{tr('payment.heading')}</h2>
+              <PaymentStatusBadge lang={lang} status={latestPayment.status} isDemo={latestPayment.isDemo} />
+            </div>
+            <p className="mt-2 text-sm text-ink-700">{tr('payment.referenceLine', { reference: latestPayment.reference })}</p>
+            <p className="mt-1 text-sm text-ink-700">
+              {tr('payment.amountLine', { amount: formatMoney({ cents: latestPayment.amountCents, currency: latestPayment.currency }) })}
+            </p>
+            <p className="mt-1 text-xs text-ink-500">{tr('payment.attemptCount', { count: payments.length })}</p>
+            {latestPayment.isDemo && <p className="mt-2 text-xs text-ink-500">{tr('payment.simulatedNote')}</p>}
+            <p className="mt-2 text-sm text-ink-700">{tr('payment.sellerViewNote')}</p>
+          </CardBody>
+        </Card>
+      )}
+
+      <Card>
+        <CardBody>
+          <h2 className="font-semibold text-ink-900">{tr('receipt.recordHeading')}</h2>
+          <p className="mt-2">
+            <a href={`/api/inquiries/${inquiry.id}/document`} className="underline font-semibold text-clay-700">
+              {tr(receiptLabelKey(latestPayment))}
+            </a>
+          </p>
+          <p className="mt-1 text-xs text-ink-500">{tr('receipt.downloadNote')}</p>
+          <p className="mt-1 text-xs text-ink-500">
+            {latestPayment ? tr('payment.sellerViewNote') : tr('payment.notPaidReceipt')}
+          </p>
+        </CardBody>
+      </Card>
 
       <Card>
         <CardBody>
@@ -79,7 +122,7 @@ export default async function SellerInquiryPage({ params }: { params: { id: stri
           <p className="mt-2 text-sm text-ink-700">
             {inquiry.buyerName} left <span className="font-semibold break-words">{inquiry.buyerContact}</span> when the
             request was sent, specifically so you can answer it. Use it for this arrangement only — it is not permission
-            to add them to a list, and OmoNETAB does not send the message for you.
+            to add them to a list, and OmoNetTab does not send the message for you.
           </p>
           <p className="mt-2 text-sm text-ink-700">
             {closed

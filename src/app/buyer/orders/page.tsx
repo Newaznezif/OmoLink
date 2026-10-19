@@ -31,7 +31,7 @@ export default async function BuyerOrdersPage() {
     <Section
       eyebrow="My account"
       title="Orders"
-      description="Goods you asked a producer or group to supply. Each row is an arrangement you and the seller are organising — OmoNETAB does not charge or move money, so this is not a payment history."
+      description="Goods you asked a producer or group to supply. Each row is an arrangement you and the seller are organising — OmoNetTab does not charge or move money, so this is not a payment history."
     >
       <Card>
         <CardBody>

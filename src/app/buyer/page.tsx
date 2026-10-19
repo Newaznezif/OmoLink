@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'My account',
-  description: 'Your inquiries, order arrangements and bookings on OmoNETAB.'
+  description: 'Your inquiries, order arrangements and bookings on OmoNetTab.'
 };
 
 export default async function BuyerOverview() {
@@ -40,7 +40,7 @@ export default async function BuyerOverview() {
     <Section
       eyebrow="My account"
       title={`Welcome, ${profile?.displayName ?? 'there'}`}
-      description="Everything here is your own record: requests you sent, and what the other side noted. OmoNETAB does not take payment, so nothing below is a receipt — it is an arrangement you and a seller are organising."
+      description="Everything here is your own record: requests you sent, and what the other side noted. An arrangement is not a receipt — payment, where it is taken through OmoNetTab, is recorded separately and shown on the inquiry page."
     >
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat label="Awaiting a reply" value={waitingSeller} tone="warning" href="/buyer/inquiries" />
@@ -83,7 +83,7 @@ export default async function BuyerOverview() {
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">As a {kindLabel} on OmoNETAB</h2>
+          <h2 className="font-semibold text-ink-900">As a {kindLabel} on OmoNetTab</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-ink-700">
             <li>
               <Link href="/buyer/orders" className="underline">

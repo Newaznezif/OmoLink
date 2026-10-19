@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Forgotten password',
-  description: 'Ask OmoNETAB to email a link that lets you choose a new password.'
+  description: 'Ask OmoNetTab to email a link that lets you choose a new password.'
 };
 
 function siteUrl() {
@@ -41,11 +41,11 @@ export default async function ForgotPasswordPage({
       redirect('/forgot-password?error=' + encodeURIComponent(error.message));
     }
     // Deliberately the same answer for an unknown address: this page must not
-    // become a way to test which emails have an OmoNETAB account.
+    // become a way to test which emails have an OmoNetTab account.
     redirect(
       '/forgot-password?message=' +
         encodeURIComponent(
-          'If that address has an OmoNETAB account, a reset link is on its way. It expires on the server’s own timetable — check the spam folder if nothing arrives.'
+          'If that address has an OmoNetTab account, a reset link is on its way. It expires on the server’s own timetable — check the spam folder if nothing arrives.'
         )
     );
   }
@@ -55,7 +55,7 @@ export default async function ForgotPasswordPage({
       <Section
         eyebrow="Account help"
         title="Password reset is not available in this build"
-        description="OmoNETAB is running with DATA_MODE=demo. Accounts here are sample records held in memory, there is no password to forget, and no email service is configured — so this page would be a form that lies."
+        description="OmoNetTab is running with DATA_MODE=demo. Accounts here are sample records held in memory, there is no password to forget, and no email service is configured — so this page would be a form that lies."
       >
         <Card>
           <CardBody>
@@ -84,7 +84,7 @@ export default async function ForgotPasswordPage({
     <Section
       eyebrow="Account help"
       title="Reset your password"
-      description="Tell us the address you registered with and we ask the authentication service to send a reset link. OmoNETAB never stores a readable password."
+      description="Tell us the address you registered with and we ask the authentication service to send a reset link. OmoNetTab never stores a readable password."
     >
       <Card>
         <CardBody>
@@ -119,7 +119,7 @@ export default async function ForgotPasswordPage({
           <p className="mt-3 text-xs text-ink-500">
             The link opens a page on this site that lets the holder of the link choose a new password. Anyone who can read
             that mailbox can therefore change that account’s password — which is why the address itself is never shown
-            publicly on OmoNETAB.
+            publicly on OmoNetTab.
           </p>
           <p className="mt-2 text-sm">
             <a href="/verify-email" className="underline font-semibold text-clay-700">

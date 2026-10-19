@@ -9,9 +9,9 @@ export default async function TourismPage({
     <MarketplaceView
       searchParams={searchParams}
       kind="service"
-      eyebrow="Tourism"
-      title="Tourism services"
-      description="Guided visits, half-day walks and craft demonstrations offered by locally operated producers and guides. Sensitive cultural knowledge is never commercialised by default."
+      eyebrowKey={'market.tourismEyebrow'}
+      titleKey={'market.tourismTitle'}
+      descriptionKey={'market.tourismDescription'}
     />
   );
 }

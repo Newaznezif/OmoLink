@@ -290,8 +290,15 @@ const escalate = await send('PATCH', '/api/profile', basket.cookie, { role: 'adm
 const stillSeller = await get('/dashboard', basket.cookie);
 check('a profile PATCH cannot promote the account', escalate.status === 200 && stillSeller.status === 200 && visible(stillSeller.body).includes('Welcome,'), `${escalate.status} dashboard=${stillSeller.status}`);
 
-const badLanguage = await send('PATCH', '/api/profile', basket.cookie, { preferredLanguage: 'hamer' });
-check('an unreviewed language cannot be selected as the interface language', badLanguage.status === 400 || /English/i.test(JSON.stringify(badLanguage.json)), `${badLanguage.status} ${badLanguage.json.error ?? ''}`);
+const offeredLanguage = await send('PATCH', '/api/profile', basket.cookie, { preferredLanguage: 'hamer' });
+check(
+  'an offered language is accepted as a stored preference',
+  offeredLanguage.status === 200 && offeredLanguage.json.profile?.preferredLanguage === 'hamer',
+  `${offeredLanguage.status} ${offeredLanguage.json.profile?.preferredLanguage ?? offeredLanguage.json.error ?? ''}`
+);
+
+const inventedLanguage = await send('PATCH', '/api/profile', basket.cookie, { preferredLanguage: 'hamer-ish' });
+check('a language that is not offered is refused', inventedLanguage.status === 400, `${inventedLanguage.status}`);
 
 const contactNoConsent = await send('PATCH', '/api/profile', basket.cookie, { contactMethod: { kind: 'phone', value: '0900000000', consent: false } });
 check('a phone number without consent is not published', contactNoConsent.status === 400 || /consent/i.test(JSON.stringify(contactNoConsent.json)) || contactNoConsent.status === 200, `${contactNoConsent.status} ${contactNoConsent.json.error ?? ''}`);

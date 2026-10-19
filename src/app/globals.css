@@ -8,24 +8,79 @@
      pages that render outside the app layout, where the value is not injected. */
   --accent: #b2542a;
   --accent-contrast: #ffffff;
+
+  /* The light colour scheme. Tailwind's palette entries are these variables
+     (see tailwind.config.ts), so changing a scheme changes every page at once
+     instead of requiring a dark: variant on all ~1,100 colour utilities. */
+  --page: 251 247 241;
+  --surface: 255 255 255;
+  --clay-50: 251 245 239;
+  --clay-100: 245 230 212;
+  --clay-200: 234 201 166;
+  --clay-300: 223 167 115;
+  --clay-400: 209 135 70;
+  --clay-500: 185 106 44;
+  --clay-600: 150 82 34;
+  --clay-700: 115 62 28;
+  --clay-800: 82 44 22;
+  --clay-900: 51 27 15;
+  --ochre-50: 253 247 230;
+  --ochre-100: 249 234 189;
+  --ochre-500: 201 154 27;
+  --ochre-700: 138 100 16;
+  --moss-50: 238 244 234;
+  --moss-100: 217 230 209;
+  --moss-500: 93 125 74;
+  --moss-700: 61 90 47;
+  --moss-900: 34 54 26;
+  --ink-50: 245 246 248;
+  --ink-100: 230 232 236;
+  --ink-500: 75 85 99;
+  --ink-700: 42 48 56;
+  --ink-900: 17 20 24;
 }
 
-.accent-bg {
-  /* --accent-contrast is derived from the hex in src/lib/settings.ts, so a
-     light accent never produces white-on-white text. */
-  background-color: var(--accent);
-  color: var(--accent-contrast, #ffffff);
-}
+.theme-dark {
+  color-scheme: dark;
 
-a.accent-bg:hover,
-button.accent-bg:hover {
-  filter: brightness(0.93);
+  --focus: #e0a76f;
+  --page: 16 18 22;
+  --surface: 26 29 35;
+
+  /* Text and lines invert: what was ink on paper becomes paper on ink. */
+  --ink-900: 236 238 241;
+  --ink-700: 200 205 212;
+  --ink-500: 155 163 173;
+  --ink-100: 51 57 66;
+  --ink-50: 32 36 43;
+
+  /* Brand tints become deep washes; the hues stay the same family so the site
+     still reads as OmoNetTab, not as a different product. */
+  --clay-50: 34 27 22;
+  --clay-100: 44 33 25;
+  --clay-200: 74 50 33;
+  --clay-300: 122 79 47;
+  --clay-400: 168 113 62;
+  --clay-500: 205 141 82;
+  --clay-600: 223 167 115;
+  --clay-700: 233 191 145;
+  --clay-800: 240 214 184;
+  --clay-900: 246 232 216;
+  --ochre-50: 36 31 18;
+  --ochre-100: 51 43 20;
+  --ochre-500: 224 178 66;
+  --ochre-700: 236 205 122;
+  --moss-50: 24 31 22;
+  --moss-100: 33 44 30;
+  --moss-500: 126 166 108;
+  --moss-700: 165 199 150;
+  --moss-900: 205 224 196;
 }
 
 html,
 body {
-  color: var(--color-ink-900, #111418);
-  background: #fbf7f1;
+  color: rgb(var(--ink-900));
+  background: rgb(var(--page));
 }
 
 body {
@@ -60,6 +115,106 @@ textarea:focus-visible,
 
 .card-shadow {
   box-shadow: 0 1px 2px rgba(17, 20, 24, 0.04), 0 4px 16px rgba(17, 20, 24, 0.06);
+}
+
+.accent-bg {
+  /* --accent-contrast is derived from the hex in src/lib/settings.ts, so a
+     light accent never produces white-on-white text. */
+  background-color: var(--accent);
+  color: var(--accent-contrast, #ffffff);
+}
+
+a.accent-bg:hover,
+button.accent-bg:hover {
+  filter: brightness(0.93);
+}
+
+/*
+ * What the scheme inversion above cannot decide on its own: the same token is
+ * used for a *fill* in one place and for *text* in another, and those want to
+ * move in opposite directions. So the classes that carry a solid brand fill keep
+ * their light-mode colour — a clay button with white text stays a clay button —
+ * while `bg-white`, which is always a card or a field, becomes the dark surface.
+ * Each rule names the class it overrides, so nothing here is a guess about which
+ * utility a component happens to use.
+ */
+.theme-dark .bg-white {
+  background-color: rgb(var(--surface));
+}
+
+/*
+ * The two places that use Tailwind's own `white` as a surface rather than as
+ * text: the sticky header's translucent bar and the homepage hero's gradient
+ * floor. Left alone they would stay bright paper on a dark page.
+ */
+.theme-dark .bg-white\/95 {
+  background-color: rgb(var(--surface) / 0.95);
+}
+.theme-dark .to-white {
+  --tw-gradient-to: rgb(var(--surface));
+}
+
+.theme-dark .bg-clay-600 {
+  background-color: rgb(150 82 34);
+}
+.theme-dark .bg-clay-700 {
+  background-color: rgb(115 62 28);
+}
+.theme-dark .bg-clay-800 {
+  background-color: rgb(82 44 22);
+}
+.theme-dark .bg-clay-500 {
+  background-color: rgb(185 106 44);
+}
+.theme-dark .bg-moss-500 {
+  background-color: rgb(93 125 74);
+}
+.theme-dark .bg-ochre-500 {
+  background-color: rgb(201 154 27);
+}
+.theme-dark .bg-ink-900 {
+  background-color: rgb(17 20 24);
+}
+
+/*
+ * The status colours are Tailwind defaults, outside the project palette, so they
+ * need their own dark values instead of the variable inversion. A pale red panel
+ * with dark red text is legible but shouts on a dark page; this keeps the meaning
+ * and lowers the volume.
+ */
+.theme-dark .bg-red-50 {
+  background-color: rgb(58 21 21);
+}
+.theme-dark .text-red-700,
+.theme-dark .text-red-800,
+.theme-dark .text-red-900 {
+  color: rgb(252 165 165);
+}
+.theme-dark .border-red-100,
+.theme-dark .border-red-200 {
+  border-color: rgb(127 45 38);
+}
+.theme-dark .bg-emerald-50 {
+  background-color: rgb(18 43 30);
+}
+.theme-dark .text-emerald-800 {
+  color: rgb(134 239 172);
+}
+.theme-dark .border-emerald-100 {
+  border-color: rgb(36 92 57);
+}
+.theme-dark .bg-amber-50 {
+  background-color: rgb(51 38 12);
+}
+.theme-dark .text-amber-900 {
+  color: rgb(252 211 77);
+}
+.theme-dark .border-amber-200 {
+  border-color: rgb(107 83 18);
+}
+
+.theme-dark .card-shadow {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 @media (prefers-reduced-motion: reduce) {

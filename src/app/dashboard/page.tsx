@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { requireArea } from '@/lib/area';
 import { getRepo } from '@/lib/repo';
-import { Badge, Card, CardBody, Empty, SampleTag, Section } from '@/components/ui';
+import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
+import { SampleTag } from '@/components/status-labels';
 import { formatMoney } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
@@ -87,7 +88,8 @@ export default async function DashboardHome() {
             </dl>
             <p className="mt-2 text-xs text-ink-500">
               That figure is not money owed to you and not a ledger: it is each listing’s unit price at the time the
-              request arrived, multiplied by the quantity asked for. OmoNETAB moves no payment.
+              request arrived, multiplied by the quantity asked for. It is not what a buyer has paid you: payment is a
+              separate record, and only a payment the provider has confirmed counts.
             </p>
           </CardBody>
         </Card>

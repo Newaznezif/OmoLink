@@ -14,6 +14,9 @@ import type {
   InquiryStatus,
   Listing,
   ListingReport,
+  Payment,
+  PaymentProviderId,
+  PaymentStatus,
   ProducerGroup,
   Profile,
   Review,
@@ -131,6 +134,26 @@ export type Repo = {
   // --- Buyer accounts ---
   listInquiriesForBuyer(buyerProfileId: string): Promise<Inquiry[]>;
 
+  /**
+   * Payment attempts, one record per attempt against an existing inquiry. The
+   * inquiry is never duplicated to carry a payment, and an amount is only ever
+   * copied from the stored inquiry — see ./payments.ts.
+   */
+  createPayment(input: CreatePaymentInput): Promise<Payment>;
+  /** Accepts either the payment id or its merchant reference. */
+  getPayment(idOrReference: string): Promise<Payment | undefined>;
+  listPaymentsForBuyer(buyerProfileId: string): Promise<Payment[]>;
+  listPaymentsForInquiry(inquiryId: string): Promise<Payment[]>;
+  /** Platform-wide payment ledger for the administrator reporting area. */
+  listAllPayments(): Promise<Payment[]>;
+  /** Stores the hosted checkout address the provider returned for an attempt. */
+  attachCheckout(paymentId: string, checkout: AttachCheckoutInput, buyerProfileId: string): Promise<Payment>;
+  /**
+   * Applies a verified provider answer. Idempotent: a repeated `providerEventId`
+   * leaves the record untouched and returns it as it stands.
+   */
+  settlePayment(input: SettlePaymentInput): Promise<Payment>;
+
   /** Platform-wide arrangement queue for the administrator area. */
   listAllInquiries(): Promise<Inquiry[]>;
 
@@ -178,12 +201,53 @@ export type CreateInquiryInput = {
   buyerProfileId?: string;
 };
 
+export type CreatePaymentInput = {
+  inquiryId: string;
+  /** The signed-in buyer. The repository refuses anyone who is not that buyer. */
+  actorProfileId: string;
+  /**
+   * Which money-mover the workflow is about to use, taken from
+   * resolvePaymentProvider() by the route. Never read from the request body — a
+   * browser that could name the provider could name 'demo_simulated'.
+   */
+  provider: PaymentProviderId;
+  /** Only honoured in demo mode; a live provider ignores it entirely. */
+  demoOutcome?: 'success' | 'pending' | 'failed' | 'cancelled';
+};
+
+export type AttachCheckoutInput = {
+  checkoutUrl: string;
+  providerReference?: string;
+  expiresAt?: string;
+};
+
+export type SettlePaymentInput = {
+  /** Our payment reference, the merchant_reference the provider was given. */
+  merchantReference: string;
+  /** Already translated by resolveVerifiedStatus(); never a raw provider string. */
+  status: PaymentStatus;
+  detail: string;
+  /**
+   * The amount and currency the provider says it charged. When present they must
+   * match the stored amount exactly or the settle is refused.
+   */
+  reportedAmount?: unknown;
+  reportedCurrency?: unknown;
+  providerReference?: string;
+  paymentMethod?: string;
+  feeCents?: number;
+  /** The provider's own event id, so a repeated notification cannot double-count. */
+  providerEventId?: string;
+  /** Who caused it: the buyer's own session, or an administrator recording a refund. */
+  actorProfileId?: string;
+};
+
 /**
  * Choose the repository for the configured data mode.
  *
  * demo -> the in-memory store, where the repository itself is the enforcement
  * point because no Row Level Security sits behind it.
- * supabase -> Postgres through the anon key, so Row Level Security decides what
+ * supabase -> Postgres through the public key, so Row Level Security decides what
  * the current visitor may see. Building the Supabase client without credentials
  * throws inside requireSupabaseConfig(): the app never falls back to demo data
  * while pretending to be live.

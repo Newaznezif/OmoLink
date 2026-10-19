@@ -1,5 +1,7 @@
 import { getRepo } from '@/lib/repo';
+import { getSessionActor } from '@/lib/session';
 import { AdminSection, BackField } from '@/components/admin-shell';
+import { AppearanceCard } from '@/components/appearance-card';
 import { Button, Card, CardBody, Field, Input, Textarea } from '@/components/ui';
 import { accentContrastColor } from '@/lib/settings';
 
@@ -12,6 +14,11 @@ const SPARE_LINK_ROWS = 3;
 
 export default async function AdminSettingsPage({ searchParams }: { searchParams: SearchParams }) {
   const settings = await getRepo().getSiteSettings();
+  // The appearance card below is the signed-in administrator's own scheme, not a
+  // site-wide setting, so it reads their profile record — which is exactly why the
+  // site-settings form above does not contain it.
+  const actor = await getSessionActor();
+  const adminProfile = actor ? await getRepo().getProfile(actor.profileId) : undefined;
   const links: { key: string; label: string; url: string }[] = [
     ...settings.socialLinks.map((link, index) => ({ key: `stored-${index}`, ...link })),
     ...Array.from({ length: SPARE_LINK_ROWS }, (_, index) => ({ key: `spare-${index}`, label: '', url: '' }))
@@ -30,10 +37,15 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
           <CardBody className="space-y-4">
             <h2 className="font-semibold text-ink-900">Identity</h2>
             <div className="grid md:grid-cols-2 gap-4">
-              <Field label="Site name" htmlFor="siteName" required hint="Shown in the header, the browser tab and the footer.">
+              <Field
+                label="Site name"
+                htmlFor="siteName"
+                required
+                hint="Used in the browser tab, page titles and the footer copyright line. The header and footer show the logo image, which carries its own wording."
+              >
                 <Input id="siteName" name="siteName" defaultValue={settings.siteName} maxLength={60} required />
               </Field>
-              <Field label="Tagline" htmlFor="tagline" hint="One sentence under the site name. 160 characters or fewer.">
+              <Field label="Tagline" htmlFor="tagline" hint="Follows the site name in the browser tab title. 160 characters or fewer.">
                 <Input id="tagline" name="tagline" defaultValue={settings.tagline} maxLength={160} />
               </Field>
             </div>
@@ -73,7 +85,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
                 label="Hex colour"
                 htmlFor="accentColor"
                 required
-                hint="Applied to primary buttons, the header mark, the announcement bar and the homepage call to action."
+                hint="Applied to primary buttons, the announcement bar and the homepage call to action."
               >
                 <Input id="accentColor" name="accentColor" type="color" defaultValue={settings.accentColor} className="h-11 p-1" />
               </Field>
@@ -159,6 +171,8 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
         </div>
       </form>
 
+      <AppearanceCard profile={adminProfile} />
+
       <Card>
         <CardBody>
           <h2 className="font-semibold text-ink-900">Needs a code change or a redeploy</h2>
@@ -171,7 +185,9 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
               compiled at build time.
             </li>
             <li>
-              <strong>Colour palette for surfaces</strong> — defined in <code>tailwind.config.ts</code>.
+              <strong>Colour palette for surfaces</strong> — the light and dark values in <code>src/app/globals.css</code>{' '}
+              and the token names in <code>tailwind.config.ts</code>. The scheme itself is each account&apos;s own choice,
+              saved from this page.
             </li>
             <li>
               <strong>Which languages are offered</strong> — a translation file plus reviewed copy; see the Languages

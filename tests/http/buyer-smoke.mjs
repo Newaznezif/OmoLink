@@ -158,7 +158,8 @@ check('opening another account’s arrangement returns 404', foreignDetail.statu
 
 const ownDetail = await get(`/buyer/inquiries/${inquiryA.id}`, tourist.cookie);
 check('own arrangement detail renders', ownDetail.status === 200 && visible(ownDetail.body).includes(inquiryA.reference ?? 'ref'), `status=${ownDetail.status}`);
-check('arrangement detail states no money moved through OmoLink', visible(ownDetail.body).toLowerCase().includes('no money has changed hands'));
+check('arrangement detail says the estimate is not an invoice', visible(ownDetail.body).toLowerCase().includes('it is not an invoice'));
+check('arrangement detail keeps payment as a separate record', visible(ownDetail.body).toLowerCase().includes('payment, where it is taken through omonettab, is a separate record'));
 
 const notASale = visible(ownDetail.body).toLowerCase();
 check('open arrangement is not described as a sale', !notASale.includes('sale completed') && notASale.includes('not a sale yet'), 'stays an arrangement');
@@ -263,7 +264,11 @@ const badEmail = await send('PATCH', '/api/profile', tourist.cookie, { contactMe
 check('malformed email is refused', badEmail.status === 400 && /email/.test(badEmail.json.error ?? ''), `error=${badEmail.json.error}`);
 
 const langAm = await send('PATCH', '/api/profile', tourist.cookie, { preferredLanguage: 'am' });
-check('unreviewed interface language is refused', langAm.status === 400 && /Only English/.test(langAm.json.error ?? ''), `error=${langAm.json.error}`);
+check(
+  'an offered language is saved as a preference even while its copy is unreviewed',
+  langAm.status === 200 && langAm.json.profile?.preferredLanguage === 'am',
+  `status=${langAm.status} language=${langAm.json.profile?.preferredLanguage} error=${langAm.json.error}`
+);
 
 const langHamer = await send('PATCH', '/api/profile', tourist.cookie, { preferredLanguage: 'hamster' });
 check('unknown language code is refused', langHamer.status === 400, `status=${langHamer.status} error=${langHamer.json.error}`);
@@ -357,6 +362,55 @@ check('reactivated buyer can send inquiries again', afterReactivation.status ===
 const selfSuspend = await postForm('/api/admin/status', tourist.cookie, { profileId: 'prof_hotel_buyer', status: 'suspended', confirm: 'on' });
 check('a buyer cannot call the admin suspension endpoint', selfSuspend.status === 403 || (selfSuspend.location ?? '').includes('access-denied'), `${selfSuspend.status} -> ${selfSuspend.location}`);
 
+
+// ---------- 11. interface language ----------
+// The preference is a cookie read while rendering, so asking for a page with the
+// cookie already set is exactly what a returning visitor gets after a reload.
+const languageChecks = [
+  { code: 'zh-Hans', htmlLang: 'zh-Hans', marker: '产品', note: 'simplified chinese renders and stays selected' },
+  { code: 'it', htmlLang: 'it', marker: 'Prodotti', note: 'italian renders and stays selected' },
+  { code: 'am', htmlLang: 'am', marker: 'ምርቶች', note: 'the amharic draft renders where wording exists' },
+  { code: 'hamer', htmlLang: 'en', marker: 'No verified Hamer translation exists yet', note: 'homer says plainly that it has no translation' },
+  { code: 'dag', htmlLang: 'en', marker: 'No verified Dasenech translation exists yet', note: 'dasenech says plainly that it has no translation' },
+  { code: 'tsamai', htmlLang: 'en', marker: 'No verified Tsamai translation exists yet', note: 'tsamai says plainly that it has no translation' }
+];
+
+for (const { code, htmlLang, marker, note } of languageChecks) {
+  const page = await get('/', `omonettab_lang=${code}`);
+  const selectedOption = new RegExp(`value="${code}"[^>]*selected`).test(page.body);
+  check(
+    note,
+    page.status === 200 &&
+      page.body.includes(`<html lang="${htmlLang}"`) &&
+      visible(page.body).includes(marker) &&
+      selectedOption,
+    `status=${page.status} lang=${htmlLang} marker=${visible(page.body).includes(marker)} selected=${selectedOption}`
+  );
+}
+
+const forgedLanguage = await get('/', 'omonettab_lang=fr');
+check(
+  'an unknown language cookie cannot switch the site and does not break it',
+  forgedLanguage.status === 200 && forgedLanguage.body.includes('<html lang="en"') && visible(forgedLanguage.body).includes('Products'),
+  `status=${forgedLanguage.status}`
+);
+
+const noCookie = await get('/', undefined);
+check('the default language is English', noCookie.status === 200 && noCookie.body.includes('<html lang="en"'), `status=${noCookie.status}`);
+
+const zhListing = await get('/listings/lst_basket_set', 'omonettab_lang=zh-Hans');
+check(
+  'a translated listing page keeps the price and the honest demo label',
+  zhListing.status === 200 && visible(zhListing.body).includes('示例手织储物篮套装') && visible(zhListing.body).includes('125.00'),
+  `status=${zhListing.status}`
+);
+
+const itListing = await get('/listings/lst_basket_set', 'omonettab_lang=it');
+check(
+  'the Italian listing page warns that catalogue wording is unverified',
+  itListing.status === 200 && visible(itListing.body).includes('non sono ancora stati verificati da un madrelingua'),
+  `status=${itListing.status}`
+);
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} PASS`);

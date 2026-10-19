@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getRepo } from '@/lib/repo';
 import { getSessionProfile } from '@/lib/session';
-import { SUPPORTED_LANGUAGES, type ContactMethod, type LanguageCode, type Profile } from '@/lib/types';
+import { isLanguageCode } from '@/lib/language';
+import { isThemePreference } from '@/lib/theme';
+import { type ContactMethod, type LanguageCode, type Profile } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-
-const LANGUAGE_CODES = SUPPORTED_LANGUAGES as readonly string[];
 
 /**
  * Profile edits for the signed-in account. The starting point is always the
@@ -47,17 +47,19 @@ export async function PATCH(req: Request) {
   }
 
   if (typeof body.preferredLanguage === 'string') {
-    if (!LANGUAGE_CODES.includes(body.preferredLanguage)) {
+    if (!isLanguageCode(body.preferredLanguage)) {
       return NextResponse.json({ error: 'That language is not on the list.' }, { status: 400 });
     }
-    if (body.preferredLanguage !== 'en') {
-      // Only English copy is reviewed today; claiming otherwise would be false.
-      return NextResponse.json(
-        { error: 'Only English interface text is ready. Amharic copy is still being reviewed with native speakers.' },
-        { status: 400 }
-      );
+    // Storing the preference is safe for every offered language: the interface
+    // itself says out loud which languages have no reviewed wording yet.
+    next.preferredLanguage = body.preferredLanguage;
+  }
+
+  if (body.theme !== undefined) {
+    if (!isThemePreference(body.theme)) {
+      return NextResponse.json({ error: 'That appearance is not on the list.' }, { status: 400 });
     }
-    next.preferredLanguage = body.preferredLanguage as LanguageCode;
+    next.theme = body.theme;
   }
 
   const method = readContactMethod(body.contactMethod);

@@ -3,6 +3,7 @@ import { isSupabaseMode } from '@/lib/supabase/config';
 import { supabaseServer } from '@/lib/supabase/server';
 import { getRepo } from '@/lib/repo';
 import { landingFor } from '@/lib/session';
+import { LANGUAGE_OPTIONS, isLanguageCode, safeLanguageCode } from '@/lib/language';
 import { Badge, Card, CardBody, Field, Input, Section, Select, Textarea } from '@/components/ui';
 import {
   SELF_SERVICE_ACCOUNT_KINDS,
@@ -60,7 +61,7 @@ export default async function OnboardingPage({
     const shortBio = String(formData.get('shortBio') ?? '').trim();
     const organizationName = String(formData.get('organizationName') ?? '').trim();
     const producerType = String(formData.get('producerType') ?? 'other') as ProducerType;
-    const preferredLanguage = String(formData.get('preferredLanguage') ?? 'en') as LanguageCode;
+    const preferredLanguage = safeLanguageCode(formData.get('preferredLanguage'));
     const categories = formData.getAll('categories').map(String).filter(Boolean);
     const consent = formData.get('consent') === 'on';
 
@@ -75,7 +76,7 @@ export default async function OnboardingPage({
     if (kind === 'business_buyer' && !organizationName) fail('A business account needs the organisation name.');
     if (kind === 'group_or_cooperative' && !organizationName) fail('A group account needs the group or cooperative name.');
     if (!consent) fail('Record your consent to publish the profile before continuing.');
-    if (preferredLanguage !== 'en') fail('Only English wording has been reviewed, so that is what an account can start with.');
+    if (!isLanguageCode(preferredLanguage)) fail('Choose one of the listed interface languages.');
 
     const {
       data: { user }
@@ -99,7 +100,7 @@ export default async function OnboardingPage({
       status: 'active',
       community,
       operatingArea,
-      preferredLanguage: 'en',
+      preferredLanguage,
       contactMethod: { kind: 'in_app' },
       shortBio,
       categories: selling ? categories : [],
@@ -158,7 +159,7 @@ export default async function OnboardingPage({
     <Section
       eyebrow="Account"
       title="Finish setting up your account"
-      description={`Signed in as ${user.email}. Two short questions, then the profile. No identity document, no document number and no licence copy is collected here — a basic account never needs them, and OmoNETAB does not store them.`}
+      description={`Signed in as ${user.email}. Two short questions, then the profile. No identity document, no document number and no licence copy is collected here — a basic account never needs them, and OmoNetTab does not store them.`}
     >
       {searchParams.error && (
         <div role="alert" className="mb-4 rounded-lg bg-red-50 text-red-700 border border-red-100 p-3 text-sm">
@@ -169,7 +170,7 @@ export default async function OnboardingPage({
       {!kind ? (
         <Card>
           <CardBody>
-            <h2 className="font-semibold text-ink-900">What brought you to OmoNETAB?</h2>
+            <h2 className="font-semibold text-ink-900">What brought you to OmoNetTab?</h2>
             <p className="mt-1 text-sm text-ink-700">
               This decides which fields you are asked for and which dashboard you land on. It cannot make you an
               administrator: that power is assigned to an existing account by another administrator or by a database
@@ -237,21 +238,13 @@ export default async function OnboardingPage({
                       ))}
                     </Select>
                   </Field>
-                  <Field label="Interface language" htmlFor="preferredLanguage" hint="Only reviewed wording can be offered.">
+                  <Field label="Interface language" htmlFor="preferredLanguage" hint="Saved as your preference. Pages say which languages still have no reviewed wording.">
                     <Select id="preferredLanguage" name="preferredLanguage" defaultValue="en">
-                      <option value="en">English</option>
-                      <option value="am" disabled>
-                        Amharic — copy not reviewed yet
-                      </option>
-                      <option value="hamer" disabled>
-                        Hamer — no reviewed translation
-                      </option>
-                      <option value="dag" disabled>
-                        Dasenech — no reviewed translation
-                      </option>
-                      <option value="tsamai" disabled>
-                        Tsamai — no reviewed translation
-                      </option>
+                      {LANGUAGE_OPTIONS.map((option) => (
+                        <option key={option.code} value={option.code}>
+                          {option.english} ({option.native})
+                        </option>
+                      ))}
                     </Select>
                   </Field>
                 </div>
@@ -287,7 +280,7 @@ export default async function OnboardingPage({
               <label className="flex gap-2 items-start text-sm rounded-lg border border-ink-100 p-3">
                 <input type="checkbox" name="consent" className="mt-1 w-4 h-4" required />
                 <span>
-                  I consent to publishing this profile on OmoNETAB. Cultural knowledge, ceremony details and community
+                  I consent to publishing this profile on OmoNetTab. Cultural knowledge, ceremony details and community
                   imagery are not published by this consent.
                 </span>
               </label>

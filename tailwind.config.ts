@@ -1,41 +1,57 @@
 import type { Config } from 'tailwindcss';
 
+/**
+ * The palette is a set of CSS variables rather than fixed hex values, so a colour
+ * scheme is one block of variable assignments and not a rewrite of the ~1,100
+ * places that use `text-ink-700` and friends. The `rgb(... / <alpha-value>)`
+ * shape is what keeps Tailwind's opacity modifiers (`bg-clay-50/40`) working —
+ * a plain `var(--clay-50)` would break them. The values live in
+ * `src/app/globals.css`: `:root` holds the light scheme, `.theme-dark` the dark
+ * one, and the class on `<html>` decides which applies.
+ */
+const rgb = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
 const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
+  // The scheme is a class the server writes on <html> (see src/lib/theme.ts), so a
+  // saved account choice wins over the operating system setting instead of the page
+  // silently following the device. Both schemes are written explicitly, and only
+  // `theme-dark` opens the `dark:` variants.
+  darkMode: ['class', '.theme-dark'],
   theme: {
     extend: {
       colors: {
         clay: {
-          50: '#fbf5ef',
-          100: '#f5e6d4',
-          200: '#eac9a6',
-          300: '#dfa773',
-          400: '#d18746',
-          500: '#b96a2c',
-          600: '#965222',
-          700: '#733e1c',
-          800: '#522c16',
-          900: '#331b0f'
+          50: rgb('clay-50'),
+          100: rgb('clay-100'),
+          200: rgb('clay-200'),
+          300: rgb('clay-300'),
+          400: rgb('clay-400'),
+          500: rgb('clay-500'),
+          600: rgb('clay-600'),
+          700: rgb('clay-700'),
+          800: rgb('clay-800'),
+          900: rgb('clay-900')
         },
         ochre: {
-          50: '#fdf7e6',
-          100: '#f9eabd',
-          500: '#c99a1b',
-          700: '#8a6410'
+          50: rgb('ochre-50'),
+          100: rgb('ochre-100'),
+          500: rgb('ochre-500'),
+          700: rgb('ochre-700')
         },
         moss: {
-          50: '#eef4ea',
-          100: '#d9e6d1',
-          500: '#5d7d4a',
-          700: '#3d5a2f',
-          900: '#22361a'
+          50: rgb('moss-50'),
+          100: rgb('moss-100'),
+          500: rgb('moss-500'),
+          700: rgb('moss-700'),
+          900: rgb('moss-900')
         },
         ink: {
-          50: '#f5f6f8',
-          100: '#e6e8ec',
-          500: '#4b5563',
-          700: '#2a3038',
-          900: '#111418'
+          50: rgb('ink-50'),
+          100: rgb('ink-100'),
+          500: rgb('ink-500'),
+          700: rgb('ink-700'),
+          900: rgb('ink-900')
         }
       },
       fontFamily: {

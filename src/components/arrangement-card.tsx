@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Badge, Card, CardBody, SampleTag } from './ui';
+import { Badge, Card, CardBody } from './ui';
+import { SampleTag } from './status-labels';
 import { BuyerArrangementActions } from './buyer-arrangement-actions';
 import { InquiryStatusPicker } from './inquiry-status-picker';
 import { formatMoney } from '@/lib/money';
@@ -128,8 +129,8 @@ export function ArrangementCard({
 
         <p className="mt-3 text-xs text-ink-500">
           {side === 'seller'
-            ? 'No money has changed hands through OmoNETAB: the estimate is the listing price at the time of the request times the quantity asked for. Agree payment terms yourself, then record what actually happened.'
-            : 'No money has changed hands through OmoNETAB: the estimate is what the listing price times your quantity came to when you sent the request.'}
+            ? 'The estimate is the listing price at the time of the request times the quantity asked for; it is not an invoice. Payment, where it is taken through OmoNetTab, is a separate record and is shown on the inquiry page.'
+            : 'The estimate is what the listing price times your quantity came to when you sent the request; it is not an invoice. Payment, where it is taken through OmoNetTab, is a separate record and is shown on the inquiry page.'}
         </p>
       </CardBody>
     </Card>

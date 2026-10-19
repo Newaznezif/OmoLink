@@ -1,5 +1,5 @@
 /**
- * Postgres row shapes for the OmoNETAB schema (supabase/migrations/0001_init.sql).
+ * Postgres row shapes for the OmoNetTab schema (supabase/migrations/0001_init.sql).
  * These mirror column names exactly; the domain types in src/lib/types.ts are
  * mapped to and from these in mappers.ts.
  */
@@ -15,6 +15,12 @@ export type ProfileRow = {
   community: string;
   operating_area: string;
   preferred_language: string;
+  /**
+   * Migration 0007 adds this column, and that migration has not been applied, so
+   * a live database does not return it yet. Optional rather than `string` so the
+   * mapper reads it tolerantly instead of pretending it is there.
+   */
+  theme?: string | null;
   contact_method: unknown;
   short_bio: string;
   categories: string[];
@@ -105,6 +111,40 @@ export type InquiryEventRow = {
   actor: string;
   kind: string;
   detail: string;
+};
+
+export type PaymentRow = {
+  id: string;
+  reference: string;
+  inquiry_id: string;
+  listing_id: string;
+  buyer_profile_id: string;
+  seller_profile_id: string;
+  provider: string;
+  provider_reference: string | null;
+  amount_cents: number;
+  currency: string;
+  fee_cents: number | null;
+  payment_method: string | null;
+  status: string;
+  checkout_url: string | null;
+  checkout_expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  confirmed_at: string | null;
+  closed_at: string | null;
+  failure_reason: string | null;
+  is_demo: boolean;
+};
+
+export type PaymentEventRow = {
+  id: string;
+  payment_id: string;
+  at: string;
+  actor: string;
+  kind: string;
+  detail: string;
+  provider_event_id: string | null;
 };
 
 export type ProducerGroupRow = {

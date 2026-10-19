@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { AdminSection, BackField } from '@/components/admin-shell';
-import { Badge, Button, Card, CardBody, Empty, Field, Input, SampleTag, Select } from '@/components/ui';
+import { Badge, Button, Card, CardBody, Empty, Field, Input, Select } from '@/components/ui';
+import { SampleTag } from '@/components/status-labels';
 
 export const dynamic = 'force-dynamic';
 

@@ -3,7 +3,9 @@ import { getRepo } from '@/lib/repo';
 import { isDemoMode } from '@/lib/store';
 import { requireArea } from '@/lib/area';
 import { AccountSettingsForm } from '@/components/account-settings-form';
-import { Badge, Card, CardBody, Empty, Section, VerificationLabel } from '@/components/ui';
+import { AppearanceCard } from '@/components/appearance-card';
+import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
+import { VerificationLabel } from '@/components/status-labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +46,8 @@ export default async function DashboardSettingsPage() {
       description="What buyers read beside your listings, how they reach you, and an honest list of what this platform stores."
     >
       <AccountSettingsForm profile={profile} variant="seller" />
+
+      <AppearanceCard profile={profile} />
 
       <Card>
         <CardBody>
@@ -89,9 +93,9 @@ export default async function DashboardSettingsPage() {
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">What OmoNETAB stores about you</h2>
+          <h2 className="font-semibold text-ink-900">What OmoNetTab stores about you</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-ink-700">
-            <li>Your profile record: display name, community, operating area, language, the contact method above, and consent flags.</li>
+            <li>Your profile record: display name, community, operating area, language, the colour scheme you chose, the contact method above, and consent flags.</li>
             <li>Your listings with their price, quantity, category and pickup terms, plus every change recorded against them.</li>
             <li>Each inquiry sent to your listings — its terms, status history and your replies — visible to you and to an administrator.</li>
             <li>Any group contribution or opportunity you take part in, with the quantities attributed to you.</li>

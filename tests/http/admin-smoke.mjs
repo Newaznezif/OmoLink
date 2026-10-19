@@ -154,9 +154,54 @@ const auditText = visible(audit.body);
 // Prose legitimately names the categories of secret that are never stored, so
 // look for an actual credential shape (a JWT) or an env value instead.
 check('audit log leaks no credential value', !/eyJ[A-Za-z0-9_-]{15,}/.test(auditText), '');
-if (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  check('audit log omits the configured anon key', !auditText.includes(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY), '');
+for (const name of ['NEXT_PUBLIC_SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY']) {
+  const value = process.env[name];
+  if (value) {
+    check(`audit log omits the configured ${name}`, !auditText.includes(value), '');
+  }
 }
+
+// Role assignment over HTTP. The invariant that matters is the one 0003's
+// profiles_admin_kind_check enforces in Supabase mode: an account holding the
+// admin role is also labelled a platform administrator. Demo mode has no
+// constraint, so the repository has to carry it and this proves the route does.
+const labelCount = (html) => (visible(html).match(/Platform administrator/g) || []).length;
+const usersBefore = await get('/admin/users', admin.cookie);
+const tourist = await signIn('demo_user_tourist');
+const touristId = tourist.profile.profile.id;
+const promote = await postForm('/api/admin/roles', admin.cookie, {
+  back: '/admin/users',
+  profileId: touristId,
+  role: 'admin',
+  confirm: 'on'
+});
+check(
+  'an administrator can assign a role',
+  /status=/.test(promote.location ?? '') && !/error=/.test(promote.location ?? ''),
+  `location=${promote.location}`
+);
+const usersAfter = await get('/admin/users', admin.cookie);
+check(
+  'the promoted account is labelled platform administrator',
+  labelCount(usersAfter.body) === labelCount(usersBefore.body) + 1,
+  `before=${labelCount(usersBefore.body)} after=${labelCount(usersAfter.body)}`
+);
+const promotedAdminPage = await get('/admin', tourist.cookie);
+check(
+  'the new administrator reaches the admin area',
+  promotedAdminPage.status === 200,
+  `status=${promotedAdminPage.status}`
+);
+const unconfirmed = await postForm('/api/admin/roles', admin.cookie, {
+  back: '/admin/users',
+  profileId: touristId,
+  role: 'buyer'
+});
+check(
+  'a role change without the confirmation step is refused',
+  /error=/.test(unconfirmed.location ?? ''),
+  `location=${unconfirmed.location}`
+);
 
 // Public pages still render after the settings change.
 for (const path of ['/', '/products', '/tourism', '/collective-orders', '/how-it-works', '/impact', '/pricing-tool', '/offline', '/producers', '/sign-in', '/register', '/community-guidelines', '/privacy']) {

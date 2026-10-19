@@ -3,19 +3,25 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { getSessionActor } from '@/lib/session';
 import { formatMoney } from '@/lib/money';
-import { Badge, Card, CardBody, Empty, SampleTag, Section, VerificationLabel } from '@/components/ui';
+import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
+import { SampleTag, VerificationLabel } from '@/components/status-labels';
 import { ListingCard } from '@/components/listing-card';
 import { InquiryForm } from '@/components/inquiry-form';
 import { QrCode } from '@/components/qr-code';
 import { ReportListingButton } from '@/components/report-listing';
 import { ListingReviews } from '@/components/listing-reviews';
+import { getLanguage, getT } from '@/lib/i18n/server';
+import { categoryTexts, listingTexts } from '@/lib/i18n/catalog';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ListingPage({ params }: { params: { id: string } }) {
+  const t = getT();
+  const lang = getLanguage();
   const repo = getRepo();
   const listing = await repo.getListing(params.id);
   if (!listing || !listing.published) notFound();
+  const copy = listingTexts(lang, listing);
   const producer = await repo.getProfile(listing.producerId);
   const category = (await repo.listCategories()).find((c) => c.id === listing.categoryId);
   const related = await repo.relatedListings(listing);
@@ -29,8 +35,8 @@ export default async function ListingPage({ params }: { params: { id: string } }
   return (
     <>
       <Section
-        eyebrow={category?.name ?? 'Listing'}
-        title={listing.title}
+        eyebrow={category ? categoryTexts(lang, category).name.text : t('listing.eyebrowFallback')}
+        title={copy.title.text}
         actions={
           <>
             <VerificationLabel status={listing.verification} isDemo={listing.isDemo} />
@@ -42,7 +48,7 @@ export default async function ListingPage({ params }: { params: { id: string } }
           <div className="space-y-6">
             <Card>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={listing.images[0]?.src} alt={listing.images[0]?.alt ?? listing.title} className="w-full aspect-[4/3] object-cover" />
+              <img src={listing.images[0]?.src} alt={listing.images[0]?.alt ?? copy.title.text} className="w-full aspect-[4/3] object-cover" />
               {listing.images.length > 1 && (
                 <ul className="grid grid-cols-3 gap-2 p-3">
                   {listing.images.slice(1).map((img) => (
@@ -57,8 +63,8 @@ export default async function ListingPage({ params }: { params: { id: string } }
             </Card>
             <Card>
               <CardBody>
-                <h2 className="font-semibold text-ink-900 mb-2">Description</h2>
-                <p className="whitespace-pre-line text-ink-700">{listing.description}</p>
+                <h2 className="font-semibold text-ink-900 mb-2">{t('listing.descriptionTitle')}</h2>
+                <p className="whitespace-pre-line text-ink-700">{copy.description.text}</p>
               </CardBody>
             </Card>
 
@@ -66,26 +72,26 @@ export default async function ListingPage({ params }: { params: { id: string } }
 
             <Card>
               <CardBody>
-                <h2 className="font-semibold text-ink-900 mb-3">Pricing and stock</h2>
+                <h2 className="font-semibold text-ink-900 mb-3">{t('listing.pricingTitle')}</h2>
                 <dl className="grid sm:grid-cols-2 gap-3 text-sm">
-                  <Info label="Unit price" value={<strong>{formatMoney(listing.unitPrice)}</strong>} />
-                  <Info label="Unit of sale" value={listing.unitOfSale} />
-                  <Info label="Available quantity" value={`${listing.availableQuantity} ${listing.unitOfSale}`} />
-                  <Info label="Minimum order" value={`${listing.minOrderQuantity} ${listing.unitOfSale}`} />
-                  <Info label="Availability" value={<AvailabilityText listing={listing} />} />
-                  <Info label="Delivery" value={listing.deliveryAvailable ? 'Available on request' : 'Not offered'} />
-                  <Info label="Last updated" value={new Date(listing.lastUpdated).toDateString()} />
+                  <Info label={t('listing.unitPrice')} value={<strong>{formatMoney(listing.unitPrice)}</strong>} />
+                  <Info label={t('listing.unitOfSale')} value={listing.unitOfSale} />
+                  <Info label={t('listing.availableQuantity')} value={`${listing.availableQuantity} ${listing.unitOfSale}`} />
+                  <Info label={t('listing.minimumOrder')} value={`${listing.minOrderQuantity} ${listing.unitOfSale}`} />
+                  <Info label={t('listing.availabilityLabel')} value={<AvailabilityText listing={listing} />} />
+                  <Info
+                    label={t('listing.delivery')}
+                    value={listing.deliveryAvailable ? t('listing.deliveryOnRequest') : t('listing.deliveryNotOffered')}
+                  />
+                  <Info label={t('listing.lastUpdated')} value={new Date(listing.lastUpdated).toDateString()} />
                 </dl>
-                <p className="mt-3 text-xs text-ink-500">
-                  Prices are shown per unit in Ethiopian Birr (ETB) with no hidden fees. Any transport or coordination
-                  cost is arranged separately and always disclosed.
-                </p>
+                <p className="mt-3 text-xs text-ink-500">{t('listing.priceNote')}</p>
               </CardBody>
             </Card>
 
             <Card>
               <CardBody>
-                <h2 className="font-semibold text-ink-900 mb-2">Pickup options</h2>
+                <h2 className="font-semibold text-ink-900 mb-2">{t('listing.pickupTitle')}</h2>
                 <ul className="list-disc pl-5 text-sm text-ink-700 space-y-1">
                   {listing.pickupOptions.map((o) => (
                     <li key={o}>{o}</li>
@@ -96,7 +102,7 @@ export default async function ListingPage({ params }: { params: { id: string } }
 
             {related.length > 0 && (
               <div>
-                <h2 className="text-xl font-bold text-ink-900 mb-3">Related listings</h2>
+                <h2 className="text-xl font-bold text-ink-900 mb-3">{t('listing.relatedTitle')}</h2>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {related.map((l) => (
                     <ListingCard key={l.id} listing={l} producer={producerById.get(l.producerId)} />
@@ -110,18 +116,16 @@ export default async function ListingPage({ params }: { params: { id: string } }
           <aside className="space-y-4">
             <Card>
               <CardBody>
-                <h2 className="font-semibold text-ink-900">Send an inquiry</h2>
-                <p className="text-sm text-ink-700 mt-1">
-                  This submits an inquiry, not a confirmed sale. The producer will respond with pickup or delivery
-                  details and payment arrangements. Nothing here is a payment.
-                </p>
+                <h2 className="font-semibold text-ink-900">{t('listing.inquiryTitle')}</h2>
+                <p className="text-sm text-ink-700 mt-1">{t('listing.inquiryIntro')}</p>
               </CardBody>
             </Card>
             <InquiryForm
+              lang={lang}
               recordsPath={buyerRecordsPath}
               listing={{
                 id: listing.id,
-                title: listing.title,
+                title: copy.title.text,
                 unitPriceCents: listing.unitPrice.cents,
                 unitOfSale: listing.unitOfSale,
                 minOrderQuantity: listing.minOrderQuantity,
@@ -132,7 +136,7 @@ export default async function ListingPage({ params }: { params: { id: string } }
             {producer && (
               <Card>
                 <CardBody>
-                  <h2 className="font-semibold text-ink-900 mb-2">About the producer</h2>
+                  <h2 className="font-semibold text-ink-900 mb-2">{t('listing.producerTitle')}</h2>
                   <Link href={`/producers/${producer.id}`} className="font-semibold text-clay-800 underline">
                     {producer.displayName}
                   </Link>
@@ -146,26 +150,20 @@ export default async function ListingPage({ params }: { params: { id: string } }
             )}
             <Card>
               <CardBody>
-                <h2 className="font-semibold text-ink-900 mb-2">Share this listing</h2>
-                <p className="text-sm text-ink-700 mb-3">
-                  Scan the QR with another phone to open the same public listing. QR codes link to real public URLs —
-                  never to a private contact or a fabricated verification certificate.
-                </p>
-                <QrCode value={publicUrl} size={180} label="QR for this listing URL" />
+                <h2 className="font-semibold text-ink-900 mb-2">{t('listing.shareTitle')}</h2>
+                <p className="text-sm text-ink-700 mb-3">{t('listing.shareBody')}</p>
+                <QrCode value={publicUrl} size={180} label={t('listing.shareQrAria')} />
                 <div className="mt-2 break-all text-xs text-ink-500">{publicUrl}</div>
               </CardBody>
             </Card>
-            <ReportListingButton listingId={listing.id} />
+            <ReportListingButton listingId={listing.id} lang={lang} />
           </aside>
         </div>
       </Section>
 
       {listing.availability === 'unavailable' && (
         <Section>
-          <Empty
-            title="Currently unavailable"
-            body="The producer marked this listing as unavailable. You can still send an inquiry to be notified when it becomes available again."
-          />
+          <Empty title={t('listing.unavailableTitle')} body={t('listing.unavailableBody')} />
         </Section>
       )}
     </>
@@ -182,24 +180,32 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function AvailabilityText({ listing }: { listing: { availability: 'available' | 'limited' | 'made_to_order' | 'seasonal' | 'unavailable' } }) {
-  const map = { available: 'Available', limited: 'Limited stock', made_to_order: 'Made to order', seasonal: 'Seasonal', unavailable: 'Unavailable' } as const;
+  const t = getT();
+  const map = {
+    available: t('status.available'),
+    limited: t('status.limitedStock'),
+    made_to_order: t('status.madeToOrder'),
+    seasonal: t('status.seasonal'),
+    unavailable: t('status.unavailable')
+  } as const;
   return <Badge tone={listing.availability === 'unavailable' ? 'danger' : 'neutral'}>{map[listing.availability]}</Badge>;
 }
 
 function TourismMeta({ meta }: { meta: NonNullable<import('@/lib/types').Listing['tourism']> }) {
+  const t = getT();
   return (
     <Card>
       <CardBody>
-        <h2 className="font-semibold text-ink-900 mb-3">Experience details</h2>
+        <h2 className="font-semibold text-ink-900 mb-3">{t('listing.experienceTitle')}</h2>
         <dl className="grid sm:grid-cols-2 gap-3 text-sm">
-          <Info label="Package" value={meta.packageName} />
-          <Info label="Duration" value={`${meta.durationHours} hours`} />
-          <Info label="Group capacity" value={`${meta.groupCapacity} people`} />
-          <Info label="Meeting point" value={meta.meetingPoint} />
+          <Info label={t('listing.package')} value={meta.packageName} />
+          <Info label={t('listing.duration')} value={t('listing.durationHours', { hours: meta.durationHours })} />
+          <Info label={t('listing.groupCapacity')} value={t('listing.groupPeople', { count: meta.groupCapacity })} />
+          <Info label={t('listing.meetingPoint')} value={meta.meetingPoint} />
         </dl>
         <div className="mt-4 grid sm:grid-cols-2 gap-4 text-sm">
           <div>
-            <h3 className="font-semibold text-ink-900 mb-1">Inclusions</h3>
+            <h3 className="font-semibold text-ink-900 mb-1">{t('listing.inclusions')}</h3>
             <ul className="list-disc pl-5 text-ink-700 space-y-0.5">
               {meta.inclusions.map((i) => (
                 <li key={i}>{i}</li>
@@ -207,7 +213,7 @@ function TourismMeta({ meta }: { meta: NonNullable<import('@/lib/types').Listing
             </ul>
           </div>
           <div>
-            <h3 className="font-semibold text-ink-900 mb-1">Exclusions</h3>
+            <h3 className="font-semibold text-ink-900 mb-1">{t('listing.exclusions')}</h3>
             <ul className="list-disc pl-5 text-ink-700 space-y-0.5">
               {meta.exclusions.map((i) => (
                 <li key={i}>{i}</li>
@@ -216,9 +222,9 @@ function TourismMeta({ meta }: { meta: NonNullable<import('@/lib/types').Listing
           </div>
         </div>
         <div className="mt-4 text-sm">
-          <h3 className="font-semibold text-ink-900 mb-1">Booking conditions</h3>
+          <h3 className="font-semibold text-ink-900 mb-1">{t('listing.bookingConditions')}</h3>
           <p className="text-ink-700">{meta.bookingConditions}</p>
-          <h3 className="font-semibold text-ink-900 mt-3 mb-1">Cancellation</h3>
+          <h3 className="font-semibold text-ink-900 mt-3 mb-1">{t('listing.cancellation')}</h3>
           <p className="text-ink-700">{meta.cancellationPolicy}</p>
         </div>
       </CardBody>

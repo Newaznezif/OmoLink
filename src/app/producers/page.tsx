@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
-import { Badge, Button, Card, CardBody, Empty, Field, Input, Select, Section, VerificationLabel } from '@/components/ui';
+import { Badge, Button, Card, CardBody, Empty, Field, Input, Select, Section } from '@/components/ui';
+import { VerificationLabel } from '@/components/status-labels';
 import { ProducerCard } from '@/components/producer-card';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +10,7 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 export const metadata = {
   title: 'Sellers and guides',
-  description: 'Browse the producers, artisan groups and local guides who list on OmoNETAB.'
+  description: 'Browse the producers, artisan groups and local guides who list on OmoNetTab.'
 };
 
 export default async function ProducersPage({ searchParams }: { searchParams?: SearchParams }) {
@@ -175,7 +176,7 @@ export default async function ProducersPage({ searchParams }: { searchParams?: S
         </Link>{' '}
         and choose a selling account type, or read{' '}
         <Link href="/how-it-works" className="underline font-semibold text-clay-700">
-          how OmoNETAB works
+          how OmoNetTab works
         </Link>
         .
       </p>

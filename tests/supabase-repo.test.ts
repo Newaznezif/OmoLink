@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createSupabaseRepo } from '../src/lib/supabase/repository';
+import type { Actor } from '../src/lib/session';
 import { stubSupabase } from './stub-supabase';
 
 const PRODUCER = '11111111-1111-4111-8111-111111111111';
@@ -212,4 +213,75 @@ test('aggregate stats are counted rather than fetched in bulk', async () => {
   const stats = await repo.aggregateStats();
   assert.equal(stats.listings, 1);
   assert.equal(stats.producers, 1);
+});
+
+const ADMIN_ID = '33333333-3333-4333-8333-333333333333';
+const adminRow = { ...profileRow, id: ADMIN_ID, user_id: 'user-admin', role: 'admin', account_kind: 'platform_admin' };
+const adminRow2 = { ...profileRow, id: OTHER, user_id: 'user-admin-2', role: 'admin', account_kind: 'platform_admin' };
+
+const ADMIN_ACTOR: Actor = {
+  userId: 'user-admin',
+  profileId: ADMIN_ID,
+  role: 'admin',
+  accountKind: 'platform_admin',
+  status: 'active'
+};
+
+function profileWrites(stub: { writes: { table: string; method: string; payload: unknown }[] }) {
+  const write = stub.writes.find((w) => w.table === 'profiles' && w.method === 'update');
+  assert.ok(write, 'expected an update on profiles');
+  return write!.payload as Record<string, unknown>;
+}
+
+test('promoting an account writes the account kind the schema demands with it', async () => {
+  // profiles_admin_kind_check in 0003 refuses role = 'admin' unless
+  // account_kind = 'platform_admin', so a role-only update would fail on a real
+  // database while every demo test stayed green.
+  const stub = stubSupabase(baseTables({ profiles: [adminRow, adminRow2, profileRow] }));
+  const repo = createSupabaseRepo(stub.client);
+  await repo.setProfileRole(PRODUCER, 'admin', ADMIN_ACTOR);
+  assert.deepEqual(profileWrites(stub), { role: 'admin', account_kind: 'platform_admin' });
+});
+
+test('demoting an administrator changes the role and invents no account kind', async () => {
+  const stub = stubSupabase(baseTables({ profiles: [adminRow, adminRow2, profileRow] }));
+  const repo = createSupabaseRepo(stub.client);
+  await repo.setProfileRole(OTHER, 'producer', ADMIN_ACTOR);
+  assert.deepEqual(profileWrites(stub), { role: 'producer' });
+});
+
+test('a guest inquiry still writes the event that records it', async () => {
+  // 0002's events policy could not be satisfied by a caller with no profile, so
+  // the public inquiry form would have created the row and then failed. 0005
+  // admits exactly this request.
+  const stub = stubSupabase(baseTables(), { userId: null });
+  const repo = createSupabaseRepo(stub.client);
+  await repo.createInquiry({
+    listingId: LISTING,
+    buyerName: 'Walk-in visitor',
+    buyerContact: 'visitor@example.invalid',
+    quantity: 5,
+    preference: 'pickup',
+    message: 'Could I collect five bottles on Friday?'
+  });
+  const inquiryWrite = stub.writes.find((w) => w.table === 'inquiries' && w.method === 'insert');
+  assert.ok(inquiryWrite, 'expected an inquiry insert');
+  assert.equal((inquiryWrite!.payload as Record<string, unknown>).buyer_profile_id, null);
+
+  const eventWrite = stub.writes.find((w) => w.table === 'inquiry_events');
+  assert.ok(eventWrite, 'the inquiry must be followed by its created event');
+  const payload = eventWrite!.payload as Record<string, unknown>;
+  assert.equal(payload.actor, 'buyer');
+  assert.equal(payload.kind, 'created');
+});
+
+test('a status change sends only the status column', async () => {
+  // 0004's inquiries_terms_frozen trigger rejects an update that rewrites the
+  // terms, so the repository must never send them.
+  const stub = stubSupabase(baseTables(), { userId: 'user-1' });
+  const repo = createSupabaseRepo(stub.client);
+  await repo.updateInquiryStatus(inquiryRow.id as string, 'accepted', 'seller', 'Seller accepted.');
+  const write = stub.writes.find((w) => w.table === 'inquiries' && w.method === 'update');
+  assert.ok(write, 'expected an update on inquiries');
+  assert.deepEqual(write!.payload, { status: 'accepted' });
 });

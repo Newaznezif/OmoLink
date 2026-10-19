@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
 import { formatMoney } from '@/lib/money';
-import { Badge, Card, CardBody, Empty, Section, VerificationLabel } from '@/components/ui';
+import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
+import { VerificationLabel } from '@/components/status-labels';
 import { ListingLifecycleActions } from '@/components/listing-actions';
 
 export const dynamic = 'force-dynamic';

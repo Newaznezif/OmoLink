@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { multiplyUnitPrice, formatMoney } from '@/lib/money';
-import type { AvailabilityStatus, UnitOfSale } from '@/lib/types';
+import type { AvailabilityStatus, LanguageCode, UnitOfSale } from '@/lib/types';
+import { t, type TranslationKey } from '@/lib/i18n';
 import { Button, Field, Input, Textarea } from './ui';
 
 export type InquiryListingInfo = {
@@ -71,8 +72,17 @@ function newIdempotencyKey() {
   return `idem_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingInfo; recordsPath?: string }) {
+export function InquiryForm({
+  lang,
+  listing,
+  recordsPath
+}: {
+  lang: LanguageCode;
+  listing: InquiryListingInfo;
+  recordsPath?: string;
+}) {
   const router = useRouter();
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) => t(lang, key, vars);
   const [qty, setQty] = useState<number>(listing.minOrderQuantity);
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
@@ -116,10 +126,10 @@ export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingI
     setResult(null);
 
     const localErrors: Record<string, string> = {};
-    if (!name.trim()) localErrors.name = 'Enter your name or organisation.';
-    if (!contact.trim()) localErrors.contact = 'Enter a phone number, email, or coordinator contact so the producer can reply.';
-    if (!Number.isInteger(qty) || qty < listing.minOrderQuantity) localErrors.qty = `Enter a whole number of at least ${listing.minOrderQuantity}.`;
-    else if (qty > maxQty) localErrors.qty = `Only ${listing.availableQuantity} ${listing.unitOfSale} available right now.`;
+    if (!name.trim()) localErrors.name = tr('inquiry.errorName');
+    if (!contact.trim()) localErrors.contact = tr('inquiry.errorContact');
+    if (!Number.isInteger(qty) || qty < listing.minOrderQuantity) localErrors.qty = tr('inquiry.errorMinQuantity', { count: listing.minOrderQuantity });
+    else if (qty > maxQty) localErrors.qty = tr('inquiry.errorMaxQuantity', { count: listing.availableQuantity, unit: listing.unitOfSale });
 
     if (Object.keys(localErrors).length > 0) {
       setErrors(localErrors);
@@ -139,11 +149,7 @@ export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingI
         idempotencyKey: idempotencyRef.current
       });
       setQueuedOffline(true);
-      setResult({
-        ok: false,
-        message:
-          'You are offline. This inquiry is saved on this device, and the form keeps its contents. Sending it again once a connection returns reuses the same reference, so the producer will not receive it twice.'
-      });
+      setResult({ ok: false, message: tr('inquiry.errorOffline') });
       setSubmitting(false);
       return;
     }
@@ -164,13 +170,13 @@ export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingI
         })
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error ?? 'Failed to submit inquiry.');
+      if (!res.ok) throw new Error(json?.error ?? tr('inquiry.errorFailed'));
       clearPendingInquiry(listing.id);
       setQueuedOffline(false);
       setResult({ ok: true, reference: json.inquiry?.reference, inquiryId: json.inquiry?.id });
       router.refresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Something went wrong. Please retry.';
+      const message = err instanceof Error ? err.message : tr('inquiry.errorGeneric');
       setResult({ ok: false, message });
     } finally {
       setSubmitting(false);
@@ -184,14 +190,20 @@ export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingI
       aria-labelledby="inquiry-heading"
     >
       <h2 id="inquiry-heading" className="font-semibold text-ink-900">
-        Send an inquiry
+        {tr('inquiry.inquire')}
       </h2>
 
-      <Field label={`Quantity (${listing.unitOfSale})`} htmlFor="qty" required error={errors.qty} hint={`Minimum ${listing.minOrderQuantity} ${listing.unitOfSale}.`}>
+      <Field
+        label={tr('inquiry.quantityLabel', { unit: listing.unitOfSale })}
+        htmlFor="qty"
+        required
+        error={errors.qty}
+        hint={tr('inquiry.minimumHint', { count: listing.minOrderQuantity, unit: listing.unitOfSale })}
+      >
         <div className="flex items-center gap-2">
           <button
             type="button"
-            aria-label="Decrease quantity"
+            aria-label={tr('inquiry.decrease')}
             onClick={() => setQty((q) => Math.max(listing.minOrderQuantity, q - 1))}
             className="w-11 h-11 rounded-lg border border-ink-100 text-lg font-bold"
           >
@@ -207,7 +219,7 @@ export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingI
           />
           <button
             type="button"
-            aria-label="Increase quantity"
+            aria-label={tr('inquiry.increase')}
             onClick={() => setQty((q) => Math.min(maxQty || q + 1, q + 1))}
             className="w-11 h-11 rounded-lg border border-ink-100 text-lg font-bold"
           >
@@ -218,55 +230,51 @@ export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingI
 
       <div className="rounded-lg bg-clay-50 p-3 text-sm">
         <div className="flex items-center justify-between">
-          <span className="text-ink-700">Estimated subtotal</span>
+          <span className="text-ink-700">{tr('inquiry.subtotal')}</span>
           <span className="font-bold text-clay-800">{formatMoney({ cents: subtotal, currency: 'ETB' })}</span>
         </div>
-        <p className="mt-1 text-xs text-ink-500">
-          Not a total charge. Transport, coordination or packaging (if any) are agreed separately with the producer and
-          disclosed before payment. Nothing has been paid.
-        </p>
+        <p className="mt-1 text-xs text-ink-500">{tr('inquiry.subtotalNote')}</p>
       </div>
 
-      <Field label="Your name or organisation" htmlFor="buyer-name" required error={errors.name}>
+      <Field label={tr('inquiry.nameLabel')} htmlFor="buyer-name" required error={errors.name}>
         <Input id="buyer-name" value={name} onChange={(e) => setName(e.target.value)} invalid={Boolean(errors.name)} />
       </Field>
-      <Field label="How the producer can reply" htmlFor="buyer-contact" required error={errors.contact} hint="Phone number, email, or a coordinator contact.">
+      <Field label={tr('inquiry.contactLabel')} htmlFor="buyer-contact" required error={errors.contact} hint={tr('inquiry.contactHint')}>
         <Input id="buyer-contact" value={contact} onChange={(e) => setContact(e.target.value)} invalid={Boolean(errors.contact)} />
       </Field>
 
-      <Field label="Delivery preference" htmlFor="preference">
+      <Field label={tr('inquiry.preferenceLabel')} htmlFor="preference">
         <select
           id="preference"
           value={preference}
           onChange={(e) => setPreference(e.target.value as typeof preference)}
           className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2.5 min-h-11"
         >
-          <option value="pickup">Pickup at producer / meeting point</option>
-          <option value="delivery">Ask about delivery</option>
-          <option value="booking">Book a service session</option>
-          <option value="unsure">Not sure yet</option>
+          <option value="pickup">{tr('inquiry.preference.pickup')}</option>
+          <option value="delivery">{tr('inquiry.preference.delivery')}</option>
+          <option value="booking">{tr('inquiry.preference.booking')}</option>
+          <option value="unsure">{tr('inquiry.preference.unsure')}</option>
         </select>
       </Field>
 
       {(preference === 'booking' || preference === 'delivery') && (
-        <Field label="Preferred date (optional)" htmlFor="preferred-date">
+        <Field label={tr('inquiry.dateLabel')} htmlFor="preferred-date">
           <Input id="preferred-date" type="date" value={preferredDate} onChange={(e) => setPreferredDate(e.target.value)} />
         </Field>
       )}
 
-      <Field label="Message to producer (optional)" htmlFor="message">
+      <Field label={tr('inquiry.messageLabel')} htmlFor="message">
         <Textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} />
       </Field>
 
       {queuedOffline && (
         <p role="status" className="rounded-lg border border-ochre-100 bg-ochre-50 p-3 text-sm text-ochre-700">
-          This inquiry is waiting on this device. It has not reached the producer yet: send it again once a connection
-          returns.
+          {tr('inquiry.queuedNote')}
         </p>
       )}
 
       <Button type="submit" disabled={submitting}>
-        {submitting ? 'Submitting…' : 'Submit inquiry'}
+        {submitting ? tr('inquiry.submitting') : tr('inquiry.submit')}
       </Button>
 
       {result && (
@@ -279,14 +287,14 @@ export function InquiryForm({ listing, recordsPath }: { listing: InquiryListingI
         >
           {result.ok ? (
             <>
-              <p className="font-semibold">Inquiry submitted.</p>
-              <p>Reference: <span className="font-mono">{result.reference}</span>. The producer will see it in their dashboard. Nothing has been paid.</p>
+              <p className="font-semibold">{tr('inquiry.submitted')}</p>
+              <p>{tr('inquiry.referenceLine', { reference: result.reference ?? '' })}</p>
               {recordsPath && result.inquiryId && (
                 <p className="mt-1">
                   <a href={`${recordsPath}/${result.inquiryId}`} className="underline font-semibold">
-                    Open it in your records
-                  </a>{' '}
-                  to follow up or cancel it.
+                    {tr('inquiry.openRecord')}
+                  </a>
+                  {tr('inquiry.openRecordTail')}
                 </p>
               )}
             </>

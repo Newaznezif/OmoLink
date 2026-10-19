@@ -41,15 +41,6 @@ returns boolean language sql stable security definer set search_path = public as
   )
 $$;
 
-create or replace function public.in_group(group uuid)
-returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from public.group_members gm
-    where gm.group_id = "group"
-      and gm.profile_id = public.current_profile_id()
-  )
-$$;
-
 -- PROFILES ----------------------------------------------------------------
 create policy "Public profiles are readable"
   on public.profiles for select

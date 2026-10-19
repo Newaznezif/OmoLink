@@ -1,8 +1,18 @@
-/* Service worker for the OmoNETAB app shell. Served verbatim to the browser,
+/* Service worker for the OmoNetTab app shell. Served verbatim to the browser,
    so this file must stay plain JavaScript. */
 
 const CACHE_NAME = 'omonetab-shell-v2';
-const CORE_ASSETS = ['/', '/offline', '/explore', '/products', '/tourism', '/collective-orders', '/how-it-works', '/pricing-tool'];
+const CORE_ASSETS = [
+  '/',
+  '/offline',
+  '/explore',
+  '/products',
+  '/tourism',
+  '/collective-orders',
+  '/how-it-works',
+  '/pricing-tool',
+  '/images/branding/logo.png'
+];
 const MAX_CACHED_RESPONSES = 60;
 const STATIC_PREFIXES = ['/_next/static/'];
 
@@ -89,7 +99,7 @@ async function offlineFallback(cache) {
   const cachedRoot = await cache.match('/');
   if (cachedRoot) return cachedRoot;
   return new Response(
-    '<!doctype html><html lang="en"><meta charset="utf-8"><title>OmoNETAB offline</title>' +
+    '<!doctype html><html lang="en"><meta charset="utf-8"><title>OmoNetTab offline</title>' +
       '<body style="font-family:system-ui;padding:2rem;background:#fbf5ef;color:#331b0f">' +
       '<h1>You are offline</h1><p>Cached listings will show when you revisit them. Drafts stay saved on this device.</p>' +
       '</body></html>',

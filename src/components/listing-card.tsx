@@ -1,9 +1,16 @@
 import Link from 'next/link';
 import type { Listing, Profile } from '@/lib/types';
 import { formatMoney } from '@/lib/money';
-import { Badge, SampleTag, VerificationLabel } from './ui';
+import { getLanguage, getT } from '@/lib/i18n/server';
+import { listingTexts } from '@/lib/i18n/catalog';
+import { Badge } from './ui';
+import { SampleTag, VerificationLabel } from './status-labels';
 
 export function ListingCard({ listing, producer }: { listing: Listing; producer?: Profile }) {
+  const t = getT();
+  // The producer's own wording stays in place when there is no translation.
+  const copy = listingTexts(getLanguage(), listing);
+
   return (
     <article className="bg-white border border-ink-100 rounded-2xl card-shadow overflow-hidden flex flex-col">
       <Link href={`/listings/${listing.id}`} className="block focus-visible:outline-3">
@@ -11,7 +18,7 @@ export function ListingCard({ listing, producer }: { listing: Listing; producer?
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={listing.images[0]?.src}
-            alt={listing.images[0]?.alt ?? listing.title}
+            alt={listing.images[0]?.alt ?? copy.title.text}
             className="w-full h-full object-cover"
             loading="lazy"
           />
@@ -20,7 +27,7 @@ export function ListingCard({ listing, producer }: { listing: Listing; producer?
       <div className="p-4 flex-1 flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
           <Link href={`/listings/${listing.id}`} className="font-semibold text-ink-900 hover:underline">
-            {listing.title}
+            {copy.title.text}
           </Link>
         </div>
         <div className="text-sm text-ink-700">
@@ -34,9 +41,11 @@ export function ListingCard({ listing, producer }: { listing: Listing; producer?
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
           <span className="font-bold text-clay-800">{formatMoney(listing.unitPrice)}</span>
-          <span className="text-ink-500">/ {listing.unitOfSale}</span>
+          <span className="text-ink-500">{t('listing.unitSuffix', { unit: listing.unitOfSale })}</span>
           {listing.minOrderQuantity > 1 && (
-            <Badge tone="neutral">Min {listing.minOrderQuantity} {listing.unitOfSale}</Badge>
+            <Badge tone="neutral">
+              {t('listing.minOrder', { count: listing.minOrderQuantity, unit: listing.unitOfSale })}
+            </Badge>
           )}
         </div>
         <div className="mt-auto flex flex-wrap gap-2 pt-2">
@@ -50,9 +59,12 @@ export function ListingCard({ listing, producer }: { listing: Listing; producer?
 }
 
 function AvailabilityBadge({ availability, quantity }: { availability: Listing['availability']; quantity: number }) {
-  if (availability === 'unavailable') return <Badge tone="danger">Unavailable</Badge>;
-  if (availability === 'made_to_order') return <Badge tone="info">Made to order</Badge>;
-  if (availability === 'seasonal') return <Badge tone="warning">Seasonal</Badge>;
-  if (availability === 'limited' || quantity <= 5) return <Badge tone="warning">Limited ({quantity})</Badge>;
-  return <Badge tone="success">Available ({quantity})</Badge>;
+  const t = getT();
+  if (availability === 'unavailable') return <Badge tone="danger">{t('status.unavailable')}</Badge>;
+  if (availability === 'made_to_order') return <Badge tone="info">{t('status.madeToOrder')}</Badge>;
+  if (availability === 'seasonal') return <Badge tone="warning">{t('status.seasonal')}</Badge>;
+  if (availability === 'limited' || quantity <= 5) {
+    return <Badge tone="warning">{t('status.limited', { count: quantity })}</Badge>;
+  }
+  return <Badge tone="success">{t('status.availableCount', { count: quantity })}</Badge>;
 }

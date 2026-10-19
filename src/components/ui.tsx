@@ -108,21 +108,6 @@ export function Badge({
   );
 }
 
-export function VerificationLabel({ status, isDemo = true }: { status: VerificationStatus; isDemo?: boolean }) {
-  const map: Record<VerificationStatus, { tone: 'success' | 'warning' | 'neutral'; label: string; hint: string }> = {
-    verified: { tone: 'success', label: 'Verified', hint: 'Approved by an authorised reviewer.' },
-    pending_review: { tone: 'warning', label: 'Pending review', hint: 'Awaiting decision from an authorised reviewer.' },
-    unverified: { tone: 'neutral', label: 'Unverified', hint: 'No verification on record.' }
-  };
-  const s = map[status];
-  return (
-    <Badge tone={s.tone} title={isDemo ? `${s.hint} (Simulated status — verification workflow is pending pilot design.)` : s.hint}>
-      {s.label}
-      {isDemo && <span className="ml-1 opacity-70">· demo</span>}
-    </Badge>
-  );
-}
-
 export function Section({
   title,
   eyebrow,
@@ -270,13 +255,5 @@ export function Select({
     >
       {children}
     </select>
-  );
-}
-
-export function SampleTag() {
-  return (
-    <Badge tone="info" title="This record is sample data used for demonstration. It does not represent a real producer, product, or verified community.">
-      Sample data
-    </Badge>
   );
 }

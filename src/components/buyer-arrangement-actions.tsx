@@ -28,7 +28,7 @@ export function BuyerArrangementActions({ inquiryId, current }: { inquiryId: str
       setMessage(
         status === 'completed'
           ? 'Recorded as completed on your side. The seller confirms it too when they deliver.'
-          : 'Recorded as cancelled. Nothing was charged — OmoNETAB does not take payment.'
+          : 'Recorded as cancelled. Cancelling an inquiry takes no money: a payment attempt you already opened keeps its own record and stays visible on the inquiry page.'
       );
       router.refresh();
     } catch (err: unknown) {

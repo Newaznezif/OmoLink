@@ -1,45 +1,57 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { saveLanguagePreference } from '@/lib/language-actions';
+import { LANGUAGE_OPTIONS } from '@/lib/language';
+import { coverageFor, languageStatus, languageSuffixKey, t } from '@/lib/i18n';
 import type { LanguageCode } from '@/lib/types';
 
-const options: { code: LanguageCode; label: string; disabled: boolean; note?: string }[] = [
-  { code: 'en', label: 'English', disabled: false },
-  { code: 'am', label: 'አማርኛ (Amharic)', disabled: true, note: 'Partial — awaiting review by competent speakers.' },
-  { code: 'hamer', label: 'Hamer', disabled: true, note: 'No verified translation yet.' },
-  { code: 'dag', label: 'Dasenech', disabled: true, note: 'No verified translation yet.' },
-  { code: 'tsamai', label: 'Tsamai', disabled: true, note: 'No verified translation yet.' }
-];
+const STATUS_NOTE: Record<ReturnType<typeof languageStatus>, string> = {
+  complete: 'translation covers every interface string',
+  partial: 'only part of the interface is translated',
+  not_available: 'no translation yet'
+};
 
-export function LanguageSelector() {
-  const [value, setValue] = useState<LanguageCode>('en');
-
-  useEffect(() => {
-    const stored = (typeof window !== 'undefined' && window.localStorage.getItem('omolink_lang')) as LanguageCode | null;
-    if (stored) setValue(stored);
-    document.documentElement.lang = stored ?? 'en';
-  }, []);
+/**
+ * Choosing a language writes a cookie and re-renders the server components, so
+ * the page itself changes instead of only the dropdown. The value comes from the
+ * server render, which is what keeps the control and the page in agreement after
+ * a navigation or a reload.
+ */
+export function LanguageSelector({ value }: { value: LanguageCode }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
 
   return (
     <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-700">
-      <span className="sr-only">Interface language</span>
+      <span className="sr-only">{t(value, 'common.interfaceLanguage')}</span>
       <span aria-hidden>🌐</span>
       <select
         value={value}
-        onChange={(e) => {
-          const code = e.target.value as LanguageCode;
-          setValue(code);
-          window.localStorage.setItem('omolink_lang', code);
-          document.documentElement.lang = code;
+        disabled={pending}
+        onChange={(event) => {
+          const language = event.target.value as LanguageCode;
+          startTransition(async () => {
+            const result = await saveLanguagePreference({ language });
+            if (!result.ok) return;
+            router.refresh();
+          });
         }}
-        className="border border-ink-100 rounded-lg px-2 py-1.5 bg-white min-h-9 text-sm"
+        className="border border-ink-100 rounded-lg px-2 py-1.5 bg-white min-h-9 text-sm disabled:opacity-60"
       >
-        {options.map((o) => (
-          <option key={o.code} value={o.code} disabled={o.disabled} title={o.note}>
-            {o.label}
-            {o.disabled ? ' — not available' : ''}
-          </option>
-        ))}
+        {LANGUAGE_OPTIONS.map((option) => {
+          const status = languageStatus(option.code);
+          const suffix = t(value, languageSuffixKey(option.code));
+          const reviewed = coverageFor(option.code).reviewPending ? ', wording not yet reviewed by a speaker' : '';
+          const note = `${option.english}: ${STATUS_NOTE[status]}${reviewed}`;
+          return (
+            <option key={option.code} value={option.code} title={note}>
+              {option.native}
+              {suffix}
+            </option>
+          );
+        })}
       </select>
     </label>
   );

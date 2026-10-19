@@ -16,6 +16,10 @@ import type {
   ListingKind,
   ListingReport,
   Money,
+  Payment,
+  PaymentEvent,
+  PaymentProviderId,
+  PaymentStatus,
   ProducerGroup,
   ProducerType,
   Profile,
@@ -28,6 +32,7 @@ import type {
   VerificationStatus
 } from '../types';
 import { HOMEPAGE_SECTIONS } from '../types';
+import { isThemePreference } from '../theme';
 import { DEFAULT_SITE_SETTINGS } from '../settings';
 import type {
   AuditLogRow,
@@ -41,6 +46,8 @@ import type {
   ListingReportRow,
   ListingWithImagesRow,
   OpportunityRow,
+  PaymentEventRow,
+  PaymentRow,
   ProducerGroupRow,
   ProfileRow,
   ReviewRow,
@@ -115,6 +122,11 @@ export function mapProfile(row: ProfileRow, groupIds: string[] = []): Profile {
     community: row.community,
     operatingArea: row.operating_area,
     preferredLanguage: row.preferred_language as LanguageCode,
+    // Absent on a database that has not had migration 0007 applied, and absent on
+    // every account that never chose a scheme. Both mean "no saved choice", which
+    // is not the same fact as "chose light" — so the field stays undefined instead
+    // of being filled in here.
+    theme: isThemePreference(row.theme) ? row.theme : undefined,
     contactMethod: mapContactMethod(row.contact_method),
     shortBio: row.short_bio,
     categories: row.categories,
@@ -257,6 +269,73 @@ export function mapInquiryEvent(row: InquiryEventRow): InquiryEvent {
   };
 }
 
+/**
+ * A payment row is read as stored. The amount in particular is never taken from
+ * a caller — 0006 copies it from the inquiry at insert time — so a receipt built
+ * from this mapping cannot be steered by a query string.
+ */
+export function mapPayment(row: PaymentRow, events: PaymentEventRow[]): Payment {
+  return {
+    id: row.id,
+    reference: row.reference,
+    inquiryId: row.inquiry_id,
+    listingId: row.listing_id,
+    buyerProfileId: row.buyer_profile_id,
+    sellerProfileId: row.seller_profile_id,
+    provider: row.provider as PaymentProviderId,
+    providerReference: row.provider_reference ?? undefined,
+    amountCents: money(row.amount_cents, row.currency).cents,
+    currency: 'ETB',
+    feeCents: row.fee_cents ?? undefined,
+    paymentMethod: row.payment_method ?? undefined,
+    status: row.status as PaymentStatus,
+    checkoutUrl: row.checkout_url ?? undefined,
+    checkoutExpiresAt: row.checkout_expires_at ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    confirmedAt: row.confirmed_at ?? undefined,
+    closedAt: row.closed_at ?? undefined,
+    failureReason: row.failure_reason ?? undefined,
+    // The column, not a constant: the schema refuses a simulated row in a live
+    // database, and reading what is stored keeps that refusal honest rather
+    // than relying on the mapper to override it.
+    isDemo: row.is_demo === true,
+    events: events.map(mapPaymentEvent)
+  };
+}
+
+export function mapPaymentEvent(row: PaymentEventRow): PaymentEvent {
+  return {
+    id: row.id,
+    paymentId: row.payment_id,
+    at: row.at,
+    actor: row.actor as PaymentEvent['actor'],
+    kind: row.kind as PaymentEvent['kind'],
+    detail: row.detail,
+    providerEventId: row.provider_event_id ?? undefined
+  };
+}
+
+/**
+ * Only the columns the workflow can legitimately send on a fresh attempt. There
+ * is deliberately no amount, currency, seller or listing key here: 0006's insert
+ * trigger fills those from the stored inquiry, so a hand-made request has no
+ * field to tamper with.
+ */
+export function paymentToRow(input: {
+  reference: string;
+  inquiryId: string;
+  provider: PaymentProviderId;
+}): Record<string, unknown> {
+  return {
+    reference: input.reference,
+    inquiry_id: input.inquiryId,
+    provider: input.provider,
+    status: 'pending',
+    is_demo: false
+  };
+}
+
 export function mapOpportunity(row: OpportunityRow, aggregateQuantity: number): CollectiveOpportunity {
   return {
     id: row.id,
@@ -367,7 +446,10 @@ export function profileToRow(profile: Profile): Record<string, unknown> {
     // Written on insert only. The profiles_privileged_columns trigger rejects a
     // row that changes role, verification, or status without an admin behind it.
     role: profile.role,
-    status: profile.status
+    status: profile.status,
+    // Only included when the account actually chose a scheme, so a profile write
+    // still works on a database where migration 0007 has not been applied.
+    ...(isThemePreference(profile.theme) ? { theme: profile.theme } : {})
   };
 }
 

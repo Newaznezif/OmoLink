@@ -12,11 +12,11 @@ import { HOMEPAGE_SECTIONS } from './types';
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
 export const DEFAULT_SITE_SETTINGS: Omit<SiteSettings, 'updatedAt'> = {
-  siteName: 'OmoNETAB',
-  tagline: 'A digital bridge for rural entrepreneurs and community tourism in South Omo.',
+  siteName: 'OmoNetTab',
+  tagline: 'Connecting Cultures and Commerce',
   heroTitle: 'Sell directly. Price transparently. Deliver together.',
   heroDescription:
-    'OmoNETAB helps rural entrepreneurs, local producers, artisans, and community tourism providers in South Omo present their offerings and receive inquiries from potential customers.',
+    'OmoNetTab helps rural entrepreneurs, local producers, artisans, and community tourism providers in South Omo present their offerings and receive inquiries from potential customers.',
   announcementBar: { enabled: false, text: '' },
   featuredProductIds: [],
   featuredServiceIds: [],

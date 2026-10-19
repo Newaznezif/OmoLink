@@ -73,6 +73,12 @@ export type Profile = {
   community: string;
   operatingArea: string;
   preferredLanguage: LanguageCode;
+  /**
+   * The colour scheme saved for this account. Missing means the account has
+   * never chosen one, which is not the same as light: the browser copy still
+   * decides what to show until a choice is saved here.
+   */
+  theme?: ThemePreference;
   contactMethod: ContactMethod;
   shortBio: string;
   categories: string[];
@@ -203,6 +209,79 @@ export type InquiryEvent = {
   detail: string;
 };
 
+/**
+ * Which money-mover a payment went through. `demo_simulated` never exists outside
+ * demo mode and every record carrying it is labelled as a simulation on screen.
+ */
+export type PaymentProviderId = 'demo_simulated' | 'chapa';
+
+/**
+ * Our own payment states. A provider status is translated into one of these by
+ * `src/lib/payments.ts`; nothing here claims a terminal meaning that the provider
+ * documentation does not give it.
+ */
+export type PaymentStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'failed'
+  | 'cancelled'
+  | 'expired'
+  | 'refunded';
+
+/**
+ * One payment attempt against one inquiry. The amount is copied from the
+ * inquiry's server-computed subtotal at creation and never accepted from a
+ * browser afterwards, so a receipt can be trusted to match what was charged.
+ */
+export type Payment = {
+  id: string;
+  /** Our reference, sent to the provider as merchant_reference and printed on receipts. */
+  reference: string;
+  inquiryId: string;
+  listingId: string;
+  buyerProfileId: string;
+  sellerProfileId: string;
+  provider: PaymentProviderId;
+  /** The provider's own reference, stored only once the provider returns it. */
+  providerReference?: string;
+  /** Cents, copied from the inquiry. */
+  amountCents: number;
+  currency: CurrencyCode;
+  /** Provider-reported fee in cents, if the provider reports one. Never client input. */
+  feeCents?: number;
+  /** Payment method reported by the provider, e.g. 'telebirr'. */
+  paymentMethod?: string;
+  status: PaymentStatus;
+  /** Hosted checkout page for the buyer to complete payment on. */
+  checkoutUrl?: string;
+  /** When the provider says its checkout stops accepting payment, if it says. */
+  checkoutExpiresAt?: string;
+  /** Set only by the demo provider, and only to pick which simulation runs. */
+  demoOutcome?: 'success' | 'pending' | 'failed' | 'cancelled';
+  createdAt: string;
+  updatedAt: string;
+  confirmedAt?: string;
+  closedAt?: string;
+  failureReason?: string;
+  /** True when this is a simulated payment. Shown to buyers and administrators. */
+  isDemo: boolean;
+  events: PaymentEvent[];
+};
+
+/**
+ * Append-only history of a payment. `providerEventId` records the provider's own
+ * event identity so a repeated webhook can be recognised and ignored.
+ */
+export type PaymentEvent = {
+  id: string;
+  paymentId: string;
+  at: string;
+  actor: 'buyer' | 'seller' | 'provider' | 'system';
+  kind: 'created' | 'checkout_ready' | 'verified' | 'failed' | 'cancelled' | 'expired' | 'refunded' | 'webhook';
+  detail: string;
+  providerEventId?: string;
+};
+
 export type ProducerGroup = {
   id: string;
   name: string;
@@ -296,9 +375,28 @@ export type VerificationReview = {
   isDemo: boolean;
 };
 
-export type LanguageCode = 'en' | 'am' | 'hamer' | 'dag' | 'tsamai';
+/**
+ * Interface languages the app offers.
+ *
+ * 'en', 'am', 'zh-Hans' and 'it' are ordinary BCP 47 tags. 'hamer', 'dag' and
+ * 'tsamai' are internal identifiers only: these three languages have no code we
+ * can verify, so we deliberately do not invent one (see `documentLangFor`).
+ * Completeness of each dictionary is a separate question, recorded in
+ * `src/lib/i18n/index.ts`; offering an option is not a claim of full coverage.
+ */
+export type LanguageCode = 'en' | 'am' | 'zh-Hans' | 'it' | 'hamer' | 'dag' | 'tsamai';
 
-export const SUPPORTED_LANGUAGES: LanguageCode[] = ['en', 'am', 'hamer', 'dag', 'tsamai'];
+export const SUPPORTED_LANGUAGES: LanguageCode[] = ['en', 'am', 'zh-Hans', 'it', 'hamer', 'dag', 'tsamai'];
+
+/**
+ * The colour scheme a visitor chose. There is no "system" value on purpose: the
+ * choice is rendered on the server from a stored value, so a page has to resolve
+ * to one palette or the other, and an unresolved third option would be a claim
+ * the server cannot verify.
+ */
+export type ThemePreference = 'light' | 'dark';
+
+export const SUPPORTED_THEMES: ThemePreference[] = ['light', 'dark'];
 
 /**
  * Which kind of account a person registered as. Tourists and customers share the
@@ -412,6 +510,7 @@ export type AuditAction =
   | 'site_settings_changed'
   | 'report_resolved'
   | 'review_moderated'
+  | 'payment_recorded'
   | 'record_archived';
 
 /**
@@ -423,7 +522,7 @@ export type AuditLogEntry = {
   actorProfileId: string;
   actorName: string;
   action: AuditAction;
-  recordType: 'profile' | 'listing' | 'category' | 'settings' | 'report' | 'review' | 'opportunity';
+  recordType: 'profile' | 'listing' | 'category' | 'settings' | 'report' | 'review' | 'opportunity' | 'payment';
   recordId: string;
   summary: string;
   isDemo: boolean;

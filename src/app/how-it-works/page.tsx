@@ -1,73 +1,55 @@
 import { Card, CardBody, Section, Badge } from '@/components/ui';
+import { getT } from '@/lib/i18n/server';
 
 export default function HowItWorksPage() {
+  const t = getT();
   return (
-    <Section
-      eyebrow="How it works"
-      title="A practical journey from producer to buyer"
-      description="OmoNETAB supports a working end-to-end journey: publish clearly, receive an inquiry, and coordinate the exchange honestly. Payments and delivery happen outside the platform during the pilot."
-    >
+    <Section eyebrow={t('how.eyebrow')} title={t('how.title')} description={t('how.description')}>
       <div className="grid md:grid-cols-3 gap-4">
-        <Step n={1} title="Producer registers">
-          A producer, guide, group or cooperative creates a profile with display name, community, categories, and a
-          consent flag. No identity documents are collected for a basic account.
+        <Step n={1} title={t('how.step1Title')}>
+          {t('how.step1Body')}
         </Step>
-        <Step n={2} title="Producer publishes">
-          Each listing includes unit price, unit of sale, available quantity, minimum order, availability, pickup
-          options, and consent-respecting imagery. Prices never hide a mandatory fee.
+        <Step n={2} title={t('how.step2Title')}>
+          {t('how.step2Body')}
         </Step>
-        <Step n={3} title="Buyer discovers">
-          Buyers browse or search across products, tourism services and collective orders, filter by community,
-          category, price, or availability, and open a listing.
+        <Step n={3} title={t('how.step3Title')}>
+          {t('how.step3Body')}
         </Step>
-        <Step n={4} title="Buyer inquires">
-          A buyer enters a quantity, sees an estimated subtotal, provides a contact channel, and submits the inquiry.
-          The system responds with a reference number and never marks the record as a completed sale.
+        <Step n={4} title={t('how.step4Title')}>
+          {t('how.step4Body')}
         </Step>
-        <Step n={5} title="Producer responds">
-          The inquiry appears in the seller dashboard. The producer updates status honestly: new → accepted →
-          awaiting confirmation → fulfillment arranged → completed or cancelled.
+        <Step n={5} title={t('how.step5Title')}>
+          {t('how.step5Body')}
         </Step>
-        <Step n={6} title="Collective orders">
-          Producers pool available quantities against a group opportunity. The platform aggregates totals, validates
-          contributions against stock, and offers a shared transport cost calculator. Actual savings are never
-          fabricated.
+        <Step n={6} title={t('how.step6Title')}>
+          {t('how.step6Body')}
         </Step>
       </div>
 
       <div className="mt-8">
-        <h2 className="text-xl font-bold mb-3">Trust and transparency</h2>
+        <h2 className="text-xl font-bold mb-3">{t('how.trustTitle')}</h2>
         <div className="grid md:grid-cols-3 gap-4">
           <Card>
             <CardBody>
-              <h3 className="font-semibold">Verification statuses are explicit</h3>
+              <h3 className="font-semibold">{t('how.trustVerification')}</h3>
               <div className="mt-2 flex flex-wrap gap-2">
-                <Badge tone="neutral">Unverified</Badge>
-                <Badge tone="warning">Pending review</Badge>
-                <Badge tone="success">Verified</Badge>
+                <Badge tone="neutral">{t('status.unverified')}</Badge>
+                <Badge tone="warning">{t('status.pending')}</Badge>
+                <Badge tone="success">{t('status.verified')}</Badge>
               </div>
-              <p className="mt-2 text-sm text-ink-700">
-                Only an authorised reviewer can move a profile to verified. The verification procedure itself is still
-                being designed for the pilot.
-              </p>
+              <p className="mt-2 text-sm text-ink-700">{t('how.trustVerificationBody')}</p>
             </CardBody>
           </Card>
           <Card>
             <CardBody>
-              <h3 className="font-semibold">Consent-aware cultural content</h3>
-              <p className="mt-2 text-sm text-ink-700">
-                Cultural performances, ceremonies, and community images are only published with recorded consent. The
-                platform never commercialises sensitive cultural knowledge by default.
-              </p>
+              <h3 className="font-semibold">{t('how.trustConsent')}</h3>
+              <p className="mt-2 text-sm text-ink-700">{t('how.trustConsentBody')}</p>
             </CardBody>
           </Card>
           <Card>
             <CardBody>
-              <h3 className="font-semibold">Sample data is labelled</h3>
-              <p className="mt-2 text-sm text-ink-700">
-                Every sample producer, listing, and opportunity carries a visible “Sample data” tag. We never present
-                placeholders as documentary evidence of a real producer.
-              </p>
+              <h3 className="font-semibold">{t('how.trustSample')}</h3>
+              <p className="mt-2 text-sm text-ink-700">{t('how.trustSampleBody')}</p>
             </CardBody>
           </Card>
         </div>

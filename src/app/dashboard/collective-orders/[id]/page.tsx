@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
 import { formatMoney } from '@/lib/money';
-import { Badge, Card, CardBody, Empty, Section, SampleTag } from '@/components/ui';
+import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
+import { SampleTag } from '@/components/status-labels';
 import { OpportunityForm, type OpportunityFormValues } from '@/components/opportunity-form';
 import { ContributionActions, OpportunityStatusPicker } from '@/components/collective-manage';
 

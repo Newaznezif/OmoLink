@@ -1,13 +1,16 @@
 import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { getSessionProfile } from '@/lib/session';
-import { Badge, Card, CardBody, SampleTag } from './ui';
+import { Badge, Card, CardBody } from './ui';
+import { SampleTag } from './status-labels';
+import { getT } from '@/lib/i18n/server';
 
 /**
  * Published reviews for one listing. Hidden ones are simply not read out here —
  * a moderation decision keeps the record but removes it from the public page.
  */
 export async function ListingReviews({ listingId, producerName }: { listingId: string; producerName: string }) {
+  const t = getT();
   const repo = getRepo();
   const [reviews, inquiries] = await Promise.all([repo.listReviews({ listingId }), repo.listInquiriesForListing(listingId)]);
   const profile = await getSessionProfile();
@@ -25,15 +28,12 @@ export async function ListingReviews({ listingId, producerName }: { listingId: s
     return (
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900 mb-2">Buyer reviews</h2>
-          <p className="text-sm text-ink-700">
-            No review has been written for this listing yet. Reviews only appear after an arrangement is recorded as
-            completed, so an empty list is honest rather than a missing feature.
-          </p>
+          <h2 className="font-semibold text-ink-900 mb-2">{t('reviews.title')}</h2>
+          <p className="text-sm text-ink-700">{t('reviews.empty')}</p>
           {reviewable.length > 0 && (
             <p className="mt-2 text-sm">
               <Link href={`/buyer/inquiries/${reviewable[0]!.id}`} className="underline font-semibold text-clay-700">
-                You completed an arrangement here — leave a review
+                {t('reviews.leaveFirst')}
               </Link>
             </p>
           )}
@@ -48,16 +48,13 @@ export async function ListingReviews({ listingId, producerName }: { listingId: s
     <Card>
       <CardBody>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-ink-900">Buyer reviews</h2>
+          <h2 className="font-semibold text-ink-900">{t('reviews.title')}</h2>
           <p className="text-sm text-ink-700">
-            <span className="font-black text-ink-900">{average.toFixed(1)}</span> / 5 from {reviews.length}{' '}
-            {reviews.length === 1 ? 'review' : 'reviews'}
+            <span className="font-black text-ink-900">{average.toFixed(1)}</span> {t('reviews.scoreTail')} {reviews.length}{' '}
+            {reviews.length === 1 ? t('reviews.countOne') : t('reviews.countMany')}
           </p>
         </div>
-        <p className="mt-1 text-xs text-ink-500">
-          Each review is tied to one completed arrangement that the reviewer recorded. Averages hide little: read the
-          wording, and remember that {producerName} may have other listings with different experiences.
-        </p>
+        <p className="mt-1 text-xs text-ink-500">{t('reviews.note', { producer: producerName })}</p>
         <ul className="mt-3 space-y-3">
           {reviews.map((r) => (
             <li key={r.id} className="border-b border-ink-100 last:border-0 pb-3">
@@ -74,7 +71,7 @@ export async function ListingReviews({ listingId, producerName }: { listingId: s
         {reviewable.length > 0 && (
           <p className="mt-3 text-sm">
             <Link href={`/buyer/inquiries/${reviewable[0]!.id}`} className="underline font-semibold text-clay-700">
-              Add your review of a completed arrangement
+              {t('reviews.leaveAnother')}
             </Link>
           </p>
         )}

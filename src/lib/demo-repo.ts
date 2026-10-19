@@ -1,7 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { getDemoStore } from './store';
-import { makeReference } from './ids';
-import { multiplyUnitPrice } from './money';
+import { makeId, makePaymentReference, makeReference } from './ids';
+import { formatMoney, multiplyUnitPrice } from './money';
+import {
+  CLOSED_PAYMENT_STATUSES,
+  amountMatches,
+  canMovePaymentStatus,
+  PAYMENT_BLOCKER_MESSAGES,
+  paymentEligibility
+} from './payments';
 import { validateSiteSettings } from './settings';
 import type { Actor } from './session';
 import type { Repo } from './repo';
@@ -19,6 +26,7 @@ import type {
   InquiryStatus,
   Listing,
   ListingReport,
+  Payment,
   Profile,
   Review,
   Role,
@@ -130,6 +138,15 @@ export const demoRepo: Repo = {
     }
     if (actor?.status === 'suspended') {
       throw new Error('This account is suspended and cannot change listings.');
+    }
+    // In demo mode the repository is the only enforcement point, so it mirrors
+    // the listings_privileged_columns guard that 0005 puts behind the same write
+    // in Supabase mode. Verification and the homepage feature are granted, not claimed.
+    const claimsPrivilege =
+      (patch.verification !== undefined && patch.verification !== current.verification) ||
+      (patch.featured !== undefined && patch.featured !== current.featured);
+    if (claimsPrivilege && !isAdmin) {
+      throw new Error('Only an administrator can change a listing’s verification or homepage feature.');
     }
     const next: Listing = { ...current, ...patch, id: current.id, lastUpdated: new Date().toISOString() };
     store.listings[idx] = next;
@@ -415,6 +432,9 @@ export const demoRepo: Repo = {
     }
     const previous = target.role;
     target.role = role;
+    // Same invariant the Supabase schema enforces with profiles_admin_kind_check:
+    // an administrator account is labelled as one, in both modes.
+    if (role === 'admin') target.accountKind = 'platform_admin';
     target.updatedAt = new Date().toISOString();
     pushAudit(store, actor, 'role_changed', 'profile', target.id, `Role changed from ${previous} to ${role}.`);
     return target;
@@ -689,6 +709,198 @@ export const demoRepo: Repo = {
     return [...getDemoStore().inquiries];
   },
 
+  /**
+   * Demo-mode payment attempt. The `provider` the caller resolved is ignored
+   * deliberately: this repository only ever runs while DATA_MODE=demo, so a
+   * record written here is a simulated record whatever a caller believed. The
+   * Supabase repository refuses that label instead of quietly accepting it.
+   */
+  async createPayment({ inquiryId, actorProfileId, demoOutcome }) {
+    const store = getDemoStore();
+    const buyer = requirePaymentBuyer(store, actorProfileId);
+    const inquiry = store.inquiries.find((i) => i.id === inquiryId);
+    const listing = inquiry ? store.listings.find((l) => l.id === inquiry.listingId) : undefined;
+    const check = paymentEligibility({
+      inquiry,
+      actorProfileId,
+      existing: store.payments.filter((p) => p.inquiryId === inquiryId)
+    });
+    if (!check.eligible) throw new Error(PAYMENT_BLOCKER_MESSAGES[check.reason]);
+    const nowIso = new Date().toISOString();
+    // The amount is copied from the stored inquiry. No caller can pass one in.
+    const payment: Payment = {
+      id: makeId('pay'),
+      reference: makePaymentReference(),
+      inquiryId: inquiry!.id,
+      listingId: inquiry!.listingId,
+      buyerProfileId: actorProfileId,
+      sellerProfileId: listing!.producerId,
+      // This repository only ever runs in demo mode, where the provider is the
+      // simulator, so a payment written here is always a simulated one.
+      provider: 'demo_simulated',
+      amountCents: inquiry!.estimatedSubtotalCents,
+      currency: inquiry!.currency,
+      status: 'pending',
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      demoOutcome: buyer ? demoOutcome : undefined,
+      isDemo: true,
+      events: [
+        {
+          id: makeId('pev'),
+          paymentId: '',
+          at: nowIso,
+          actor: 'buyer',
+          kind: 'created',
+          detail: `Payment attempt opened for ${formatMoney({ cents: inquiry!.estimatedSubtotalCents, currency: inquiry!.currency })}.`
+        }
+      ]
+    };
+    payment.events[0]!.paymentId = payment.id;
+    store.payments.push(payment);
+    return payment;
+  },
+
+  async getPayment(idOrReference) {
+    const value = (idOrReference ?? '').trim();
+    return getDemoStore().payments.find((p) => p.id === value || p.reference === value);
+  },
+
+  async listPaymentsForBuyer(buyerProfileId) {
+    return getDemoStore().payments.filter((p) => p.buyerProfileId === buyerProfileId);
+  },
+
+  async listPaymentsForInquiry(inquiryId) {
+    return getDemoStore().payments.filter((p) => p.inquiryId === inquiryId);
+  },
+
+  async listAllPayments() {
+    return [...getDemoStore().payments];
+  },
+
+  async attachCheckout(paymentId, checkout, buyerProfileId) {
+    const store = getDemoStore();
+    const idx = store.payments.findIndex((p) => p.id === paymentId);
+    if (idx < 0) throw new Error('Payment not found.');
+    const current = store.payments[idx]!;
+    if (current.buyerProfileId !== buyerProfileId) throw new Error('Not allowed to change another buyer’s payment.');
+    if (current.status !== 'pending') throw new Error('Only an open payment attempt can take a checkout address.');
+    const next: Payment = {
+      ...current,
+      checkoutUrl: checkout.checkoutUrl,
+      providerReference: checkout.providerReference ?? current.providerReference,
+      checkoutExpiresAt: checkout.expiresAt ?? current.checkoutExpiresAt,
+      updatedAt: new Date().toISOString(),
+      events: [
+        ...current.events,
+        {
+          id: makeId('pev'),
+          paymentId: current.id,
+          at: new Date().toISOString(),
+          actor: 'provider',
+          kind: 'checkout_ready',
+          detail: 'Checkout address received from the payment provider.'
+        }
+      ]
+    };
+    store.payments[idx] = next;
+    return next;
+  },
+
+  async settlePayment(input) {
+    const store = getDemoStore();
+    const idx = store.payments.findIndex((p) => p.reference === input.merchantReference.trim());
+    if (idx < 0) throw new Error('Payment not found.');
+    const current = store.payments[idx]!;
+
+    // Idempotency: the same provider event arriving twice must not add a second
+    // confirmation, a second receipt or a second line in the ledger.
+    if (input.providerEventId && current.events.some((e) => e.providerEventId === input.providerEventId)) {
+      return current;
+    }
+
+    if (input.reportedAmount !== undefined || input.reportedCurrency !== undefined) {
+      if (!amountMatches(current, input.reportedAmount, input.reportedCurrency)) {
+        // A mismatch is never a rounding question: refuse and leave the record as-is.
+        throw new Error('The amount reported by the payment provider does not match the amount this attempt was opened for.');
+      }
+    }
+
+    if (input.status === 'refunded' && !isAdminActor(store, input.actorProfileId)) {
+      throw new Error('Only an administrator can record a refund.');
+    }
+    // In demo mode this repository is the only enforcement point, so a caller who
+    // names themselves has to own the attempt they are writing about — the same
+    // rule 0006's Row Level Security applies to a live database.
+    if (
+      input.actorProfileId &&
+      input.actorProfileId !== current.buyerProfileId &&
+      !isAdminActor(store, input.actorProfileId)
+    ) {
+      throw new Error('Not allowed to change another buyer’s payment.');
+    }
+    if (!canMovePaymentStatus(current.status, input.status)) {
+      throw new Error(`Cannot move a ${current.status} payment to ${input.status}.`);
+    }
+    if (current.status === input.status && !input.providerEventId) {
+      return current;
+    }
+
+    const nowIso = new Date().toISOString();
+    const eventKind =
+      input.status === 'confirmed'
+        ? 'verified'
+        : input.status === 'failed'
+          ? 'failed'
+          : input.status === 'cancelled'
+            ? 'cancelled'
+            : input.status === 'expired'
+              ? 'expired'
+              : input.status === 'refunded'
+                ? 'refunded'
+                : 'webhook';
+    const next: Payment = {
+      ...current,
+      status: input.status,
+      providerReference: input.providerReference ?? current.providerReference,
+      paymentMethod: input.paymentMethod ?? current.paymentMethod,
+      feeCents: input.feeCents ?? current.feeCents,
+      updatedAt: nowIso,
+      confirmedAt: input.status === 'confirmed' && !current.confirmedAt ? nowIso : current.confirmedAt,
+      closedAt: CLOSED_PAYMENT_STATUSES.includes(input.status) || input.status === 'confirmed' ? nowIso : current.closedAt,
+      failureReason: input.status === 'failed' || input.status === 'cancelled' || input.status === 'expired' ? input.detail : current.failureReason,
+      events: [
+        ...current.events,
+        {
+          id: makeId('pev'),
+          paymentId: current.id,
+          at: nowIso,
+          // The label follows who can honestly attest to it: the buyer for their
+          // own cancellation, the provider for an answer, the system for an
+          // administrator's refund. The Supabase event policy accepts exactly the
+          // same three, so a record looks the same in both modes.
+          actor: input.status === 'refunded' ? 'system' : input.actorProfileId ? 'buyer' : 'provider',
+          kind: eventKind,
+          detail: input.detail,
+          providerEventId: input.providerEventId
+        }
+      ]
+    };
+    store.payments[idx] = next;
+
+    if (input.status === 'confirmed' || input.status === 'refunded') {
+      pushAudit(
+        store,
+        actorForPaymentAudit(store, input.actorProfileId ?? current.buyerProfileId),
+        'payment_recorded',
+        'payment',
+        current.id,
+        `Payment ${current.reference} recorded as ${input.status} (${formatMoney({ cents: current.amountCents, currency: current.currency })}).`
+      );
+    }
+    return next;
+  },
+
   async listReviews(input) {
     const store = getDemoStore();
     return store.reviews
@@ -832,6 +1044,39 @@ function requireActive(actor: Actor) {
 function requireAdmin(actor: Actor, verb: string) {
   requireActive(actor);
   if (actor.role !== 'admin') throw new Error(`Only an administrator can ${verb}.`);
+}
+
+/**
+ * The buyer behind a payment attempt, checked against the stored profile rather
+ * than anything a caller asserts. A suspended account cannot open a payment.
+ */
+function requirePaymentBuyer(store: DB, profileId: string) {
+  const profile = store.profiles.find((p) => p.id === profileId);
+  if (!profile) throw new Error('Sign in before attempting a payment.');
+  if (profile.status === 'suspended') throw new Error('This account is suspended. Contact an administrator.');
+  return profile;
+}
+
+function isAdminActor(store: DB, profileId: string | undefined): boolean {
+  if (!profileId) return false;
+  const profile = store.profiles.find((p) => p.id === profileId);
+  return profile?.role === 'admin' && profile.status !== 'suspended';
+}
+
+/**
+ * Audit entries name a real profile when the settle was caused by one. A provider
+ * notification has no person behind it, so it is attributed to the buyer whose
+ * payment it is — the entry records what changed, not a fabricated actor.
+ */
+function actorForPaymentAudit(store: DB, profileId: string): Actor {
+  const profile = store.profiles.find((p) => p.id === profileId);
+  return {
+    userId: profile?.userId ?? 'payment-provider',
+    profileId: profile?.id ?? profileId,
+    role: profile?.role ?? 'buyer',
+    accountKind: profile?.accountKind ?? 'individual_buyer',
+    status: profile?.status ?? 'active'
+  };
 }
 
 function activeAdmins(store: DB): number {

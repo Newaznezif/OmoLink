@@ -1,10 +1,26 @@
 import { notFound } from 'next/navigation';
 import { getRepo } from '@/lib/repo';
 import { ListingCard } from '@/components/listing-card';
-import { Badge, Empty, SampleTag, Section, VerificationLabel } from '@/components/ui';
+import { Badge, Empty, Section } from '@/components/ui';
+import { SampleTag, VerificationLabel } from '@/components/status-labels';
 import { QrCode } from '@/components/qr-code';
+import type { Profile } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * A seller who handed over a number for the pilot is reachable on it, so the
+ * public profile shows exactly what they supplied. Consent is recorded on the
+ * contact method itself: without it, or for an in-app account, the page offers
+ * only the inquiry form and never reveals a number.
+ */
+function publicContact(profile: Profile): string {
+  const method = profile.contactMethod;
+  if (!('consent' in method) || !method.consent) return 'In-app inquiry only';
+  return method.kind === 'phone'
+    ? `Phone: ${method.value} — supplied by this seller for public contact`
+    : `Email: ${method.value} — supplied by this seller for public contact`;
+}
 
 export default async function ProducerPage({ params }: { params: { id: string } }) {
   const repo = getRepo();
@@ -48,7 +64,7 @@ export default async function ProducerPage({ params }: { params: { id: string } 
               </div>
               <div>
                 <dt className="text-ink-500">Contact on platform</dt>
-                <dd className="text-ink-900">{profile.contactMethod.kind === 'in_app' ? 'In-app inquiry only' : profile.contactMethod.kind}</dd>
+                <dd className="text-ink-900">{publicContact(profile)}</dd>
               </div>
             </dl>
             {memberOf.length > 0 && (
@@ -73,7 +89,7 @@ export default async function ProducerPage({ params }: { params: { id: string } 
           <div>
             <h2 className="text-xl font-bold text-ink-900 mb-3">Published listings</h2>
             {listings.length === 0 ? (
-              <Empty title="No published listings yet" body="This sample producer has not published any listings." />
+              <Empty title="No published listings yet" body="This account has not published any listings." />
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {listings.map((l) => (

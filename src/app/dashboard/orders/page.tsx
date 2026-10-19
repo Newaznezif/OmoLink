@@ -32,7 +32,7 @@ export default async function DashboardOrdersPage() {
     <Section
       eyebrow="Dashboard"
       title="Orders"
-      description="Requests against your listings, grouped by what you have to do next. OmoNETAB records the arrangement; it does not charge a buyer, hold money, or mark anything sold until you record it."
+      description="Requests against your listings, grouped by what you have to do next. OmoNetTab records the arrangement; it does not charge a buyer, hold money, or mark anything sold until you record it."
     >
       <Card>
         <CardBody>

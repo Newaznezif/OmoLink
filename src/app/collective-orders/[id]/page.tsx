@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { getSessionProfile } from '@/lib/session';
 import { formatMoney } from '@/lib/money';
-import { Badge, Card, CardBody, Empty, SampleTag, Section, VerificationLabel } from '@/components/ui';
+import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
+import { SampleTag, VerificationLabel } from '@/components/status-labels';
 import { ContributeForm } from '@/components/contribute-form';
 import { TransportCalculator } from '@/components/transport-calculator';
 

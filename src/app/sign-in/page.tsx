@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation';
 import { getSessionActor, landingFor, safeNext } from '@/lib/session';
 import { getRepo } from '@/lib/repo';
-import { isDemoMode } from '@/lib/store';
+import { canSignInAsDemo, isDemoMode } from '@/lib/store';
 import { DemoSignInForm } from '@/components/demo-signin-form';
 import { CredentialsForm } from '@/components/credentials-form';
 import { Section, Card, CardBody } from '@/components/ui';
+import { getLanguage, getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,8 @@ export default async function SignInPage({
 }: {
   searchParams: { error?: string; next?: string };
 }) {
+  const t = getT();
+  const lang = getLanguage();
   const next = safeNext(searchParams.next);
   const actor = await getSessionActor();
   if (actor) redirect(next ?? landingFor(actor.role));
@@ -20,32 +23,34 @@ export default async function SignInPage({
   if (!isDemoMode()) {
     return (
       <Section
-        eyebrow="Sign in"
-        title="Sign in to your account"
-        description="This instance is connected to a Supabase project, so sign-in uses real credentials and Row Level Security decides what you can see."
+        eyebrow={t('auth.signInEyebrow')}
+        title={t('auth.signInLiveTitle')}
+        description={t('auth.signInLiveDescription')}
       >
         <Card>
           <CardBody>
-            <CredentialsForm submitPath="/api/auth/signin" submitLabel="Sign in" next={next} />
+            <CredentialsForm lang={lang} submitPath="/api/auth/signin" submitLabel={t('nav.signIn')} next={next} />
             {searchParams.error && (
               <p role="alert" className="mt-3 text-sm text-red-700">
                 {searchParams.error}
               </p>
             )}
             <p className="mt-3 text-sm text-ink-500">
-              No account yet?{' '}
+              {t('auth.noAccountYet')}{' '}
               <a className="underline font-semibold" href="/register">
-                Create one
+                {t('auth.createOne')}
               </a>
-              . Forgotten your password?{' '}
+              {t('auth.punctuation')}{' '}
+              {t('auth.forgottenPassword')}{' '}
               <a className="underline font-semibold" href="/forgot-password">
-                Reset it
+                {t('auth.resetIt')}
               </a>
-              . Never got the confirmation email?{' '}
+              {t('auth.punctuation')}{' '}
+              {t('auth.noConfirmation')}{' '}
               <a className="underline font-semibold" href="/verify-email">
-                Resend it
+                {t('auth.resendIt')}
               </a>
-              .
+              {t('auth.punctuation')}
             </p>
           </CardBody>
         </Card>
@@ -56,7 +61,10 @@ export default async function SignInPage({
   // Demo mode only: every account below is sample data made for the walkthrough,
   // so naming them here exposes no real person. listAllProfiles() stays
   // administrator-only in Supabase mode, which is why it is never called there.
-  const profiles = await getRepo().listAllProfiles();
+  // The same rule the session endpoint enforces is applied here, so the picker
+  // can never offer an account that would be refused — the real pilot sellers
+  // have public listing pages but no demo sign-in.
+  const profiles = (await getRepo().listAllProfiles()).filter((p) => canSignInAsDemo(p.userId));
   const pick = (p: (typeof profiles)[number]) => ({
     userId: p.userId,
     displayName: p.displayName,
@@ -65,9 +73,9 @@ export default async function SignInPage({
 
   return (
     <Section
-      eyebrow="Sign in"
-      title="Sign in as a demo account"
-      description="Demo mode: sign-in is simulated with clearly labelled sample accounts. The session cookie carries only a user id, never a role — role and suspension are read back from the stored profile on every request. It is still not real authentication: in this mode whoever can set that cookie acts as that sample account, which is why demo data is the only thing it can reach. Real sign-in runs when DATA_MODE=supabase and the Supabase keys are configured."
+      eyebrow={t('auth.signInEyebrow')}
+      title={t('auth.signInDemoTitle')}
+      description={t('auth.signInDemoDescription')}
     >
       {searchParams.error && (
         <p role="alert" className="mb-3 text-sm text-red-700">
@@ -75,6 +83,7 @@ export default async function SignInPage({
         </p>
       )}
       <DemoSignInForm
+        lang={lang}
         selling={profiles.filter((p) => p.role === 'producer' || p.role === 'coordinator').map(pick)}
         buyers={profiles.filter((p) => p.role === 'buyer').map(pick)}
         admins={profiles.filter((p) => p.role === 'admin').map(pick)}

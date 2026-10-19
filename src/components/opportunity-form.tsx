@@ -215,7 +215,7 @@ export function OpportunityForm({
         </p>
       )}
       <p className="text-xs text-ink-500">
-        Prices entered here are planning figures shared with the group. OmoNETAB moves no money: who pays what, and when,
+        Prices entered here are planning figures shared with the group. OmoNetTab moves no money: who pays what, and when,
         is agreed between the buyer and the members and recorded in the notes.
       </p>
     </form>

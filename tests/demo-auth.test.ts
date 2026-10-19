@@ -90,6 +90,41 @@ test('only an administrator can change roles, and never their own', async () => 
   assert.equal(audit[0]!.action, 'role_changed');
 });
 
+test('an administrator account is labelled as one, in demo mode as in the schema', async () => {
+  // 0003's profiles_admin_kind_check makes role and account_kind travel together;
+  // demo mode has no constraint, so the repository carries the same invariant.
+  const { actor } = seed();
+  const promoted = await demoRepo.setProfileRole(HONEY, 'admin', actor(ADMIN));
+  assert.equal(promoted.role, 'admin');
+  assert.equal(promoted.accountKind, 'platform_admin');
+});
+
+test('verification and the homepage feature are granted, not claimed', async () => {
+  const { store } = seed();
+  // Any listing the administrator has not already promoted will do: the point is
+  // that turning the feature on is not the producer’s call.
+  const index = store.listings.findIndex((l) => !l.featured);
+  const listing = store.listings[index]!;
+  const otherVerification = listing.verification === 'verified' ? 'unverified' : 'verified';
+
+  await rejects(
+    () => demoRepo.updateListing(listing.id, { verification: otherVerification }, listing.producerId),
+    /Only an administrator/
+  );
+  await rejects(() => demoRepo.updateListing(listing.id, { featured: true }, listing.producerId), /Only an administrator/);
+  assert.equal(store.listings[index]!.verification, listing.verification);
+  assert.equal(store.listings[index]!.featured, listing.featured);
+
+  // The producer keeps the edits the form actually offers them.
+  const edited = await demoRepo.updateListing(listing.id, { title: 'Forest honey, 500 g jar' }, listing.producerId);
+  assert.equal(edited.title, 'Forest honey, 500 g jar');
+  assert.equal(edited.verification, listing.verification);
+
+  const moderated = await demoRepo.updateListing(listing.id, { verification: 'verified', featured: true }, ADMIN);
+  assert.equal(moderated.verification, 'verified');
+  assert.equal(moderated.featured, true);
+});
+
 test('the platform is never left without an active administrator', async () => {
   const { store, actor } = seed();
   assert.equal(store.profiles.filter((p) => p.role === 'admin' && p.status === 'active').length, 1);
@@ -366,6 +401,8 @@ test('a review is only possible for the buyer of a completed arrangement', async
 
 test('a category in use cannot be deleted; deactivation hides it from shoppers', async () => {
   const { store, actor } = seed();
+  const honeyListings = store.listings.filter((l) => l.categoryId === 'cat_honey').length;
+  assert.ok(honeyListings > 0, 'the seed needs a category that is in use');
 
   await rejects(() => demoRepo.deleteCategory('cat_honey', actor(ADMIN)), /Deactivate it instead/);
   await rejects(() => demoRepo.saveCategory({ id: 'cat_honey', name: 'Honey', slug: 'honey', kind: 'product', description: '' }, actor(BASKET)), /administrator/);
@@ -379,7 +416,7 @@ test('a category in use cannot be deleted; deactivation hides it from shoppers',
   assert.equal((await demoRepo.listCategories()).some((c) => c.id === 'cat_honey'), false);
   assert.equal((await demoRepo.listAllCategories()).some((c) => c.id === 'cat_honey'), true);
   // The listings that already use it are untouched.
-  assert.equal(store.listings.filter((l) => l.categoryId === 'cat_honey').length, 1);
+  assert.equal(store.listings.filter((l) => l.categoryId === 'cat_honey').length, honeyListings);
 
   // An unused category can be removed.
   const created = await demoRepo.saveCategory(
@@ -521,7 +558,9 @@ test('an archived listing leaves public browse but stays in the administrator vi
   assert.equal(stats.archivedListings, 1);
   assert.equal(stats.newInquiries, 1);
   assert.equal(stats.byRole.admin, 1);
-  assert.equal(stats.byRole.producer, 4);
+  // Four sample producer accounts plus the eight pilot seller accounts seeded
+  // from the supplied producer notes.
+  assert.equal(stats.byRole.producer, 12);
   assert.equal(stats.byRole.coordinator, 1);
   assert.equal(stats.byRole.buyer, 2);
 });

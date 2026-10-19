@@ -287,7 +287,9 @@ create policy "Admins moderate reviews" on public.reviews for update
   using (public.is_admin())
   with check (public.is_admin());
 
--- Reports: admins moderate; the reporter may read their own submission.
+-- Reports: admins moderate. A reporter may submit but cannot read the report
+-- back — there is no reporter-scoped select policy here, and the application
+-- never shows a visitor their own submission. 0005 leaves this as it is.
 drop policy if exists "Admins read reports" on public.listing_reports;
 create policy "Admins read reports" on public.listing_reports for select
   using (public.is_admin());

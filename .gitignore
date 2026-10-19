@@ -30,6 +30,15 @@ service-account*.json
 # Local demo DB
 /data/demo-store.json
 
+# Supplied source material. These folders hold the original documents, real
+# phone numbers and identifiable portraits; they are inputs for the catalogue
+# only and must never be committed or served out of public/.
+/Pictures/
+/.pending-review/
+/.scratch-*
+
+# supabase/.gitignore, written by `supabase init`, already hides .temp and .branches.
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts.bak

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Card, CardBody, Field, Input, Select, Textarea } from './ui';
+import { LANGUAGE_OPTIONS } from '@/lib/language';
 import type { ContactMethod, Profile } from '@/lib/types';
 
 type Draft = {
@@ -134,23 +135,15 @@ export function AccountSettingsForm({ profile, variant }: { profile: Profile; va
                 value={draft.preferredLanguage}
                 onChange={(e) => set('preferredLanguage', e.target.value)}
               >
-                <option value="en">English</option>
-                <option value="am" disabled>
-                  Amharic — copy not reviewed yet
-                </option>
-                <option value="hamer" disabled>
-                  Hamer — no reviewed translation
-                </option>
-                <option value="dag" disabled>
-                  Dasenech — no reviewed translation
-                </option>
-                <option value="tsamai" disabled>
-                  Tsamai — no reviewed translation
-                </option>
+                {LANGUAGE_OPTIONS.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.english} ({option.native})
+                  </option>
+                ))}
               </Select>
               <p className="mt-1 text-xs text-ink-500">
-                Only options with reviewed wording can be offered. The others are listed so the gap is visible instead of
-                pretending support exists.
+                Every offered language can be saved as your preference. Pages state plainly which ones still have no
+                reviewed wording instead of pretending support exists.
               </p>
             </Field>
           </div>

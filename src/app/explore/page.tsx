@@ -8,9 +8,9 @@ export default async function ExplorePage({
   return (
     <MarketplaceView
       searchParams={searchParams}
-      eyebrow="Explore"
-      title="Browse everything"
-      description="Search across products and services, filter by community and category, and inspect producer information."
+      eyebrowKey={'market.exploreEyebrow'}
+      titleKey={'market.exploreTitle'}
+      descriptionKey={'market.exploreDescription'}
     />
   );
 }

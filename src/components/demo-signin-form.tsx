@@ -2,16 +2,20 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { LanguageCode } from '@/lib/types';
+import { t } from '@/lib/i18n';
 import { Card, CardBody } from './ui';
 
 type Account = { userId: string; displayName: string; detail?: string };
 
 export function DemoSignInForm({
+  lang,
   selling,
   buyers,
   admins,
   next
 }: {
+  lang: LanguageCode;
   selling: Account[];
   buyers: Account[];
   admins: Account[];
@@ -31,11 +35,11 @@ export function DemoSignInForm({
         body: JSON.stringify({ userId })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error ?? 'Sign-in failed.');
+      if (!res.ok) throw new Error(json?.error ?? t(lang, 'auth.signInFailed'));
       router.push(next ?? destination);
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setError(err instanceof Error ? err.message : t(lang, 'auth.genericError'));
     } finally {
       setBusy(null);
     }
@@ -45,16 +49,18 @@ export function DemoSignInForm({
     <div className="space-y-4">
       <div className="grid md:grid-cols-2 gap-4">
         <AccountPicker
-          title="Producer and group accounts"
-          intro="Open a selling dashboard, publish listings, and answer inquiries."
+          lang={lang}
+          title={t(lang, 'auth.demoSellingTitle')}
+          intro={t(lang, 'auth.demoSellingIntro')}
           accounts={selling}
           destination="/dashboard"
           busy={busy}
           onPick={pick}
         />
         <AccountPicker
-          title="Buyer and visitor accounts"
-          intro="See the buyer view of inquiries and arrangements. Tourists and customers share the same permissions."
+          lang={lang}
+          title={t(lang, 'auth.demoBuyerTitle')}
+          intro={t(lang, 'auth.demoBuyerIntro')}
           accounts={buyers}
           destination="/buyer"
           busy={busy}
@@ -62,8 +68,9 @@ export function DemoSignInForm({
         />
       </div>
       <AccountPicker
-        title="Administrator"
-        intro="Reviewer role. In demo mode the sample data is held in memory and the same server-side permission checks apply, so this is the real control surface with fictional records."
+        lang={lang}
+        title={t(lang, 'auth.demoAdminTitle')}
+        intro={t(lang, 'auth.demoAdminIntro')}
         accounts={admins}
         destination="/admin"
         busy={busy}
@@ -76,21 +83,22 @@ export function DemoSignInForm({
         </div>
       )}
       <p className="text-xs text-ink-500">
-        A buyer can also send an inquiry without an account: press “Send inquiry” on any{' '}
+        {t(lang, 'auth.demoGuestPrefix')}
         <a href="/products" className="underline font-semibold">
-          product
-        </a>{' '}
-        or{' '}
+          {t(lang, 'auth.demoGuestProducts')}
+        </a>
+        {t(lang, 'auth.demoGuestMiddle')}
         <a href="/tourism" className="underline font-semibold">
-          tourism
-        </a>{' '}
-        listing.
+          {t(lang, 'auth.demoGuestTourism')}
+        </a>
+        {t(lang, 'auth.demoGuestTail')}
       </p>
     </div>
   );
 }
 
 function AccountPicker({
+  lang,
   title,
   intro,
   accounts,
@@ -99,6 +107,7 @@ function AccountPicker({
   onPick,
   compact
 }: {
+  lang: LanguageCode;
   title: string;
   intro: string;
   accounts: Account[];
@@ -113,7 +122,7 @@ function AccountPicker({
         <h2 className="font-semibold text-ink-900">{title}</h2>
         <p className="mt-1 text-sm text-ink-700">{intro}</p>
         {accounts.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-500">No sample account of this kind exists.</p>
+          <p className="mt-3 text-sm text-ink-500">{t(lang, 'auth.demoNoAccount')}</p>
         ) : (
           <ul className={compact ? 'mt-3 flex flex-wrap gap-2' : 'mt-3 space-y-2'}>
             {accounts.map((a) => (

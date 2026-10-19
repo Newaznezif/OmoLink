@@ -37,7 +37,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   return (
     <AdminSection
       title="Arrangements"
-      description={`Every inquiry on the platform, newest first. These are arrangements between a buyer and a seller, not paid transactions — no payment is processed here, so nothing is counted as a sale. ${completed} of ${inquiries.length} marked completed, ${cancelled} cancelled.`}
+      description={`Every inquiry on the platform, newest first. These are arrangements between a buyer and a seller, and an arrangement is not a sale: marking one completed is what the parties recorded, not money OmoNetTab moved. Payment attempts are their own records, listed on the payments page. ${completed} of ${inquiries.length} marked completed, ${cancelled} cancelled.`}
       searchParams={searchParams}
     >
       <Card>

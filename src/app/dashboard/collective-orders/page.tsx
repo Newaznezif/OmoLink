@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
 import { formatMoney } from '@/lib/money';
-import { Badge, Card, CardBody, Empty, SampleTag, Section } from '@/components/ui';
+import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
+import { SampleTag } from '@/components/status-labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,7 @@ export default async function DashboardCollectivePage() {
     <Section
       eyebrow="Dashboard"
       title="Group selling"
-      description="Collective orders you contribute to, and the ones your account organises. A group order is a shared quantity request: OmoNETAB records who committed what, and moves no money."
+      description="Collective orders you contribute to, and the ones your account organises. A group order is a shared quantity request: OmoNetTab records who committed what, and moves no money."
       actions={
         isCoordinator ? (
           <Link

@@ -3,7 +3,8 @@ import { getRepo } from '@/lib/repo';
 import { isDemoMode } from '@/lib/store';
 import { getSessionProfile } from '@/lib/session';
 import { AdminSection } from '@/components/admin-shell';
-import { Badge, Card, CardBody, Empty, SampleTag, VerificationLabel } from '@/components/ui';
+import { Badge, Card, CardBody, Empty } from '@/components/ui';
+import { SampleTag, VerificationLabel } from '@/components/status-labels';
 import { VerificationAction } from '@/components/verification-action';
 
 export const dynamic = 'force-dynamic';

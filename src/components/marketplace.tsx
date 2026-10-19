@@ -1,5 +1,8 @@
 import { getRepo } from '@/lib/repo';
 import type { Category, Listing, ListingKind, Profile } from '@/lib/types';
+import { getLanguage, getT } from '@/lib/i18n/server';
+import { categoryTexts } from '@/lib/i18n/catalog';
+import type { TranslationKey } from '@/lib/i18n';
 import { ListingCard } from '@/components/listing-card';
 import { Empty, Section } from '@/components/ui';
 
@@ -8,12 +11,13 @@ export const dynamic = 'force-dynamic';
 export type MarketplaceProps = {
   searchParams?: Record<string, string | string[] | undefined>;
   kind?: ListingKind;
-  title: string;
-  eyebrow: string;
-  description: string;
+  titleKey: TranslationKey;
+  eyebrowKey: TranslationKey;
+  descriptionKey: TranslationKey;
 };
 
-export async function MarketplaceView({ searchParams, kind, title, eyebrow, description }: MarketplaceProps) {
+export async function MarketplaceView({ searchParams, kind, titleKey, eyebrowKey, descriptionKey }: MarketplaceProps) {
+  const t = getT();
   const repo = getRepo();
   const [listings, profiles, categories] = await Promise.all([
     repo.listPublicListings(),
@@ -52,13 +56,10 @@ export async function MarketplaceView({ searchParams, kind, title, eyebrow, desc
   filtered = sortListings(filtered, sort);
 
   return (
-    <Section eyebrow={eyebrow} title={title} description={description}>
+    <Section eyebrow={t(eyebrowKey)} title={t(titleKey)} description={t(descriptionKey)}>
       <FilterBar listings={listings} categories={categories} searchParams={searchParams ?? {}} kind={kind} />
       {filtered.length === 0 ? (
-        <Empty
-          title="No listings match your filters"
-          body="Try clearing a filter or broadening the search. All listings on this build are sample data."
-        />
+        <Empty title={t('market.emptyTitle')} body={t('market.emptyBody')} />
       ) : (
         <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0 m-0">
           {filtered.map((l) => (
@@ -98,6 +99,8 @@ function FilterBar({
   searchParams: Record<string, string | string[] | undefined>;
   kind?: ListingKind;
 }) {
+  const t = getT();
+  const lang = getLanguage();
   const relevantCategories = categories.filter((c) => {
     if (!kind) return true;
     if (c.kind === 'both') return true;
@@ -116,33 +119,33 @@ function FilterBar({
     <form
       method="get"
       className="mb-6 grid md:grid-cols-6 gap-3 bg-white border border-ink-100 rounded-2xl p-4"
-      aria-label="Filter listings"
+      aria-label={t('market.filtersAria')}
     >
       <div className="md:col-span-2">
         <label htmlFor="q" className="block text-xs font-semibold text-ink-700 mb-1">
-          Search
+          {t('filter.search')}
         </label>
         <input id="q" name="q" type="search" defaultValue={activeQ} className="w-full rounded-lg border border-ink-100 px-3 py-2 min-h-11" />
       </div>
       <div>
         <label htmlFor="category" className="block text-xs font-semibold text-ink-700 mb-1">
-          Category
+          {t('filter.category')}
         </label>
         <select id="category" name="category" defaultValue={activeCategory} className="w-full rounded-lg border border-ink-100 px-3 py-2 min-h-11">
-          <option value="">Any</option>
+          <option value="">{t('common.any')}</option>
           {relevantCategories.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}
+              {categoryTexts(lang, c).name.text}
             </option>
           ))}
         </select>
       </div>
       <div>
         <label htmlFor="location" className="block text-xs font-semibold text-ink-700 mb-1">
-          Community
+          {t('filter.community')}
         </label>
         <select id="location" name="location" defaultValue={activeLocation} className="w-full rounded-lg border border-ink-100 px-3 py-2 min-h-11">
-          <option value="">Any</option>
+          <option value="">{t('common.any')}</option>
           {locations.map((l) => (
             <option key={l} value={l}>
               {l}
@@ -152,7 +155,7 @@ function FilterBar({
       </div>
       <div>
         <label htmlFor="availability" className="block text-xs font-semibold text-ink-700 mb-1">
-          Availability
+          {t('listing.availabilityLabel')}
         </label>
         <select
           id="availability"
@@ -160,43 +163,43 @@ function FilterBar({
           defaultValue={activeAvailability}
           className="w-full rounded-lg border border-ink-100 px-3 py-2 min-h-11"
         >
-          <option value="">Any</option>
-          <option value="available">Available</option>
-          <option value="limited">Limited</option>
-          <option value="made_to_order">Made to order</option>
-          <option value="seasonal">Seasonal</option>
-          <option value="unavailable">Unavailable</option>
+          <option value="">{t('common.any')}</option>
+          <option value="available">{t('status.available')}</option>
+          <option value="limited">{t('status.limitedOption')}</option>
+          <option value="made_to_order">{t('status.madeToOrder')}</option>
+          <option value="seasonal">{t('status.seasonal')}</option>
+          <option value="unavailable">{t('status.unavailable')}</option>
         </select>
       </div>
       <div>
         <label htmlFor="sort" className="block text-xs font-semibold text-ink-700 mb-1">
-          Sort
+          {t('filter.sort')}
         </label>
         <select id="sort" name="sort" defaultValue={activeSort} className="w-full rounded-lg border border-ink-100 px-3 py-2 min-h-11">
-          <option value="newest">Newest</option>
-          <option value="updated">Recently updated</option>
-          <option value="price_asc">Price: low to high</option>
-          <option value="price_desc">Price: high to low</option>
+          <option value="newest">{t('filter.sortNewest')}</option>
+          <option value="updated">{t('filter.sortUpdated')}</option>
+          <option value="price_asc">{t('filter.sortPriceAsc')}</option>
+          <option value="price_desc">{t('filter.sortPriceDesc')}</option>
         </select>
       </div>
       <div>
         <label htmlFor="min" className="block text-xs font-semibold text-ink-700 mb-1">
-          Min ETB
+          {t('filter.minPrice')}
         </label>
         <input id="min" name="min" inputMode="decimal" defaultValue={activeMin} className="w-full rounded-lg border border-ink-100 px-3 py-2 min-h-11" />
       </div>
       <div>
         <label htmlFor="max" className="block text-xs font-semibold text-ink-700 mb-1">
-          Max ETB
+          {t('filter.maxPrice')}
         </label>
         <input id="max" name="max" inputMode="decimal" defaultValue={activeMax} className="w-full rounded-lg border border-ink-100 px-3 py-2 min-h-11" />
       </div>
       <div className="md:col-span-6 flex gap-2 flex-wrap">
         <button type="submit" className="bg-clay-700 text-white font-semibold rounded-lg px-4 py-2 min-h-11">
-          Apply filters
+          {t('filter.apply')}
         </button>
         <a href={kind ? `/${kind}` : '/explore'} className="border border-ink-100 rounded-lg px-4 py-2 min-h-11 font-semibold text-ink-700">
-          Reset
+          {t('filter.reset')}
         </a>
       </div>
     </form>

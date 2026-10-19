@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Confirm your email address',
-  description: 'Ask OmoNETAB to send the confirmation email again.'
+  description: 'Ask OmoNetTab to send the confirmation email again.'
 };
 
 function siteUrl() {
@@ -52,7 +52,7 @@ export default async function VerifyEmailPage({
       <Section
         eyebrow="Account help"
         title="Email confirmation is not part of this build"
-        description="OmoNETAB is running with DATA_MODE=demo. Sample accounts are created already signed in, no address is stored for them, and no mail service is configured, so there is nothing to confirm and nothing to resend."
+        description="OmoNetTab is running with DATA_MODE=demo. Sample accounts are created already signed in, no address is stored for them, and no mail service is configured, so there is nothing to confirm and nothing to resend."
       >
         <Card>
           <CardBody>
@@ -142,7 +142,7 @@ export default async function VerifyEmailPage({
           <p className="mt-3 text-xs text-ink-500">
             The authentication service only resends a confirmation link to a session it recognises, so if you are not
             signed in, sign in first and then use this form — or use the password reset instead. If a link never arrives
-            even after a resend, the project’s mail settings — not OmoNETAB — are the place to look. An administrator can
+            even after a resend, the project’s mail settings — not OmoNetTab — are the place to look. An administrator can
             also confirm an account directly in the authentication provider.
           </p>
           <p className="mt-2 text-sm">

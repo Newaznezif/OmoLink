@@ -7,13 +7,13 @@ import { requireSupabaseConfig } from './config';
 /**
  * Server-side Supabase client bound to the visitor's auth cookies.
  *
- * It uses the anon key only, so every query is evaluated under Row Level
+ * It uses the public key only, so every query is evaluated under Row Level
  * Security as the signed-in user (or as `anon`). There is no service-role path
  * in this codebase by design.
  */
 export function supabaseServer(): SupabaseClient {
-  const { url, anonKey } = requireSupabaseConfig();
-  return createServerClient(url, anonKey, {
+  const { url, publicKey } = requireSupabaseConfig();
+  return createServerClient(url, publicKey, {
     cookies: {
       getAll() {
         return cookies().getAll().map((c) => ({ name: c.name, value: c.value }));
@@ -33,8 +33,8 @@ export function supabaseServer(): SupabaseClient {
  * Auth state is disabled so it cannot attempt to write cookies at render time.
  */
 export function supabaseAnonServer(): SupabaseClient {
-  const { url, anonKey } = requireSupabaseConfig();
-  return createClient(url, anonKey, {
+  const { url, publicKey } = requireSupabaseConfig();
+  return createClient(url, publicKey, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }

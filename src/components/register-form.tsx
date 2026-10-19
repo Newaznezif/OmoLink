@@ -20,7 +20,7 @@ export function RegisterForm({ categories, mode }: { categories: Category[]; mod
         <Input id="displayName" name="displayName" required maxLength={120} />
       </Field>
       <fieldset>
-        <legend className="text-sm font-semibold text-ink-900 mb-1">What do you want to do on OmoNETAB?</legend>
+        <legend className="text-sm font-semibold text-ink-900 mb-1">What do you want to do on OmoNetTab?</legend>
         <p className="text-xs text-ink-500 mb-2">
           This chooses the shape of your account. It does not give you administrative rights — an administrator has to
           assign those separately.
@@ -118,7 +118,7 @@ export function RegisterForm({ categories, mode }: { categories: Category[]; mod
       <label className="flex gap-2 items-start text-sm rounded-lg border border-ink-100 p-3">
         <input type="checkbox" name="consent" className="mt-1 w-4 h-4" required />
         <span>
-          I consent to publishing this profile information on OmoNETAB. Sensitive cultural knowledge, community
+          I consent to publishing this profile information on OmoNetTab. Sensitive cultural knowledge, community
           imagery, or ceremony details are <strong>not</strong> commercialised by default.
         </span>
       </label>

@@ -2,7 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
+import { paymentEligibility } from '@/lib/payments';
+import { getLanguage, getT } from '@/lib/i18n/server';
+import { receiptLabelKey } from '@/lib/receipts';
 import { ArrangementCard } from '@/components/arrangement-card';
+import { PaymentPanel } from '@/components/payment-panel';
 import { ReviewForm } from '@/components/review-form';
 import { Badge, Card, CardBody, Section } from '@/components/ui';
 import { formatMoney } from '@/lib/money';
@@ -16,9 +20,19 @@ export default async function BuyerInquiryPage({ params }: { params: { id: strin
   // Ownership is checked against the stored record, not against what the URL says.
   if (!inquiry || inquiry.buyerProfileId !== actor.profileId) notFound();
 
-  const [listing, reviews] = await Promise.all([repo.getListing(inquiry.listingId), repo.listReviews({ listingId: inquiry.listingId, includeHidden: true })]);
+  const [listing, reviews, payments] = await Promise.all([
+    repo.getListing(inquiry.listingId),
+    repo.listReviews({ listingId: inquiry.listingId, includeHidden: true }),
+    repo.listPaymentsForInquiry(inquiry.id)
+  ]);
   const alreadyReviewed = reviews.some((r) => r.inquiryId === inquiry.id && r.authorProfileId === actor.profileId);
   const completed = inquiry.status === 'completed';
+
+  const eligibility = paymentEligibility({ inquiry, actorProfileId: actor.profileId, existing: payments });
+  const suspended = actor.status === 'suspended';
+  const canPay = eligibility.eligible && !suspended;
+  const newestPayment = [...payments].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const tr = getT();
 
   return (
     <Section
@@ -27,6 +41,32 @@ export default async function BuyerInquiryPage({ params }: { params: { id: strin
       description="The full record of this request: what you sent, what each side has noted, and the estimate the listing price came to."
     >
       <ArrangementCard inquiry={inquiry} listing={listing} canAct={actor.status === 'active'} showHistory />
+
+      <Card>
+        <CardBody>
+          <PaymentPanel
+            lang={getLanguage()}
+            inquiryId={inquiry.id}
+            amountCents={inquiry.estimatedSubtotalCents}
+            payments={payments}
+            canPay={canPay}
+            blockedReason={suspended ? 'suspended' : eligibility.eligible ? undefined : eligibility.reason}
+          />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardBody>
+          <h2 className="font-semibold text-ink-900">{tr('receipt.recordHeading')}</h2>
+          <p className="mt-2">
+            <a href={`/api/inquiries/${inquiry.id}/document`} className="underline font-semibold text-clay-700">
+              {tr(receiptLabelKey(newestPayment))}
+            </a>
+          </p>
+          <p className="mt-1 text-xs text-ink-500">{tr('receipt.downloadNote')}</p>
+          {payments.length === 0 && <p className="mt-1 text-xs text-ink-500">{tr('payment.notPaidReceipt')}</p>}
+        </CardBody>
+      </Card>
 
       <Card>
         <CardBody>
@@ -51,7 +91,8 @@ export default async function BuyerInquiryPage({ params }: { params: { id: strin
           </dl>
           <p className="mt-2 text-xs text-ink-500">
             The estimate was computed on the server from the listing’s unit price at the time you sent the request. It is
-            not an invoice and no payment is taken here.
+            not an invoice. A payment, if one is made, copies this figure from your record rather than from anything the
+            browser sends, and each attempt is listed above.
           </p>
         </CardBody>
       </Card>

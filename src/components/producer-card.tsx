@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { ProducerGroup, Profile } from '@/lib/types';
-import { Badge, SampleTag } from './ui';
+import { getT } from '@/lib/i18n/server';
+import { Badge } from './ui';
+import { SampleTag } from './status-labels';
 
 export function ProducerCard({ producer }: { producer: Profile }) {
   return (
@@ -32,7 +34,7 @@ export function GroupCard({ group }: { group: ProducerGroup }) {
       <div className="font-semibold text-ink-900">{group.name}</div>
       <p className="text-sm text-ink-700 mt-1">{group.description}</p>
       <div className="mt-2 flex flex-wrap gap-2 items-center">
-        <Badge tone="info">{group.memberProfileIds.length} members (sample)</Badge>
+        <Badge tone="info">{getT()('common.membersSample', { count: group.memberProfileIds.length })}</Badge>
         {group.isDemo && <SampleTag />}
       </div>
     </div>

@@ -3,13 +3,14 @@ import { getRepo } from '@/lib/repo';
 import { isDemoMode } from '@/lib/store';
 import { requireArea } from '@/lib/area';
 import { AccountSettingsForm } from '@/components/account-settings-form';
+import { AppearanceCard } from '@/components/appearance-card';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Account settings',
-  description: 'Change your details, choose how sellers contact you, and see what OmoNETAB holds about you.'
+  description: 'Change your details, choose how sellers contact you, and see what OmoNetTab holds about you.'
 };
 
 export default async function BuyerSettingsPage() {
@@ -40,11 +41,13 @@ export default async function BuyerSettingsPage() {
     >
       <AccountSettingsForm profile={profile} variant="buyer" />
 
+      <AppearanceCard profile={profile} />
+
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">What OmoNETAB stores about you</h2>
+          <h2 className="font-semibold text-ink-900">What OmoNetTab stores about you</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-ink-700">
-            <li>Your profile record: name, community, area, language, the contact method above, and consent flags.</li>
+            <li>Your profile record: name, community, area, language, the colour scheme you chose, the contact method above, and consent flags.</li>
             <li>Each inquiry you send, with its status history — visible to you, the seller on that listing, and an administrator.</li>
             <li>Any review you post, under the name you display.</li>
             <li>

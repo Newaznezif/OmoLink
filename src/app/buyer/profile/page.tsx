@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'My profile',
-  description: 'What your OmoNETAB account holds, and what anyone else can see.'
+  description: 'What your OmoNetTab account holds, and what anyone else can see.'
 };
 
 export default async function BuyerProfilePage() {

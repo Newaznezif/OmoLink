@@ -1,7 +1,7 @@
 {
-  "name": "OmoNETAB",
-  "short_name": "OmoNETAB",
-  "description": "A digital bridge for rural entrepreneurs and community tourism in South Omo.",
+  "name": "OmoNetTab",
+  "short_name": "OmoNetTab",
+  "description": "OmoNetTab — Connecting Cultures and Commerce",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
