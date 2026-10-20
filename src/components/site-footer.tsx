@@ -94,7 +94,6 @@ export async function SiteFooter() {
       <div className="border-t border-ink-100">
         <div className="mx-auto max-w-6xl px-4 md:px-6 py-4 text-xs text-ink-500 flex flex-wrap gap-4">
           <span>{t('footer.copyright', { year: new Date().getFullYear(), siteName: settings.siteName })}</span>
-          {demo && <span>{t('footer.sampleDataNote')}</span>}
           <span>{t('footer.workflowNote')}</span>
           {settings.footerNote && <span>{settings.footerNote}</span>}
         </div>

@@ -29,7 +29,7 @@ export default async function ForgotPasswordPage({
       redirect(
         '/forgot-password?error=' +
           encodeURIComponent(
-            'This build runs in demo mode: there are no real accounts, no stored passwords and no email service, so nothing can be reset. Demo sign-in picks a sample account instead.'
+            'Demo mode has no real accounts, stored passwords or email service, so there is nothing to reset. Sign in with a sample account instead.'
           )
       );
     }
@@ -54,14 +54,13 @@ export default async function ForgotPasswordPage({
     return (
       <Section
         eyebrow="Account help"
-        title="Password reset is not available in this build"
-        description="OmoNetTab is running with DATA_MODE=demo. Accounts here are sample records held in memory, there is no password to forget, and no email service is configured — so this page would be a form that lies."
+        title="Password reset is not available yet"
+        description="This site runs in demo mode with sample accounts, so there is no stored password to reset and no email service connected."
       >
         <Card>
           <CardBody>
             <p className="text-sm text-ink-700">
-              Sign in from the demo picker, or set the Supabase environment variables and restart the server to get real
-              accounts with real password resets.
+              Open the sign-in page to explore the site with a labelled sample account.
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-sm">
               <a href="/sign-in" className="underline font-semibold text-clay-700">

@@ -122,8 +122,8 @@ export default async function OnboardingPage({
     return (
       <Section
         eyebrow="Account"
-        title="Onboarding happens during registration in this build"
-        description="Demo mode creates the profile in the same step as the account, so there is no unfinished account to onboard. This page exists for the Supabase build, where email confirmation splits registration into two steps."
+        title="Onboarding happens while you register"
+        description="Demo mode creates the profile in the same step as the account, so there is no unfinished account to onboard."
       >
         <Card>
           <CardBody>

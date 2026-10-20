@@ -40,7 +40,7 @@ export async function SiteHeader() {
         {t('common.skipToMain')}
       </a>
       {isDemoMode() && (
-        <div role="status" className="bg-ochre-100 text-ochre-700 text-xs md:text-sm px-4 py-2 text-center font-semibold">
+        <div role="status" className="bg-ochre-100 text-ochre-700 text-xs px-4 py-1.5 text-center">
           {t('common.demoBanner')}
         </div>
       )}

@@ -138,7 +138,7 @@ export default async function DashboardProfilePage() {
 
           <p className="mt-3 text-xs text-ink-500">
             {isDemoMode()
-              ? 'Demo build: this profile is sample data held in memory and resets when the server restarts.'
+              ? 'Demo mode: this is a sample profile, and it resets when the server restarts.'
               : 'Saved in the profiles table; your public page reads the same record, so a buyer never sees more than what appears above.'}
           </p>
         </CardBody>

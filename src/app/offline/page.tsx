@@ -13,16 +13,13 @@ export default function OfflinePage() {
           <CardBody>
             <h2 className="font-semibold text-ink-900">App shell and public listings</h2>
             <p className="mt-1 text-sm text-ink-700">
-              A service worker caches the app shell and the pages you have already visited. The site has to be opened
-              once while online for that cache to be built. After that, a listing you loaded online can be revisited
-              without a connection. API mutations are never cached. The worker registers in a production build only:
-              <code className="mx-1">npm run dev</code> deliberately skips it, because development bundle URLs stay
-              the same while their contents change and a cached copy would hide the newest code.
+              Pages you have already opened are kept on your device, so a listing you loaded online can be revisited
+              without a connection. Open the site once while online to start that cache. Nothing you send — an inquiry
+              or a listing — is held back and submitted later without you knowing.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Badge tone="info">Pages: network first, cache when offline</Badge>
-              <Badge tone="neutral">Build files: cache first</Badge>
-              <Badge tone="neutral">Never cached: /api</Badge>
+              <Badge tone="info">Pages: shown offline once visited</Badge>
+              <Badge tone="neutral">Sent to the producer: always online</Badge>
             </div>
           </CardBody>
         </Card>
@@ -30,11 +27,11 @@ export default function OfflinePage() {
           <CardBody>
             <h2 className="font-semibold text-ink-900">Listing drafts on device</h2>
             <p className="mt-1 text-sm text-ink-700">
-              When a producer fills out a listing while offline, the draft is stored in IndexedDB (with a
-              localStorage fallback). Drafts survive page refresh and browser restart. The status badge shows: Saved
-              locally, Pending synchronization, Synced, or Sync failed — and a retry is always available. Creating a
-              new listing still needs a connection, because the server has to receive it: offline, the form says so and
-              offers the device draft instead of sending a request that cannot arrive.
+              When a producer fills out a listing while offline, the draft is saved on that device. It survives a page
+              refresh and a browser restart, and the status badge shows Saved locally, Pending synchronization, Synced,
+              or Sync failed — a retry is always available. Publishing still needs a connection, because the server has
+              to receive it: offline, the form says so and keeps the draft rather than sending a request that cannot
+              arrive.
             </p>
             <p className="mt-2 text-sm text-ink-500">
               Nothing here reaches another person. The draft lives only on this device, and clearing the browser’s site
@@ -62,12 +59,9 @@ export default function OfflinePage() {
       </div>
 
       <div className="mt-6 rounded-lg border border-ochre-100 bg-ochre-50 p-4 text-sm text-ochre-700">
-        <h2 className="font-semibold">What this prototype does not do</h2>
+        <h2 className="font-semibold">What OmoNetTab does not do</h2>
         <ul className="mt-1 list-disc pl-5 space-y-1">
-          <li>
-            It does <strong>not</strong> send SMS or USSD. A web app cannot offer SMS just by adding a button — a real
-            gateway and backend integration would be needed and tested before any claim is made.
-          </li>
+          <li>It does <strong>not</strong> send SMS or USSD messages.</li>
           <li>It does <strong>not</strong> process payments or represent that an inquiry has been paid for.</li>
           <li>It does <strong>not</strong> fabricate route distances, travel times or transport availability.</li>
         </ul>

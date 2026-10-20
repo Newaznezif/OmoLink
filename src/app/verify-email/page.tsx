@@ -51,14 +51,13 @@ export default async function VerifyEmailPage({
     return (
       <Section
         eyebrow="Account help"
-        title="Email confirmation is not part of this build"
-        description="OmoNetTab is running with DATA_MODE=demo. Sample accounts are created already signed in, no address is stored for them, and no mail service is configured, so there is nothing to confirm and nothing to resend."
+        title="Email confirmation is not available yet"
+        description="This site runs in demo mode, where a sample account is created already signed in and no email address is stored, so there is nothing to confirm."
       >
         <Card>
           <CardBody>
             <p className="text-sm text-ink-700">
-              When the app runs against a Supabase project with email confirmation switched on, registration sends the
-              link and this page resends it.
+              Email confirmation arrives with real accounts, when this site is connected to its database.
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-sm">
               <a href="/sign-in" className="underline font-semibold text-clay-700">

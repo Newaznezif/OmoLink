@@ -103,8 +103,7 @@ export default async function ProducerPage({ params }: { params: { id: string } 
           <div className="bg-white border border-ink-100 rounded-2xl card-shadow p-5">
             <h2 className="font-semibold text-ink-900 mb-2">Share profile</h2>
             <p className="text-sm text-ink-700 mb-3">
-              Public URL with QR code. QR codes point to real public pages, never to private contact details or
-              fabricated verification certificates.
+              Share this profile with the link or the QR code below.
             </p>
             <QrCode value={publicUrl} size={180} label="QR for this producer profile URL" />
             <div className="mt-2 break-all text-xs text-ink-500">{publicUrl}</div>

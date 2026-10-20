@@ -7,7 +7,6 @@ import { categoryTexts } from '@/lib/i18n/catalog';
 import { ListingCard } from '@/components/listing-card';
 import { ProducerCard } from '@/components/producer-card';
 import { Button, Card, CardBody, LinkButton, Section } from '@/components/ui';
-import { SampleTag } from '@/components/status-labels';
 import { CollectiveOpportunityCard } from '@/components/collective-card';
 
 export const dynamic = 'force-dynamic';
@@ -107,10 +106,6 @@ function HeroSection({ settings }: { settings: SiteSettings }) {
   return (
     <section className="bg-gradient-to-b from-clay-50 to-white">
       <div className="mx-auto max-w-6xl px-4 md:px-6 py-12 md:py-20">
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <SampleTag />
-          {t('home.prototypeNote')}
-        </div>
         <h1 className="text-3xl md:text-5xl font-black text-ink-900 max-w-3xl leading-tight">{settings.heroTitle}</h1>
         <p className="mt-3 md:mt-5 text-lg text-ink-700 max-w-2xl">{settings.heroDescription}</p>
         <p className="mt-2 text-sm text-ink-500 max-w-2xl">{settings.tagline}</p>
@@ -190,10 +185,7 @@ function FeaturedBlock({ titleKey, eyebrowKey, listings, producerById, viewAllHr
       }
     >
       {listings.length === 0 ? (
-        <p className="text-sm text-ink-500">
-          Nothing has been published in this group yet. An administrator can highlight listings from the admin homepage
-          settings.
-        </p>
+        <p className="text-sm text-ink-500">{t('home.featuredEmpty')}</p>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {listings.map((l) => (

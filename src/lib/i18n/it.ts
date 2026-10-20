@@ -13,7 +13,7 @@ export const it: TranslationSet = {
   'common.viewAll': 'Vedi tutto →',
   'common.openLink': 'Apri →',
   'common.demoBanner':
-    'Modalità dimostrativa — solo dati di esempio. I pagamenti qui sono simulati e indicati come tali, i produttori non sono verificati e nessun servizio SMS è ancora collegato.',
+    'Anteprima in modalità dimostrativa — i venditori non sono verificati e i pagamenti sono simulati.',
   'common.interfaceLanguage': 'Lingua dell’interfaccia',
   'common.membersSample': '{count} membri (esempio)',
 
@@ -29,7 +29,7 @@ export const it: TranslationSet = {
   'language.notice.none':
     'Non esiste ancora una traduzione verificata in {language}, quindi l’interfaccia resta in inglese. L’opzione rimane selezionabile per poterla provare non appena le traduzioni saranno disponibili.',
   'language.notice.areas':
-    'Finora sono tradotti: la pagina iniziale, le pagine di navigazione del marketplace con i filtri, la pagina di un annuncio, l’accesso e le pagine di aiuto (come funziona, contatti, privacy, linee guida della community). Tutto il resto — i profili dei produttori, gli ordini collettivi, gli strumenti di impatto e di prezzo, la guida offline, la registrazione e l’onboarding e ogni area riservata agli account — non ha ancora una traduzione in {language} e resta in inglese.',
+    'Alcune pagine restano in inglese finché altro testo in {language} non sarà stato revisionato.',
   'language.notice.catalog':
     'Le categorie e il testo degli annunci di esempio in {language} non sono ancora stati verificati da un madrelingua; il testo originale del produttore viene sempre conservato.',
 
@@ -58,7 +58,7 @@ export const it: TranslationSet = {
   'status.verifiedHint': 'Approvato da un revisore autorizzato.',
   'status.pendingHint': 'In attesa della decisione di un revisore autorizzato.',
   'status.unverifiedHint': 'Nessuna verifica registrata.',
-  'status.demoSuffix': ' (Stato simulato — la procedura di verifica deve ancora essere progettata per la sperimentazione.)',
+  'status.demoSuffix': ' (Simulato in modalità dimostrativa.)',
   'status.demoTag': '· demo',
   'status.sampleData': 'Dati di esempio',
   'status.sampleDataHint':
@@ -81,7 +81,6 @@ export const it: TranslationSet = {
   'listing.minOrder': 'Minimo {count} {unit}',
   'listing.availabilityLabel': 'Disponibilità',
 
-  'home.prototypeNote': 'Prototipo — solo dati di esempio.',
   'home.browseProducts': 'Sfoglia i prodotti',
   'home.browseTourism': 'Sfoglia i servizi turistici',
   'home.searchLabel': 'Cerca inserzioni',
@@ -298,7 +297,7 @@ export const it: TranslationSet = {
     'Questa istanza è collegata a un progetto Supabase, quindi l’accesso usa credenziali reali e la Row Level Security decide cosa puoi vedere.',
   'auth.signInDemoTitle': 'Accedi come account dimostrativo',
   'auth.signInDemoDescription':
-    'Modalità dimostrativa: l’accesso è simulato con account di esempio chiaramente etichettati. Il cookie di sessione trasporta solo un ID utente, mai un ruolo — ruolo e sospensione vengono riletti dal profilo salvato a ogni richiesta. Non è ancora autenticazione reale: in questa modalità chi può impostare quel cookie agisce come quell’account di esempio, ed è proprio per questo che i dati dimostrativi sono l’unica cosa a cui può accedere. L’accesso reale è attivo quando DATA_MODE=supabase e le chiavi Supabase sono configurate.',
+    'Modalità dimostrativa: scegli un account di esempio etichettato per esplorare il sito. Sono record dimostrativi, non account reali, e nulla di ciò che fai qui raggiunge un venditore reale.',
   'auth.email': 'Email',
   'auth.password': 'Password',
   'auth.passwordHint': 'Minimo 6 caratteri.',
@@ -447,7 +446,7 @@ export const it: TranslationSet = {
   'guidelines.impactBodySuffix':
     ' i costi di trasporto, imballaggio, coordinamento e piattaforma. I numeri mostrati nella bacheca amministrativa sono dati dimostrativi, non impatto misurato. Non pubblichiamo mai statistiche, testimonianze o endorsements inventati.',
 
-  'footer.demoModeNote': 'Attualmente in modalità dimostrativa con soli dati di esempio.',
+  'footer.demoModeNote': 'In modalità dimostrativa, con annunci di esempio.',
   'footer.liveModeNote':
     'Collegata a un progetto Supabase; i record mostrati sono dati reali inseriti dagli account di questa istanza.',
   'footer.community': 'Comunità',
@@ -460,9 +459,8 @@ export const it: TranslationSet = {
   'footer.contactFormLink': 'modulo di contatto',
   'footer.contactTail': ' — i messaggi raggiungono un’amministratrice o un amministratore di questa istanza.',
   'footer.copyright': '© {year} {siteName}.',
-  'footer.sampleDataNote': 'Dati di esempio — non un marketplace attivo.',
   'footer.workflowNote':
-    'La verifica è ancora in fase di progettazione con le comunità pilota. I pagamenti sono simulati in modalità dimostrativa e richiedono un gestore configurato prima che possa muoversi qualsiasi denaro.',
+    'La verifica dei venditori è ancora in fase di configurazione, e i pagamenti richiedono un gestore configurato prima che possa muoversi qualsiasi denaro.',
 
   'notFound.eyebrow': '404',
   'notFound.title': 'Questa pagina non esiste',

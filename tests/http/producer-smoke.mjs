@@ -470,13 +470,13 @@ const onboarding = await get('/onboarding', undefined);
 check('GET /onboarding explains the demo-mode path instead of a dead form', onboarding.status === 200 && /demo mode/i.test(visible(onboarding.body)), `status=${onboarding.status}`);
 
 const forgot = await get('/forgot-password', undefined);
-check('GET /forgot-password states that no email service exists in demo mode', forgot.status === 200 && /not available in this build/i.test(visible(forgot.body)), `status=${forgot.status}`);
+check('GET /forgot-password states that no email service exists in demo mode', forgot.status === 200 && /not available yet/i.test(visible(forgot.body)), `status=${forgot.status}`);
 
 const reset = await get('/reset-password', undefined);
 check('GET /reset-password refuses politely in demo mode', reset.status === 200 && /Nothing to reset/i.test(visible(reset.body)), `status=${reset.status}`);
 
 const verify = await get('/verify-email', undefined);
-check('GET /verify-email says confirmation is not part of this build', verify.status === 200 && /not part of this build/i.test(visible(verify.body)), `status=${verify.status}`);
+check('GET /verify-email says confirmation is not available yet', verify.status === 200 && /is not available yet/i.test(visible(verify.body)), `status=${verify.status}`);
 
 const demoCredentialsSignIn = await send('POST', '/api/auth/signin', undefined, { email: 'a@b.test', password: 'hunter2' });
 check('the Supabase sign-in endpoint refuses in demo mode rather than crashing', demoCredentialsSignIn.status === 400, `${demoCredentialsSignIn.status} ${demoCredentialsSignIn.json.error ?? ''}`);

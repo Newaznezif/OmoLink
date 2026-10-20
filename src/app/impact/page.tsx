@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export default async function ImpactPage() {
   const stats = await getRepo().aggregateStats();
   return (
-    <Section eyebrow="Impact" title="Impact dashboard design" description="These metrics describe the shape of the data model. Every value below is generated from clearly labelled sample data. Nothing here is a measured result.">
+    <Section eyebrow="Impact" title="Impact" description="These figures are counted from the sample records loaded in this demo. They describe the shape of the catalogue, not measured results.">
       {stats.producers === 0 ? (
         <Empty title="No data yet" body="The demo store has been cleared. Reload the page to reset it." />
       ) : (
@@ -27,8 +27,8 @@ export default async function ImpactPage() {
                 <Badge tone="warning">Requires reliable data</Badge>
               </div>
               <p className="mt-1 text-xs text-ink-500">
-                We do not fabricate transaction counts. Payments are not processed here, and the pilot has not yet
-                validated any real completion events.
+                No payments are processed here and no completed arrangement has been verified, so no transaction count
+                is shown.
               </p>
             </CardBody>
           </Card>
@@ -58,9 +58,9 @@ export default async function ImpactPage() {
               <li>Claims that an origin or quality attribute is “independently verified” without an actual verification process.</li>
             </ul>
             <p className="mt-3 text-xs text-ink-500">
-              Explore the code and data model in{' '}
+              See{' '}
               <Link href="/how-it-works" className="underline">
-                How it works
+                how it works
               </Link>
               .
             </p>

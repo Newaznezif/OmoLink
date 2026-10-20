@@ -13,8 +13,7 @@ export const en = {
   'common.clear': 'Clear',
   'common.viewAll': 'View all →',
   'common.openLink': 'Open →',
-  'common.demoBanner':
-    'Demo mode — sample data only. Payments here are simulated and labelled as such, producers are not verified, and no SMS is wired up yet.',
+  'common.demoBanner': 'This preview runs in demo mode — sellers are unverified and payments are simulated.',
   'common.interfaceLanguage': 'Interface language',
   'common.membersSample': '{count} members (sample)',
 
@@ -29,9 +28,9 @@ export const en = {
   'language.notice.unreviewed':
     'Every {language} interface label has wording, but it is a machine draft that no fluent speaker has reviewed yet.',
   'language.notice.none':
-    'No verified {language} translation exists yet, so this interface is still shown in English. The option stays selectable so the wording can be tested once translations are contributed.',
+    'No verified {language} translation exists yet, so this page is shown in English.',
   'language.notice.areas':
-    'Translated so far: the home page, the marketplace browse pages with their filters, a listing page, sign-in, and the help pages (how it works, contact, privacy, community guidelines). Everything else — producer profiles, collective orders, the impact and pricing tools, the offline guide, registration and onboarding, and every signed-in area — has no {language} translation yet and stays in English.',
+    'Some pages stay in English until more {language} wording has been reviewed.',
   'language.notice.catalog':
     'Category and sample listing wording in {language} has not been checked by a fluent speaker yet, and the producer’s original text is always kept.',
 
@@ -62,7 +61,7 @@ export const en = {
   'status.verifiedHint': 'Approved by an authorised reviewer.',
   'status.pendingHint': 'Awaiting decision from an authorised reviewer.',
   'status.unverifiedHint': 'No verification on record.',
-  'status.demoSuffix': ' (Simulated status — verification workflow is pending pilot design.)',
+  'status.demoSuffix': ' (Simulated in demo mode.)',
   'status.demoTag': '· demo',
   'status.sampleData': 'Sample data',
   'status.sampleDataHint':
@@ -87,13 +86,11 @@ export const en = {
   'listing.availabilityLabel': 'Availability',
 
   // ---------- homepage ----------
-  'home.prototypeNote': 'Prototype — sample data only.',
   'home.browseProducts': 'Browse products',
   'home.browseTourism': 'Browse tourism services',
   'home.searchLabel': 'Search listings',
   'home.searchPlaceholder': 'Search products, services, producers…',
-  'home.searchNote':
-    'Search and the filters on the results page act on real records in this build — an empty result says so instead of showing sample rows.',
+  'home.searchNote': 'Search covers products, tourism services and producers.',
   'home.categoriesEyebrow': 'Browse by',
   'home.categoriesTitle': 'Categories',
   'home.categoriesDescription': 'Every category here has a working results page.',
@@ -101,15 +98,14 @@ export const en = {
   'home.featuredProductsEyebrow': 'Highlighted by the team',
   'home.featuredTourismTitle': 'Tourism services',
   'home.featuredTourismEyebrow': 'Guided experiences',
-  'home.featuredEmpty':
-    'Nothing has been published in this group yet. An administrator can highlight listings from the admin homepage settings.',
+  'home.featuredEmpty': 'Nothing has been published here yet.',
   'home.producersEyebrow': 'Community',
   'home.producersTitle': 'Producer highlights',
-  'home.producersDescription': 'Sample profiles. Do not present these as real, verified producers.',
+  'home.producersDescription': 'Producers and guides with a profile on this site.',
   'home.producersEmpty': 'No selling profile has been published yet.',
   'home.collectiveEyebrow': 'Collective selling',
   'home.collectiveTitle': 'Open group orders',
-  'home.collectiveDescription': 'Sample opportunities showing how producers pool quantities to serve bulk buyers.',
+  'home.collectiveDescription': 'Group orders that pool quantities for bulk buyers.',
   'home.collectiveEmpty': 'No group order is open right now.',
   'home.howEyebrow': 'Direct selling',
   'home.howTitle': 'How OmoNetTab helps a producer connect with customers',
@@ -139,7 +135,7 @@ export const en = {
   'home.trustTitle': 'Honest status, clear consent',
   'home.trustVerification': 'Explicit verification',
   'home.trustVerificationBody':
-    'Verification has three states: unverified, pending review, and verified. Only an administrator can approve a profile, and no one approves their own request. The verification workflow is still being designed for the pilot — this prototype does not claim any producer is verified in the real world.',
+    'Verification has three states: unverified, pending review, and verified. Only an administrator can approve a profile, and no one approves their own request.',
   'home.trustConsent': 'Consent-aware publication',
   'home.trustConsentBody':
     'Cultural performances, ceremonies and community images are only published with recorded consent. A contact detail without stored consent is never published. Sensitive cultural knowledge is never commercialised by default.',
@@ -163,14 +159,13 @@ export const en = {
   'market.productsEyebrow': 'Marketplace',
   'market.productsTitle': 'Products',
   'market.productsDescription':
-    'Sample product listings from South Omo producers. Categories are illustrative and do not prove that a product is available in any specific community.',
+    'Products from South Omo producers, priced per unit in ETB. Ask the producer to confirm current availability.',
   'market.tourismEyebrow': 'Tourism',
   'market.tourismTitle': 'Tourism services',
   'market.tourismDescription':
-    'Guided visits, half-day walks and craft demonstrations offered by locally operated producers and guides. Sensitive cultural knowledge is never commercialised by default.',
+    'Guided visits, half-day walks and craft demonstrations offered by locally operated guides.',
   'market.emptyTitle': 'No listings match your filters',
-  'market.emptyBody':
-    'Try clearing a filter or broadening the search. All listings on this build are sample data.',
+  'market.emptyBody': 'Try clearing a filter or broadening your search.',
   'market.filtersAria': 'Filter listings',
   'filter.search': 'Search',
   'filter.category': 'Category',
@@ -207,8 +202,7 @@ export const en = {
     'This submits an inquiry, not a confirmed sale. The producer will respond with pickup or delivery details and payment arrangements. Nothing here is a payment.',
   'listing.producerTitle': 'About the producer',
   'listing.shareTitle': 'Share this listing',
-  'listing.shareBody':
-    'Scan the QR with another phone to open the same public listing. QR codes link to real public URLs — never to a private contact or a fabricated verification certificate.',
+  'listing.shareBody': 'Scan with another phone to open this listing.',
   'listing.shareQrAria': 'QR for this listing URL',
   'listing.unavailableTitle': 'Currently unavailable',
   'listing.unavailableBody':
@@ -244,7 +238,7 @@ export const en = {
   // ---------- buyer reviews ----------
   'reviews.title': 'Buyer reviews',
   'reviews.empty':
-    'No review has been written for this listing yet. Reviews only appear after an arrangement is recorded as completed, so an empty list is honest rather than a missing feature.',
+    'No reviews yet. A review appears only once its author has recorded a completed arrangement.',
   'reviews.scoreTail': '/ 5 from',
   'reviews.countOne': 'review',
   'reviews.countMany': 'reviews',
@@ -304,11 +298,10 @@ export const en = {
   // ---------- sign in / account ----------
   'auth.signInEyebrow': 'Sign in',
   'auth.signInLiveTitle': 'Sign in to your account',
-  'auth.signInLiveDescription':
-    'This instance is connected to a Supabase project, so sign-in uses real credentials and Row Level Security decides what you can see.',
+  'auth.signInLiveDescription': 'Sign in with the email and password on your account.',
   'auth.signInDemoTitle': 'Sign in as a demo account',
   'auth.signInDemoDescription':
-    'Demo mode: sign-in is simulated with clearly labelled sample accounts. The session cookie carries only a user id, never a role — role and suspension are read back from the stored profile on every request. It is still not real authentication: in this mode whoever can set that cookie acts as that sample account, which is why demo data is the only thing it can reach. Real sign-in runs when DATA_MODE=supabase and the Supabase keys are configured.',
+    'Demo mode: choose a labelled sample account to look around. These are demonstration records, not real accounts, and nothing you do here reaches a real seller.',
   'auth.email': 'Email',
   'auth.password': 'Password',
   'auth.passwordHint': 'Minimum 6 characters.',
@@ -331,8 +324,7 @@ export const en = {
   'auth.demoBuyerIntro':
     'See the buyer view of inquiries and arrangements. Tourists and customers share the same permissions.',
   'auth.demoAdminTitle': 'Administrator',
-  'auth.demoAdminIntro':
-    'Reviewer role. In demo mode the sample data is held in memory and the same server-side permission checks apply, so this is the real control surface with fictional records.',
+  'auth.demoAdminIntro': 'Review listings, verification requests and messages.',
   'auth.demoNoAccount': 'No sample account of this kind exists.',
   'auth.demoGuestPrefix': 'A buyer can also send an inquiry without an account: press “Send inquiry” on any ',
   'auth.demoGuestProducts': 'product',
@@ -386,7 +378,7 @@ export const en = {
     'No direct email address has been published for this instance yet. An administrator can add one in the admin settings.',
   'contact.noPhone': 'No phone line has been published for this instance yet.',
   'contact.adminMaintained':
-    'These details are maintained by an administrator in the admin area, so they are only shown once they have actually been provided.',
+    'These details are added by the team, so they only appear once they have been provided.',
   'contact.beforeYouWrite': 'Before you write',
   'contact.before1':
     'To ask about a specific product or experience, use “Send inquiry” on that listing — the producer sees it directly.',
@@ -405,13 +397,12 @@ export const en = {
   'contact.formSent': 'Thank you. Your message is recorded for an administrator to read. It is not an order or a booking.',
   'contact.formFailed': 'The message could not be sent.',
   'contact.formNetwork': 'Network problem — the message stayed on your device.',
-  'contact.noSmsBody':
-    'OmoNetTab does not send or receive SMS, USSD, or payment messages in this build. Where such a service is added later, the provider must be configured and tested before it is described as working.',
+  'contact.noSmsBody': 'OmoNetTab does not send or receive SMS, USSD or payment messages.',
 
   'privacy.eyebrow': 'Privacy',
   'privacy.title': 'Data minimisation and consent',
   'privacy.description':
-    'OmoNetTab is designed to collect information needed to run a marketplace. This page is a placeholder that will be finalised with community input and legal review before a live pilot.',
+    'OmoNetTab is designed to collect the information a marketplace needs. This notice is a draft, to be finalised with community input and legal review.',
   'privacy.storeTitle': 'What we store',
   'privacy.store1':
     'Producer display name, community, operating area and short bio — only after recorded consent.',
@@ -449,7 +440,7 @@ export const en = {
     'Report misleading listings or inappropriate cultural content through the “Report” action on any listing.',
   'guidelines.disputes': 'Disputes',
   'guidelines.disputesBody':
-    'Most disagreements are resolved through direct conversation. When they are not, an authorised reviewer mediates using the recorded inquiry timeline, contributions log and consent records. In this demo build, administrative actions are simulated. The pilot will define the real dispute path with community partners.',
+    'Most disagreements are resolved through direct conversation. When they are not, a reviewer mediates using the recorded inquiry timeline, contributions log and consent records.',
   'guidelines.impact': 'Impact measurement',
   'guidelines.impactBodyPrefix': 'A future pilot should measure net producer benefit ',
   'guidelines.impactBodyAfter': 'after',
@@ -457,7 +448,7 @@ export const en = {
     ' transport, packaging, coordination and platform costs. Numbers shown in the admin dashboard are demo data, not measured impact. We never publish fabricated statistics, testimonials or endorsement claims.',
 
   // ---------- footer ----------
-  'footer.demoModeNote': 'Currently running in demo mode with sample data only.',
+  'footer.demoModeNote': 'Running in demo mode with sample listings.',
   'footer.liveModeNote':
     'Connected to a Supabase project; records shown are real data entered by accounts on this instance.',
   'footer.community': 'Community',
@@ -470,9 +461,8 @@ export const en = {
   'footer.contactFormLink': 'contact form',
   'footer.contactTail': ' — messages reach an administrator of this instance.',
   'footer.copyright': '© {year} {siteName}.',
-  'footer.sampleDataNote': 'Sample data — not a live marketplace.',
   'footer.workflowNote':
-    'Verification is still being designed with pilot communities. Payments are simulated in demo mode and need a configured provider before any money can move.',
+    'Seller verification is still being set up, and payments need a configured provider before any money can move.',
 
   // ---------- error pages ----------
   'notFound.eyebrow': '404',
@@ -490,7 +480,7 @@ export const en = {
   'accessDenied.description':
     'You are signed in, but this part of OmoNetTab is limited to a different account type. Nothing was changed and nothing was exposed. If you believe you should have access, ask an administrator to review your account role.',
   'accessDenied.body':
-    'Producers open the selling dashboard, buyers and visitors open the buyer area, and only administrators reach the moderation tools. Roles are stored on your profile and set by an administrator — they are not something a page or a cookie can change.',
+    'Producers open the selling dashboard, buyers and visitors open the buyer area, and only administrators reach the moderation tools.',
   'accessDenied.dashboard': 'Go to my dashboard',
   'accessDenied.buyerArea': 'Buyer area',
 
@@ -627,7 +617,7 @@ export const en = {
   'settings.themeSaved': 'Saved on your account and on this browser.',
   'settings.themeSavedDevice': 'Saved on this browser. Nobody is signed in, so another device will not show it.',
   'settings.themeSavedAccountFailed':
-    'Saved on this browser, but it could not be written to your account profile. The account column for it has not been created yet — see the unapplied migration 0007.',
+    'Saved on this browser, but it could not be saved to your account. Your choice will not follow you to another device.',
   'settings.themeFailed': 'The appearance could not be saved.',
 
   // ---------- administrator reports ----------

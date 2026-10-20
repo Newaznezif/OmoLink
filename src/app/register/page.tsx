@@ -70,7 +70,7 @@ export default async function RegisterPage({
         ...baseProfile,
         id: makeId('prof'),
         userId,
-        verificationNote: 'Verification workflow pending pilot design. This is a sample profile created in demo mode.',
+        verificationNote: 'Sample profile created in demo mode. No verification has been carried out.',
         isDemo: true
       });
       writeSession({ userId });

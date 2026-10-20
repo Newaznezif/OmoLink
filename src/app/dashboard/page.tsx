@@ -106,7 +106,7 @@ export default async function DashboardHome() {
               </Badge>
             </div>
             <p className="mt-2 text-xs text-ink-500">
-              {profile.verificationNote ?? 'Verification workflow is pending pilot design.'}
+              {profile.verificationNote ?? 'No verification has been carried out on this account yet.'}
             </p>
           </CardBody>
         </Card>

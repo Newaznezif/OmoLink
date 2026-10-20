@@ -21,8 +21,8 @@ export default async function ResetPasswordPage({
     return (
       <Section
         eyebrow="Account help"
-        title="Nothing to reset in this build"
-        description="This page only works when the app is connected to a real authentication service (DATA_MODE=supabase). In demo mode there is no password: the demo sign-in page picks a labelled sample account."
+        title="Nothing to reset yet"
+        description="Password reset needs a real account, and this site is still running in demo mode with sample accounts. Use the sign-in page to explore."
       >
         <Card>
           <CardBody>

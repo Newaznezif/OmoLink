@@ -17,8 +17,7 @@ export function AccountBanner({ actor }: { actor: Actor }) {
       )}
       {isDemoMode() && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          Demo mode: this session is a plain cookie holding only a user id, and all data shown here is sample data that
-          resets when the server restarts. Real authentication and Row Level Security run when DATA_MODE=supabase.
+          Demo mode: these are sample records, and anything you save here is reset when the server restarts.
         </p>
       )}
     </div>

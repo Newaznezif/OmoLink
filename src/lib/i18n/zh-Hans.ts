@@ -13,7 +13,7 @@ export const zhHans: TranslationSet = {
   'common.clear': '清除',
   'common.viewAll': '查看全部 →',
   'common.openLink': '打开 →',
-  'common.demoBanner': '演示模式——仅使用示例数据。此处的支付为模拟并已如此标注，生产者未经认证，短信功能也尚未接入。',
+  'common.demoBanner': '预览以演示模式运行——卖家未经认证，支付为模拟。',
   'common.interfaceLanguage': '界面语言',
   'common.membersSample': '{count} 名成员（示例）',
 
@@ -29,7 +29,7 @@ export const zhHans: TranslationSet = {
   'language.notice.none':
     '目前尚无经过核实的{language}译文，因此界面仍以英文显示。该选项仍可点选，以便译文提交后进行测试。',
   'language.notice.areas':
-    '目前已翻译：首页、市场浏览页面及其筛选条件、供应详情页、登录页，以及帮助页面（运作方式、联系我们、隐私政策、社区准则）。其余页面——生产者资料、集体订单、影响力与定价工具、离线指南、注册与引导，以及所有登录后的区域——尚无{language}译文，仍以英文显示。',
+    '在更多{language}文案经过审核之前，部分页面仍以英文显示。',
   'language.notice.catalog':
     '{language}的品类与示例供应条目文案尚未经流利使用者核对，生产者原始表述始终保留。',
 
@@ -58,7 +58,7 @@ export const zhHans: TranslationSet = {
   'status.verifiedHint': '已由授权审核人批准。',
   'status.pendingHint': '等待授权审核人决定。',
   'status.unverifiedHint': '没有认证记录。',
-  'status.demoSuffix': '（模拟状态——认证流程尚在试点设计阶段。）',
+  'status.demoSuffix': '（演示模式下为模拟。）',
   'status.demoTag': '· 演示',
   'status.sampleData': '示例数据',
   'status.sampleDataHint': '此记录为演示所用示例数据，不代表真实的生产者、产品或经过认证的社区。',
@@ -80,7 +80,6 @@ export const zhHans: TranslationSet = {
   'listing.minOrder': '最少 {count} {unit}',
   'listing.availabilityLabel': '供应情况',
 
-  'home.prototypeNote': '原型——仅使用示例数据。',
   'home.browseProducts': '浏览产品',
   'home.browseTourism': '浏览旅游服务',
   'home.searchLabel': '搜索供应信息',
@@ -284,7 +283,7 @@ export const zhHans: TranslationSet = {
   'auth.signInLiveDescription': '此实例已连接 Supabase 项目，因此登录使用真实凭据，并由行级安全策略决定您可以查看的内容。',
   'auth.signInDemoTitle': '以演示账户登录',
   'auth.signInDemoDescription':
-    '演示模式：登录由明确标注的示例账户模拟完成。会话 Cookie 仅携带用户 ID，绝不含角色——角色与停用状态在每次请求时都从存储的资料中读回。这仍然不是真正的身份验证：在此模式下，能够设置该 Cookie 的人即可以该示例账户身份操作，这也是为什么演示数据是它唯一可触及的内容。当 DATA_MODE=supabase 且已配置 Supabase 密钥时，才会执行真实登录。',
+    '演示模式：选择一个明确标注的示例账户即可浏览。这些是演示记录，并非真实账户，你的任何操作都不会送达真实卖家。',
   'auth.email': '电子邮箱',
   'auth.password': '密码',
   'auth.passwordHint': '至少 6 个字符。',
@@ -413,7 +412,7 @@ export const zhHans: TranslationSet = {
   'guidelines.impactBodySuffix':
     '运输、包装、协调和平台成本。管理后台中显示的数字为演示数据，并非实测影响。我们绝不发布虚构的统计、证言或推荐背书。',
 
-  'footer.demoModeNote': '当前以演示模式运行，仅使用示例数据。',
+  'footer.demoModeNote': '当前以演示模式运行，显示示例刊登。',
   'footer.liveModeNote': '已连接 Supabase 项目；所显示的记录为本实例账户录入的真实数据。',
   'footer.community': '社区',
   'footer.tourismServices': '旅游服务',
@@ -425,8 +424,7 @@ export const zhHans: TranslationSet = {
   'footer.contactFormLink': '联系表单',
   'footer.contactTail': '——留言将送达本实例的管理员。',
   'footer.copyright': '© {year} {siteName}。',
-  'footer.sampleDataNote': '示例数据——并非在线运营的市场。',
-  'footer.workflowNote': '认证流程仍在与试点社区共同设计。演示模式中的支付为模拟，在资金能够流转之前必须先配置好支付服务商。',
+  'footer.workflowNote': '卖家认证仍在配置中；在配置支付服务商之前，不会产生任何真实的资金流转。',
 
   'notFound.eyebrow': '404',
   'notFound.title': '该页面不存在',
