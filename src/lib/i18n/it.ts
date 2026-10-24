@@ -288,27 +288,23 @@ export const it: TranslationSet = {
   'collective.targetReached': 'Obiettivo raggiunto — in chiusura.',
   'collective.progressTail': ' / {target} {unit}',
 
-  'team.eyebrow': 'Fondatori e team',
-  'team.title': 'Le persone che costruiscono OmoNetTab',
-  'team.description':
-    'Cinque fondatori condividono il progetto. Ogni scheda indica la parte di lavoro che la persona segue, come fornito dal team.',
+  'team.title': 'Team fondatore',
+  'team.description': 'Le persone che danno forma a ciò che verrà.',
   'team.photoNote':
-    'Per il team non è ancora stata fornita nessuna fotografia, quindi ogni scheda mostra le iniziali. I nomi non si traducono; i ruoli e i contributi sì.',
-  'team.role.newaz': 'Analista di cybersecurity e ingegnere di IA',
-  'team.role.tsion': 'Pianificazione e coordinamento delle attività',
-  'team.role.abraham': 'Strategia e sviluppo delle proposte',
-  'team.role.etsub': 'Monitoraggio delle attività e supporto alle presentazioni',
-  'team.role.boum': 'Revisione della documentazione e supporto alle presentazioni',
-  'team.contribution.newaz':
-    'Guida lo sviluppo tecnico, l’architettura dell’applicazione, la cybersecurity e l’implementazione del sistema.',
-  'team.contribution.tsion':
-    'Coordina le attività del team, aiuta a definire e organizzare i compiti e supporta l’esecuzione finale.',
-  'team.contribution.abraham':
-    'Sviluppa la strategia del progetto, contribuisce alla stesura delle proposte e supporta la documentazione.',
-  'team.contribution.etsub':
-    'Monitora l’avanzamento dei compiti, aiuta a mantenere il ritmo del team e supporta la preparazione delle presentazioni.',
-  'team.contribution.boum':
-    'Revisiona la documentazione del progetto per chiarezza e coerenza e contribuisce alla preparazione delle presentazioni.',
+    'Ogni scheda riporta la fotografia, il ruolo, il profilo professionale e il link personale forniti dal membro del team. I nomi non si traducono; i ruoli e i profili professionali sì.',
+  'team.role.newaz': 'Ingegnere software full-stack; ingegnere di cybersecurity e IA',
+  'team.role.tsion': 'Responsabile dei contenuti e della creazione visiva',
+  'team.role.abraham': 'Responsabile di progetto e delle operazioni',
+  'team.role.etsub': 'Responsabile finanziario e legale',
+  'team.role.boum': 'Responsabile marketing e vendite',
+  'team.backgroundLabel': 'Profilo professionale',
+  'team.background.journalist': 'Giornalista',
+  'team.background.publicProsecutor': 'Pubblico ministero',
+  'team.background.psychologist': 'Psicologo',
+  'team.background.climateNonprofitManager': 'Dirigente di un’organizzazione non profit per il clima',
+  'team.photoAlt': '{name}, membro del team fondatore di OmoNetTab',
+  'team.linkedinAria': '{name} su LinkedIn',
+  'team.portfolioAria': 'Visita il portfolio di {name}',
 
   'auth.signInEyebrow': 'Accedi',
   'auth.signInLiveTitle': 'Accedi al tuo account',

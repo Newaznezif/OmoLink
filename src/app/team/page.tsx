@@ -9,7 +9,6 @@ export default function TeamPage() {
   const t = getT();
   return (
     <Section
-      eyebrow={t('team.eyebrow')}
       title={t('team.title')}
       description={t('team.description')}
     >

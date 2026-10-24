@@ -1,56 +1,70 @@
 import type { TranslationKey } from './i18n';
 
 /**
- * The five members of the founding team, exactly as the team supplied them.
+ * The five members of the founding team, as the team supplied them.
  *
- * Names are proper nouns and are never translated. The role and the contribution
- * statement go through the dictionary like any other interface text, so the page
- * follows the site language. No surname, credential, biography, contact detail or
- * photograph is recorded here, because none was supplied — the avatar is initials
- * only.
+ * Names, organisations, photograph paths and profile URLs are proper nouns or
+ * addresses: they are never translated and never invented. A professional
+ * background is recorded only where the member supplied one, and it is kept
+ * separate from `roleKey`, which is the job that person holds inside OmoNetTab.
+ *
+ * The photograph paths are the filenames the team delivered in
+ * `public/images/team/`. `Estub.png` is that file's spelling of Etsub's name,
+ * and `Boum.png` is the given name of the member listed as Nyak Buom.
  */
 export type TeamMember = {
   id: string;
   name: string;
-  initials: string;
+  /** The member's own organisation, where they asked for it to be shown. */
+  organization?: string;
+  photo: { src: string; width: number; height: number };
   roleKey: TranslationKey;
-  contributionKey: TranslationKey;
+  backgroundKeys: TranslationKey[];
+  linkedin?: string;
+  portfolio?: string;
 };
 
 export const TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'newaz-nezif',
     name: 'Newaz Nezif',
-    initials: 'NN',
+    organization: 'OmoNetTab',
+    photo: { src: '/images/team/Newaz.png', width: 210, height: 291 },
     roleKey: 'team.role.newaz',
-    contributionKey: 'team.contribution.newaz'
+    backgroundKeys: [],
+    linkedin: 'https://www.linkedin.com/in/newaz-nezif-285439262/',
+    portfolio: 'https://newaznezif.netlify.app/'
   },
   {
-    id: 'tsion',
-    name: 'Tsion',
-    initials: 'T',
-    roleKey: 'team.role.tsion',
-    contributionKey: 'team.contribution.tsion'
-  },
-  {
-    id: 'abraham',
-    name: 'Abraham',
-    initials: 'A',
+    id: 'abraham-eshtie',
+    name: 'Abraham Eshtie',
+    photo: { src: '/images/team/Abraham.png', width: 257, height: 357 },
     roleKey: 'team.role.abraham',
-    contributionKey: 'team.contribution.abraham'
+    backgroundKeys: ['team.background.journalist'],
+    linkedin: 'https://www.linkedin.com/in/abrahamkeshtie/'
   },
   {
-    id: 'etsub',
-    name: 'Etsub',
-    initials: 'E',
-    roleKey: 'team.role.etsub',
-    contributionKey: 'team.contribution.etsub'
-  },
-  {
-    id: 'boum',
-    name: 'Boum',
-    initials: 'B',
+    id: 'nyak-buom',
+    name: 'Nyak Buom',
+    photo: { src: '/images/team/Boum.png', width: 216, height: 301 },
     roleKey: 'team.role.boum',
-    contributionKey: 'team.contribution.boum'
+    backgroundKeys: [],
+    linkedin: 'https://www.linkedin.com/in/buom-chuol-nyak-546b50329/'
+  },
+  {
+    id: 'etsub-abraham',
+    name: 'Etsub Abraham',
+    photo: { src: '/images/team/Estub.png', width: 217, height: 302 },
+    roleKey: 'team.role.etsub',
+    backgroundKeys: ['team.background.publicProsecutor'],
+    linkedin: 'https://www.linkedin.com/in/etsub-abraham-6b9788440/'
+  },
+  {
+    id: 'tsion-neare',
+    name: 'Tsion Neare',
+    photo: { src: '/images/team/Tsion.png', width: 283, height: 282 },
+    roleKey: 'team.role.tsion',
+    backgroundKeys: ['team.background.psychologist', 'team.background.climateNonprofitManager'],
+    linkedin: 'https://www.linkedin.com/in/tsionneare/'
   }
 ];

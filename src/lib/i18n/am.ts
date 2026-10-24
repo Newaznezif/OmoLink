@@ -78,23 +78,7 @@ export const am: Partial<TranslationSet> = {
   'home.teamLink': 'ቡድኑን ይመልከቱ',
 
   // ---------- founders & team ----------
-  'team.eyebrow': 'መስራቶች እና ቡድን',
   'team.title': 'OmoNetTab የሚሰሩት ሰዎች',
-  'team.role.newaz': 'የሳይበር ደህንነት ተንታኝ እና የአርቴፊሻል ኢንተለጀንስ መሐንዲስ',
-  'team.role.tsion': 'የሥራ ዕቅድና አስተባባር',
-  'team.role.abraham': 'የአቅጣጫ ሐሳብና ጥቅስ ማዘጋጀት',
-  'team.role.etsub': 'የሥራ ክትትልና የማቅረብ ድጋፍ',
-  'team.role.boum': 'የሰነድ ግምገማና የማቅረብ ድጋፍ',
-  'team.contribution.newaz':
-    'የቴክኒክ ልማት፣ የመተግበሪያ ንድፍ፣ የሳይበር ደህንነት እና የስርዓት ትግበራ ይመራል።',
-  'team.contribution.tsion':
-    'የቡድን እንቅስቃሴዎችን ያስተባብራል፣ ሥራዎችን ለመለየትና ለማደራጀት ይረዳል፣ የመጨረሻውን ደረጃ ትግበራ ይደግፋል።',
-  'team.contribution.abraham':
-    'የፕሮጀክት አቅጣጫ ያዘጋጃል፣ በሐሳብ ጽሑፍ ይተዋወራል፣ የፕሮጀክት ሰነድ ድጋፍ ይሰጣል።',
-  'team.contribution.etsub':
-    'የሥራ እድገት ይከታከታል፣ የቡድንን ፍጥነት ለመጠበቅ ይረዳል፣ የማቅረብ ዝግጅት ይደግፋል።',
-  'team.contribution.boum':
-    'የፕሮጀክት ሰነዶችን ለግልጽነትና ተከታታይነት ይገመግማል፣ የማቅረብ ዝግጅት ይተዋወራል።',
 
   // ---------- listing detail ----------
   'listing.pricingTitle': 'ዋጋና ክምችት',

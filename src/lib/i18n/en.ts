@@ -294,27 +294,23 @@ export const en = {
   'collective.progressTail': ' / {target} {unit}',
 
   // ---------- founders & team ----------
-  'team.eyebrow': 'Founders & Team',
-  'team.title': 'The people building OmoNetTab',
-  'team.description':
-    'Five founders share this project. Each card states the part of the work that person owns, as the team supplied it.',
+  'team.title': 'Founding team',
+  'team.description': 'The people shaping what comes next.',
   'team.photoNote':
-    'No photographs have been supplied for the team yet, so each card shows initials. Names are never translated; roles and contributions are.',
-  'team.role.newaz': 'Cybersecurity Analyst & AI Engineer',
-  'team.role.tsion': 'Task Planning & Coordination',
-  'team.role.abraham': 'Strategy & Proposal Development',
-  'team.role.etsub': 'Task Monitoring & Presentation Support',
-  'team.role.boum': 'Documentation Review & Presentation Support',
-  'team.contribution.newaz':
-    'Leads technical development, application architecture, cybersecurity, and system implementation.',
-  'team.contribution.tsion':
-    'Coordinates team activities, helps define and organize tasks, and supports final-stage execution.',
-  'team.contribution.abraham':
-    'Develops project strategy, contributes to proposal writing, and supports project documentation.',
-  'team.contribution.etsub':
-    'Tracks task progress, helps maintain team momentum, and supports presentation preparation.',
-  'team.contribution.boum':
-    'Reviews project documentation for clarity and consistency and contributes to presentation preparation.',
+    'Each card carries the photograph, role, background and profile link that the member supplied. Names are never translated; the roles and professional backgrounds are.',
+  'team.role.newaz': 'Full-Stack Software Engineer; Cybersecurity & AI Engineer',
+  'team.role.tsion': 'Lead Content & Visual Creator',
+  'team.role.abraham': 'Project Manager & Operations Lead',
+  'team.role.etsub': 'Finance and Legal Lead',
+  'team.role.boum': 'Marketing & Sales Lead',
+  'team.backgroundLabel': 'Professional background',
+  'team.background.journalist': 'Journalist',
+  'team.background.publicProsecutor': 'Public Prosecutor',
+  'team.background.psychologist': 'Psychologist',
+  'team.background.climateNonprofitManager': 'Climate Non-profit Manager',
+  'team.photoAlt': '{name}, OmoNetTab founding team member',
+  'team.linkedinAria': '{name} on LinkedIn',
+  'team.portfolioAria': "Visit {name}'s portfolio",
 
   // ---------- sign in / account ----------
   'auth.signInEyebrow': 'Sign in',

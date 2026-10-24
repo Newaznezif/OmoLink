@@ -43,7 +43,7 @@ The product is a prototype and these value propositions have not been establishe
 | Buyer and seller dashboards | **Implemented** | Inquiries, order arrangements, profile/settings, and related records. These are not payment receipts or a payment ledger. |
 | Collective opportunities | **Implemented** | Sample group opportunities, contributions, aggregation, and estimated shared transport costs. Estimates are not transport quotes. A visitor can pick a participating producer's product and send an inquiry for it; producers commit stock against the pool. There is no multi-seller basket. |
 | Price calculator | **Implemented** | Cost, markup, and margin calculations; this is a planning aid, not price verification. |
-| Founders & Team | **Implemented** | `/team` lists the five founders with role and contribution, initials avatars because no reviewed photograph is published, and a homepage preview card grid that links to it. Names are data, not markup, so they are never machine-translated. |
+| Founders & Team | **Implemented** | `/team` lists the five founders with the photograph, name, OmoNetTab role, supplied professional background, and LinkedIn link each member provided, plus a portfolio link for the member who supplied one. The same data drives a homepage preview card grid that links to it. Names are data, not markup, so they are never machine-translated. |
 | Contact and review workflows | **Implemented** | In-app message/review records depend on the configured repository. They do not imply email delivery or external moderation. |
 | Administration | **Implemented, with demo limitations** | Admin screens and role-protected actions cover site settings, homepage content, listings, categories, messages, reports, reviews, and account roles. Demo-mode changes exist only in the in-memory store; some verification/report actions are explicitly simulated. |
 | Offline support | **Implemented for reading, verified in a production build** | A service worker caches the app shell and the pages you browsed while it controlled the tab; a listing revisited without a connection still renders and its inquiry form still recalculates the subtotal. Listing drafts and queued inquiries are saved on-device. It is not a background-sync queue: nothing is sent to a server later that was not already waiting on the device. |
@@ -117,7 +117,7 @@ src/
 supabase/
   migrations/          Database schema and row-level security migrations
   seed.sql             Category seed data
-public/                Static assets: branding logo (images/branding/), favicon.ico, icon.svg, icons/ (32/48/180/192/512 PNG cut from that logo), web manifest, service worker
+public/                Static assets: branding logo (images/branding/), the five founder photographs (images/team/), favicon.ico, icon.svg, icons/ (32/48/180/192/512 PNG cut from that logo), web manifest, service worker
 tests/                 Node-based unit tests
   http/                Demo-mode HTTP verification suites (refinements, locale, catalogue, producer, buyer, admin, workflow, money)
 ```
@@ -657,7 +657,7 @@ The header offers seven languages. Every one of them is selectable and saves; **
 
 ### What is translated, and what is not
 
-Translated where the dictionary has the key: essentially the whole interface. Header, footer and navigation; the home page including the Founders & Team preview; the marketplace browse pages (`/products`, `/tourism`, `/explore`) with their filters and result counts; listing pages with their inquiry, review and report panels; producer profile pages; `/team`, `/how-it-works`, `/privacy`, `/community-guidelines`, `/contact`, `/pricing-tool`; the collective order list, detail, new and manage pages with the buyer panel and the producer contribution form; sign-in, register and onboarding; `/impact` and `/offline`; and the signed-in areas (`/dashboard`, `/buyer`, `/admin`) including the admin analytics and audit screens. A missing key shows as English text rather than as a key or a blank — for Amharic that fallback is still visible on most of the interface, because only 112 keys exist.
+Translated where the dictionary has the key: essentially the whole interface. Header, footer and navigation; the home page including the Founders & Team preview; the marketplace browse pages (`/products`, `/tourism`, `/explore`) with their filters and result counts; listing pages with their inquiry, review and report panels; producer profile pages; `/team`, `/how-it-works`, `/privacy`, `/community-guidelines`, `/contact`, `/pricing-tool`; the collective order list, detail, new and manage pages with the buyer panel and the producer contribution form; sign-in, register and onboarding; `/impact` and `/offline`; and the signed-in areas (`/dashboard`, `/buyer`, `/admin`) including the admin analytics and audit screens. A missing key shows as English text rather than as a key or a blank — for Amharic that fallback is still visible on most of the interface, because only 100 keys exist.
 
 ### Honesty rules the code enforces
 
@@ -694,7 +694,7 @@ So the app is fully functional with zero provider configuration: dictionaries ar
 5. Add product/category text to `src/lib/i18n/catalog.ts` separately, and keep `CATALOG_REVIEWED` false until that wording is also reviewed.
 6. Run `npm test`, `npx tsc --noEmit`, and the buyer suite — its interface-language block is data-driven over `LANGUAGE_OPTIONS`, so a new dictionary is asserted as soon as it is offered.
 
-For Amharic specifically: the 112 keys in `am.ts` need a competent speaker's review before `amReviewPending` is set to `false`. The remaining ~1,980 keys still have to be written, and the set covers the priority journeys (navigation, home, listing detail, Founders & Team, collective orders, inquiry validation, sign-in) rather than the whole interface.
+For Amharic specifically: the 100 keys in `am.ts` need a competent speaker's review before `amReviewPending` is set to `false`. The remaining ~2,007 keys still have to be written, and the set covers the priority journeys (navigation, home, listing detail, collective orders, inquiry validation, sign-in) rather than the whole interface. On Founders & Team only the page title is drafted: the role and background labels were dropped from the draft rather than re-guessed when the team supplied new titles, so they currently render as English.
 
 ## Payments, PDF receipts, admin reports, and appearance
 
