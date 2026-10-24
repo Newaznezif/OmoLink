@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { t, type TranslationKey } from '@/lib/i18n';
+import type { LanguageCode } from '@/lib/types';
 import { Button } from './ui';
 
 /**
@@ -9,8 +11,17 @@ import { Button } from './ui';
  * to are offered; the endpoint refuses anything else even if this page is edited
  * in the browser.
  */
-export function BuyerArrangementActions({ inquiryId, current }: { inquiryId: string; current: string }) {
+export function BuyerArrangementActions({
+  inquiryId,
+  current,
+  lang = 'en'
+}: {
+  inquiryId: string;
+  current: string;
+  lang?: LanguageCode;
+}) {
   const router = useRouter();
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) => t(lang, key, vars);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -24,15 +35,11 @@ export function BuyerArrangementActions({ inquiryId, current }: { inquiryId: str
         body: JSON.stringify({ status })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error ?? 'Could not record that.');
-      setMessage(
-        status === 'completed'
-          ? 'Recorded as completed on your side. The seller confirms it too when they deliver.'
-          : 'Recorded as cancelled. Cancelling an inquiry takes no money: a payment attempt you already opened keeps its own record and stays visible on the inquiry page.'
-      );
+      if (!res.ok) throw new Error(json?.error ?? tr('arrangement.recordFailed'));
+      setMessage(status === 'completed' ? tr('arrangement.recordedCompleted') : tr('arrangement.recordedCancelled'));
       router.refresh();
     } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : 'Something went wrong.');
+      setMessage(err instanceof Error ? err.message : tr('report.generic'));
     } finally {
       setBusy(false);
     }
@@ -41,9 +48,7 @@ export function BuyerArrangementActions({ inquiryId, current }: { inquiryId: str
   if (current === 'completed' || current === 'cancelled') {
     return (
       <p className="text-sm text-ink-500">
-        {current === 'completed'
-          ? 'This arrangement is recorded as completed. Leave a review on the listing if you would like to.'
-          : 'This arrangement is recorded as cancelled.'}
+        {current === 'completed' ? tr('arrangement.alreadyCompleted') : tr('arrangement.alreadyCancelled')}
       </p>
     );
   }
@@ -52,10 +57,10 @@ export function BuyerArrangementActions({ inquiryId, current }: { inquiryId: str
     <div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={() => record('completed')} disabled={busy}>
-          {busy ? 'Recording…' : 'Confirm I received it'}
+          {busy ? tr('arrangement.recording') : tr('arrangement.confirmReceived')}
         </Button>
         <Button type="button" size="sm" variant="secondary" onClick={() => record('cancelled')} disabled={busy}>
-          Cancel this request
+          {tr('arrangement.cancelRequest')}
         </Button>
       </div>
       {message && (
@@ -63,10 +68,7 @@ export function BuyerArrangementActions({ inquiryId, current }: { inquiryId: str
           {message}
         </p>
       )}
-      <p className="mt-1 text-xs text-ink-500">
-        Recording completion says the goods or the guide actually turned up. Until then the record stays an arrangement,
-        not a sale.
-      </p>
+      <p className="mt-1 text-xs text-ink-500">{tr('arrangement.actionsHint')}</p>
     </div>
   );
 }

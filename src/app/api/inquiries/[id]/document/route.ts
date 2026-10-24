@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRepo } from '@/lib/repo';
 import { buildReceiptDocument, renderReceiptPdf } from '@/lib/receipts';
-import { getLanguage } from '@/lib/i18n/server';
+import { getLanguage, getT } from '@/lib/i18n/server';
 import { authErrorResponse, requireRole, type Actor } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -17,25 +17,26 @@ export const dynamic = 'force-dynamic';
  * can be asked to call an unpaid inquiry a receipt.
  */
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const t = getT();
   let actor: Actor;
   try {
     actor = await requireRole(['buyer', 'producer', 'coordinator', 'admin']);
   } catch (err) {
-    const { body, status } = authErrorResponse(err, 'Sign in to open this document.');
+    const { body, status } = authErrorResponse(err, t('apiDocument.signIn'));
     return NextResponse.json(body, { status });
   }
 
   const repo = getRepo();
   const inquiry = await repo.getInquiry(params.id);
   if (!inquiry) {
-    return NextResponse.json({ error: 'No inquiry with that id is on the record.' }, { status: 404 });
+    return NextResponse.json({ error: t('apiDocument.notOnRecord') }, { status: 404 });
   }
 
   const listing = await repo.getListing(inquiry.listingId);
   const isBuyer = Boolean(inquiry.buyerProfileId) && inquiry.buyerProfileId === actor.profileId;
   const isSeller = Boolean(listing) && listing!.producerId === actor.profileId;
   if (!isBuyer && !isSeller && actor.role !== 'admin') {
-    return NextResponse.json({ error: 'This inquiry belongs to someone else.' }, { status: 403 });
+    return NextResponse.json({ error: t('apiDocument.belongsToOther') }, { status: 403 });
   }
 
   // Newest first: the document describes the arrangement as it stands now, and a

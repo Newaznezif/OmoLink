@@ -2,19 +2,22 @@ import { getRepo } from '@/lib/repo';
 import { AdminSection } from '@/components/admin-shell';
 import { Button, Card, CardBody, Field, Input, Textarea } from '@/components/ui';
 import { HOMEPAGE_SECTIONS, type HomepageSectionId, type SiteSettings } from '@/lib/types';
+import { getT } from '@/lib/i18n/server';
+import type { TranslationKey } from '@/lib/i18n';
 
 export const dynamic = 'force-dynamic';
 
-const SECTION_LABELS: Record<HomepageSectionId, { label: string; hint: string }> = {
-  hero: { label: 'Headline', hint: 'Title, description and the browse buttons.' },
-  search: { label: 'Search box', hint: 'Sends the visitor to /explore with the query.' },
-  featured_products: { label: 'Featured products', hint: 'Highlighted listings, newest first if none are chosen.' },
-  featured_tourism: { label: 'Tourism services', hint: 'Guides and experiences.' },
-  categories: { label: 'Category grid', hint: 'Only categories that are visible to shoppers.' },
-  producer_highlights: { label: 'Producer highlights', hint: 'Selling profiles.' },
-  collective: { label: 'Group orders', hint: 'Open collective opportunities and the explainer.' },
-  how_it_works: { label: 'How it works', hint: 'Three-step explanation of the inquiry flow.' },
-  trust: { label: 'Trust and consent', hint: 'Verification, consent and sample-data statements.' }
+const SECTION_LABELS: Record<HomepageSectionId, { label: TranslationKey; hint: TranslationKey }> = {
+  hero: { label: 'homepageAdmin.headline', hint: 'homepageAdmin.hintHero' },
+  search: { label: 'homepageAdmin.labelSearch', hint: 'homepageAdmin.hintSearch' },
+  featured_products: { label: 'homepageAdmin.labelFeaturedProducts', hint: 'homepageAdmin.hintFeaturedProducts' },
+  featured_tourism: { label: 'home.featuredTourismTitle', hint: 'homepageAdmin.hintFeaturedTourism' },
+  categories: { label: 'homepageAdmin.labelCategories', hint: 'homepageAdmin.hintCategories' },
+  producer_highlights: { label: 'home.producersTitle', hint: 'homepageAdmin.hintProducerHighlights' },
+  collective: { label: 'nav.groupOrders', hint: 'homepageAdmin.hintCollective' },
+  team: { label: 'nav.team', hint: 'homepageAdmin.hintTeam' },
+  how_it_works: { label: 'nav.how', hint: 'homepageAdmin.hintHowItWorks' },
+  trust: { label: 'homepageAdmin.labelTrust', hint: 'homepageAdmin.hintTrust' }
 };
 
 export default async function AdminHomepagePage({
@@ -22,6 +25,7 @@ export default async function AdminHomepagePage({
 }: {
   searchParams: { status?: string | string[]; error?: string | string[] };
 }) {
+  const t = getT();
   const repo = getRepo();
   const [settings, listings, profiles] = await Promise.all([
     repo.getSiteSettings(),
@@ -39,37 +43,36 @@ export default async function AdminHomepagePage({
 
   return (
     <AdminSection
-      title="Homepage"
-      description="What visitors see first. Everything on this page is stored, so a text change does not need a code change or a redeploy."
+      title={t('nav.homepage')}
+      description={t('homepageAdmin.description')}
       searchParams={searchParams}
     >
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">Headline</h2>
+          <h2 className="font-semibold text-ink-900">{t('homepageAdmin.headline')}</h2>
           <form method="post" action="/api/admin/homepage" className="mt-3 grid md:grid-cols-2 gap-3">
             <div className="md:col-span-2">
-              <Field label="Title" htmlFor="heroTitle" required hint="Plain text. HTML typed here is displayed literally, never rendered.">
+              <Field label={t('listingForm.titleLabel')} htmlFor="heroTitle" required hint={t('homepageAdmin.titleHint')}>
                 <Input id="heroTitle" name="heroTitle" defaultValue={settings.heroTitle} maxLength={120} />
               </Field>
             </div>
             <div className="md:col-span-2">
-              <Field label="Description" htmlFor="heroDescription">
+              <Field label={t('listing.descriptionTitle')} htmlFor="heroDescription">
                 <Textarea id="heroDescription" name="heroDescription" defaultValue={settings.heroDescription} maxLength={600} />
               </Field>
             </div>
 
             <div className="md:col-span-2 border-t border-ink-100 pt-4">
-              <h3 className="font-semibold text-ink-900">Sections</h3>
+              <h3 className="font-semibold text-ink-900">{t('homepageAdmin.sections')}</h3>
               <p className="mt-1 text-sm text-ink-700">
-                Tick to show. The position number sets the order — lower comes first, and ties keep the alphabetical
-                order of the section names.
+                {t('homepageAdmin.sectionsNote')}
               </p>
               <ul className="mt-3 space-y-2">
                 {HOMEPAGE_SECTIONS.map((id) => (
                   <li key={id} className="grid md:grid-cols-[1fr_auto_auto] gap-3 items-center border-b border-ink-100 pb-2">
                     <label htmlFor={`section_${id}`} className="text-sm font-semibold text-ink-900">
-                      {SECTION_LABELS[id].label}
-                      <span className="block font-normal text-ink-500">{SECTION_LABELS[id].hint}</span>
+                      {t(SECTION_LABELS[id].label)}
+                      <span className="block font-normal text-ink-500">{t(SECTION_LABELS[id].hint)}</span>
                     </label>
                     <label htmlFor={`section_${id}`} className="flex items-center gap-2 text-sm">
                       <input
@@ -80,10 +83,10 @@ export default async function AdminHomepagePage({
                         defaultChecked={isVisible(id)}
                         className="h-4 w-4"
                       />
-                      Show
+                      {t('homepageAdmin.show')}
                     </label>
                     <label htmlFor={`order_${id}`} className="flex items-center gap-2 text-sm">
-                      <span className="text-ink-500">Position</span>
+                      <span className="text-ink-500">{t('homepageAdmin.position')}</span>
                       <Input id={`order_${id}`} name={`order_${id}`} type="number" step="1" defaultValue={String(position(id))} className="w-24" />
                     </label>
                   </li>
@@ -92,32 +95,32 @@ export default async function AdminHomepagePage({
             </div>
 
             <FeaturedGroup
-              legend="Featured products"
+              legend={t('homepageAdmin.labelFeaturedProducts')}
               name="featuredProduct"
               selected={settings.featuredProductIds}
               options={products.map((l) => ({ id: l.id, label: l.title }))}
-              note="Choose up to a few. Anything not chosen falls back to the newest published listings."
+              note={t('homepageAdmin.noteFeaturedProducts')}
             />
             <FeaturedGroup
-              legend="Featured tourism services"
+              legend={t('homepageAdmin.legendFeaturedServices')}
               name="featuredService"
               selected={settings.featuredServiceIds}
               options={services.map((l) => ({ id: l.id, label: l.title }))}
-              note="Only published services are listed."
+              note={t('homepageAdmin.noteFeaturedServices')}
             />
             <div className="md:col-span-2">
               <FeaturedGroup
-                legend="Producer highlights"
+                legend={t('home.producersTitle')}
                 name="featuredProducer"
                 selected={settings.featuredProducerIds}
                 options={profiles.map((p) => ({ id: p.id, label: `${p.displayName} — ${p.community}` }))}
-                note="Selling profiles only; buyer accounts are private and never listed."
+                note={t('homepageAdmin.noteProducerHighlights')}
               />
             </div>
 
             <div className="md:col-span-2 flex items-center gap-3">
-              <Button type="submit">Save homepage</Button>
-              <p className="text-xs text-ink-500">Saved immediately to the site-settings record and audited.</p>
+              <Button type="submit">{t('homepageAdmin.save')}</Button>
+              <p className="text-xs text-ink-500">{t('homepageAdmin.savedNote')}</p>
             </div>
           </form>
         </CardBody>
@@ -139,11 +142,12 @@ function FeaturedGroup({
   options: { id: string; label: string }[];
   note: string;
 }) {
+  const t = getT();
   return (
     <fieldset className="md:col-span-1 border border-ink-100 rounded-xl p-3">
       <legend className="px-1 text-sm font-semibold text-ink-900">{legend}</legend>
       {options.length === 0 ? (
-        <p className="text-sm text-ink-500">Nothing published to choose from yet.</p>
+        <p className="text-sm text-ink-500">{t('homepageAdmin.emptyFeatured')}</p>
       ) : (
         <ul className="mt-1 max-h-56 overflow-y-auto space-y-1 text-sm">
           {options.map((option) => (

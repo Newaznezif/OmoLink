@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
+import { getT } from '@/lib/i18n/server';
 import { Badge, Button, Card, CardBody, Empty, Field, Input, Select, Section } from '@/components/ui';
 import { VerificationLabel } from '@/components/status-labels';
 import { ProducerCard } from '@/components/producer-card';
@@ -8,12 +9,16 @@ export const dynamic = 'force-dynamic';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-export const metadata = {
-  title: 'Sellers and guides',
-  description: 'Browse the producers, artisan groups and local guides who list on OmoNetTab.'
-};
+export async function generateMetadata() {
+  const t = getT();
+  return {
+    title: t('producers.sellersAndGuidesTitle'),
+    description: t('producers.sellersAndGuidesDescription')
+  };
+}
 
 export default async function ProducersPage({ searchParams }: { searchParams?: SearchParams }) {
+  const t = getT();
   const text = (key: string): string => {
     const value = searchParams?.[key];
     return typeof value === 'string' ? value : '';
@@ -54,19 +59,19 @@ export default async function ProducersPage({ searchParams }: { searchParams?: S
 
   return (
     <Section
-      eyebrow="Marketplace"
-      title="Sellers, groups and guides"
-      description="Accounts that chose to publish a profile. Each card opens what that account lists, where it works and how it asks to be contacted. Profiles here are sample records until a real producer registers."
+      eyebrow={t('market.productsEyebrow')}
+      title={t('producers.sellersTitle')}
+      description={t('producers.sellersDescription')}
     >
       <Card>
         <CardBody>
           <form method="get" className="grid md:grid-cols-4 gap-3">
-            <Field label="Search name, community or what they make" htmlFor="q">
+            <Field label={t('producers.searchLabel')} htmlFor="q">
               <Input id="q" name="q" defaultValue={text('q')} />
             </Field>
-            <Field label="Category" htmlFor="category">
+            <Field label={t('filter.category')} htmlFor="category">
               <Select id="category" name="category" defaultValue={categoryId}>
-                <option value="">All categories</option>
+                <option value="">{t('producers.allCategories')}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -74,30 +79,34 @@ export default async function ProducersPage({ searchParams }: { searchParams?: S
                 ))}
               </Select>
             </Field>
-            <Field label="Account type" htmlFor="type">
+            <Field label={t('producers.accountTypeLabel')} htmlFor="type">
               <Select id="type" name="type" defaultValue={text('type')}>
-                <option value="">Anyone who sells</option>
-                <option value="group">Groups and cooperatives</option>
+                <option value="">{t('producers.anyoneSells')}</option>
+                <option value="group">{t('producers.groupsHeading')}</option>
               </Select>
             </Field>
-            <Field label="Verification" htmlFor="verification">
+            <Field label={t('producers.verificationLabel')} htmlFor="verification">
               <Select id="verification" name="verification" defaultValue={text('verification')}>
-                <option value="">Any status</option>
-                <option value="verified">Verified only</option>
+                <option value="">{t('producers.anyStatus')}</option>
+                <option value="verified">{t('producers.verifiedOnly')}</option>
               </Select>
             </Field>
             <div className="md:col-span-4 flex flex-wrap items-end gap-2">
               <Button type="submit" size="sm">
-                Apply filters
+                {t('filter.apply')}
               </Button>
               <Link
                 href="/producers"
                 className="rounded-lg border border-ink-100 bg-white px-4 py-2 min-h-9 text-sm font-semibold inline-flex items-center"
               >
-                Clear
+                {t('common.clear')}
               </Link>
               <p className="text-sm text-ink-500">
-                {rows.length} of {profiles.length} {profiles.length === 1 ? 'profile matches' : 'profiles match'}
+                {t('producers.matchSummary', {
+                  shown: rows.length,
+                  total: profiles.length,
+                  tail: profiles.length === 1 ? t('producers.matchTailOne') : t('producers.matchTailMany')
+                })}
               </p>
             </div>
           </form>
@@ -106,11 +115,11 @@ export default async function ProducersPage({ searchParams }: { searchParams?: S
 
       {rows.length === 0 ? (
         <Empty
-          title="No profile matches those filters"
-          body="Try clearing the category or the verification filter. Nothing is added to this list to fill the space."
+          title={t('producers.emptyTitle')}
+          body={t('producers.emptyBody')}
           action={
             <Link href="/producers" className="underline font-semibold text-clay-700">
-              Show everyone
+              {t('producers.showEveryone')}
             </Link>
           }
         />
@@ -122,7 +131,9 @@ export default async function ProducersPage({ searchParams }: { searchParams?: S
               <div className="mt-1 px-1 flex flex-wrap items-center gap-2 text-xs text-ink-500">
                 <VerificationLabel status={p.verification} isDemo={p.isDemo} />
                 <span>
-                  {listingCount.get(p.id) ?? 0} {listingCount.get(p.id) === 1 ? 'listing' : 'listings'}
+                  {t(listingCount.get(p.id) === 1 ? 'producers.listingOne' : 'producers.listingMany', {
+                    count: listingCount.get(p.id) ?? 0
+                  })}
                 </span>
                 {categoryId && categoryById.get(categoryId) && <Badge tone="info">{categoryById.get(categoryId)!.name}</Badge>}
               </div>
@@ -132,13 +143,12 @@ export default async function ProducersPage({ searchParams }: { searchParams?: S
       )}
 
       <div className="mt-8">
-        <h2 className="text-xl font-bold text-ink-900">Groups and cooperatives</h2>
+        <h2 className="text-xl font-bold text-ink-900">{t('producers.groupsHeading')}</h2>
         <p className="mt-1 text-sm text-ink-500">
-          A group is how several producers pool quantity for one buyer order. Membership counts are sample data until a
-          coordinator registers a real group.
+          {t('producers.groupsIntro')}
         </p>
         {groups.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-700">No group has been registered yet.</p>
+          <p className="mt-3 text-sm text-ink-700">{t('producers.noGroups')}</p>
         ) : (
           <ul className="mt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {groups.map((g) => {
@@ -152,12 +162,12 @@ export default async function ProducersPage({ searchParams }: { searchParams?: S
                       <p className="mt-2 text-sm text-ink-700">{g.description}</p>
                       <p className="mt-2 text-sm text-ink-700">
                         {members.length > 0
-                          ? `Published members: ${members.map((m) => m.displayName).join(', ')}`
-                          : 'No member publishes a profile yet.'}
+                          ? t('producers.publishedMembers', { names: members.map((m) => m.displayName).join(', ') })
+                          : t('producers.noMembersYet')}
                       </p>
                       <p className="mt-2 text-xs text-ink-500">
                         <Link href="/collective-orders" className="underline font-semibold text-clay-700">
-                          Open group orders
+                          {t('producers.openGroupOrders')}
                         </Link>
                       </p>
                     </CardBody>
@@ -170,13 +180,13 @@ export default async function ProducersPage({ searchParams }: { searchParams?: S
       </div>
 
       <p className="mt-6 text-sm text-ink-700">
-        Selling something yourself?{' '}
+        {t('producers.sellingLead')}{' '}
         <Link href="/register" className="underline font-semibold text-clay-700">
-          Create an account
+          {t('producers.createAccountLink')}
         </Link>{' '}
-        and choose a selling account type, or read{' '}
+        {t('producers.sellingMiddle')}{' '}
         <Link href="/how-it-works" className="underline font-semibold text-clay-700">
-          how OmoNetTab works
+          {t('producers.howWorksLink')}
         </Link>
         .
       </p>

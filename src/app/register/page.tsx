@@ -7,6 +7,7 @@ import { makeId } from '@/lib/ids';
 import { roleForNewAccount, selfServiceAccountKind, type LanguageCode, type Profile } from '@/lib/types';
 import { RegisterForm } from '@/components/register-form';
 import { Section, Card, CardBody } from '@/components/ui';
+import { getLanguage, getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,12 +20,17 @@ export default async function RegisterPage({
 }: {
   searchParams: { error?: string; message?: string };
 }) {
+  const t = getT();
+  const lang = getLanguage();
   const actor = await getSessionActor();
   if (actor) redirect(landingFor(actor.role));
   const demo = isDemoMode();
 
   async function action(formData: FormData) {
     'use server';
+    // Must not close over the renderer's translator: a function in the closure
+    // cannot be serialized into the client action reference.
+    const t = getT();
     const displayName = String(formData.get('displayName') ?? '').trim();
     const accountKind = selfServiceAccountKind(formData.get('accountKind'));
     const producerType = String(formData.get('producerType') ?? 'other') as Profile['producerType'];
@@ -36,11 +42,11 @@ export default async function RegisterPage({
     const categories = formData.getAll('categories').map(String).filter(Boolean);
     const consent = formData.get('consent') === 'on';
 
-    if (!displayName || !community || !operatingArea || !shortBio) fail('Please fill in every required field.');
-    if (displayName.length > 120) fail('Names must be 120 characters or fewer.');
-    if (!consent) fail('Please record your consent to publish the profile before continuing.');
+    if (!displayName || !community || !operatingArea || !shortBio) fail(t('register.errorRequiredFields'));
+    if (displayName.length > 120) fail(t('register.errorNameTooLong', { max: 120 }));
+    if (!consent) fail(t('register.errorConsent'));
     if (accountKind === 'business_buyer' && !organizationName) {
-      fail('A business account needs the organisation name.');
+      fail(t('register.errorOrganization'));
     }
 
     const baseProfile = {
@@ -80,7 +86,7 @@ export default async function RegisterPage({
     const email = String(formData.get('email') ?? '').trim();
     const password = String(formData.get('password') ?? '');
     if (!email || password.length < 6) {
-      fail('A valid email and a password of at least 6 characters are required.');
+      fail(t('register.errorEmailPassword', { min: 6 }));
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
@@ -94,10 +100,7 @@ export default async function RegisterPage({
     if (!data.session) {
       // Honest outcome: the account exists but is not usable until confirmed.
       redirect(
-        '/register?message=' +
-          encodeURIComponent(
-            'Account created. Confirm the address in the email we sent, then sign in to finish your profile.'
-          )
+        '/register?message=' + encodeURIComponent(t('register.accountCreatedMessage'))
       );
     }
 
@@ -109,9 +112,9 @@ export default async function RegisterPage({
 
   return (
     <Section
-      eyebrow="Register"
-      title="Create your OmoNetTab account"
-      description="A short form that works on a slow connection. Identity documents are never required. A new account always starts unverified, and only an administrator can change what an account is allowed to do — registering here cannot make you an administrator or a group coordinator."
+      eyebrow={t('nav.register')}
+      title={t('register.title')}
+      description={t('register.description')}
     >
       <Card>
         <CardBody>
@@ -126,7 +129,7 @@ export default async function RegisterPage({
             </div>
           )}
           <form action={action}>
-            <RegisterForm categories={categories} mode={demo ? 'demo' : 'supabase'} />
+            <RegisterForm lang={lang} categories={categories} mode={demo ? 'demo' : 'supabase'} />
           </form>
         </CardBody>
       </Card>

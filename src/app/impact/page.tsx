@@ -1,34 +1,35 @@
 import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
+import { getT } from '@/lib/i18n/server';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ImpactPage() {
+  const t = getT();
   const stats = await getRepo().aggregateStats();
   return (
-    <Section eyebrow="Impact" title="Impact" description="These figures are counted from the sample records loaded in this demo. They describe the shape of the catalogue, not measured results.">
+    <Section eyebrow={t('footer.impact')} title={t('footer.impact')} description={t('impact.description')}>
       {stats.producers === 0 ? (
-        <Empty title="No data yet" body="The demo store has been cleared. Reload the page to reset it." />
+        <Empty title={t('impact.emptyTitle')} body={t('impact.emptyBody')} />
       ) : (
         <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <Metric label="Active producers (sample)" value={stats.producers} />
-          <Metric label="Published listings" value={stats.listings} />
-          <Metric label="Buyer inquiries" value={stats.inquiries} />
-          <Metric label="Collective orders" value={stats.opportunities} />
-          <Metric label="Collective quantity pooled" value={stats.collectiveContributed} />
-          <Metric label="Collective target" value={stats.collectiveTarget} />
-          <Metric label="Verified profiles" value={stats.verified} />
+          <Metric label={t('impact.activeProducers')} value={stats.producers} />
+          <Metric label={t('impact.publishedListings')} value={stats.listings} />
+          <Metric label={t('impact.buyerInquiries')} value={stats.inquiries} />
+          <Metric label={t('nav.collective')} value={stats.opportunities} />
+          <Metric label={t('impact.collectivePooled')} value={stats.collectiveContributed} />
+          <Metric label={t('impact.collectiveTarget')} value={stats.collectiveTarget} />
+          <Metric label={t('impact.verifiedProfiles')} value={stats.verified} />
           <Card>
             <CardBody>
-              <h3 className="text-xs uppercase text-ink-500 font-semibold">Completed transactions</h3>
+              <h3 className="text-xs uppercase text-ink-500 font-semibold">{t('impact.completedTransactions')}</h3>
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-3xl font-black text-ink-900">—</span>
-                <Badge tone="warning">Requires reliable data</Badge>
+                <Badge tone="warning">{t('impact.requiresReliableData')}</Badge>
               </div>
               <p className="mt-1 text-xs text-ink-500">
-                No payments are processed here and no completed arrangement has been verified, so no transaction count
-                is shown.
+                {t('impact.noTransactionsNote')}
               </p>
             </CardBody>
           </Card>
@@ -38,31 +39,31 @@ export default async function ImpactPage() {
       <div className="mt-6 grid md:grid-cols-2 gap-4 text-sm">
         <Card>
           <CardBody>
-            <h2 className="font-semibold text-ink-900">How a pilot should measure net producer benefit</h2>
+            <h2 className="font-semibold text-ink-900">{t('impact.measureTitle')}</h2>
             <ol className="mt-2 list-decimal pl-5 space-y-1 text-ink-700">
-              <li>Record gross sale value per completed transaction.</li>
-              <li>Deduct transport, packaging and coordination fees the producer actually paid.</li>
-              <li>Deduct the platform fee if one is validated.</li>
-              <li>Compare against a pre-participation baseline collected with informed consent.</li>
-              <li>Report distributions (median and interquartile range), not only averages.</li>
+              <li>{t('impact.measure1')}</li>
+              <li>{t('impact.measure2')}</li>
+              <li>{t('impact.measure3')}</li>
+              <li>{t('impact.measure4')}</li>
+              <li>{t('impact.measure5')}</li>
             </ol>
           </CardBody>
         </Card>
         <Card>
           <CardBody>
-            <h2 className="font-semibold text-ink-900">What we will not show</h2>
+            <h2 className="font-semibold text-ink-900">{t('impact.willNotShowTitle')}</h2>
             <ul className="mt-2 list-disc pl-5 space-y-1 text-ink-700">
-              <li>Fabricated impact statistics.</li>
-              <li>Invented producer testimonials or endorsements.</li>
-              <li>Research findings attributed to partners without their review.</li>
-              <li>Claims that an origin or quality attribute is “independently verified” without an actual verification process.</li>
+              <li>{t('impact.notShow1')}</li>
+              <li>{t('impact.notShow2')}</li>
+              <li>{t('impact.notShow3')}</li>
+              <li>{t('impact.notShow4')}</li>
             </ul>
             <p className="mt-3 text-xs text-ink-500">
-              See{' '}
+              {t('impact.seePrefix')}
               <Link href="/how-it-works" className="underline">
-                how it works
+                {t('impact.howLink')}
               </Link>
-              .
+              {t('impact.seeSuffix')}
             </p>
           </CardBody>
         </Card>
@@ -72,12 +73,13 @@ export default async function ImpactPage() {
 }
 
 function Metric({ label, value }: { label: string; value: number }) {
+  const t = getT();
   return (
     <Card>
       <CardBody>
         <h3 className="text-xs uppercase text-ink-500 font-semibold">{label}</h3>
         <div className="mt-1 text-3xl font-black text-ink-900">{value}</div>
-        <p className="mt-1 text-xs text-ink-500">Sample data — not a measured result.</p>
+        <p className="mt-1 text-xs text-ink-500">{t('impact.sampleDataNote')}</p>
       </CardBody>
     </Card>
   );

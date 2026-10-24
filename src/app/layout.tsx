@@ -28,7 +28,16 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: settings.heroDescription,
     manifest: '/manifest.webmanifest',
-    icons: { icon: '/icon.svg' },
+    // Every icon is the real logo: the PNGs are fitted from
+    // public/images/branding/logo.png and public/icon.svg embeds the same file.
+    icons: {
+      icon: [
+        { url: '/icons/icon-32.png', type: 'image/png', sizes: '32x32' },
+        { url: '/icons/icon-48.png', type: 'image/png', sizes: '48x48' },
+        { url: '/icon.svg', type: 'image/svg+xml' }
+      ],
+      apple: [{ url: '/icons/icon-180.png', type: 'image/png', sizes: '180x180' }]
+    },
     openGraph: {
       type: 'website',
       siteName: settings.siteName,

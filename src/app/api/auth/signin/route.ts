@@ -4,15 +4,17 @@ import { isDemoMode } from '@/lib/store';
 import { getRepo } from '@/lib/repo';
 import { restoreThemeFromAccount } from '@/lib/theme-server';
 import { safeNext } from '@/lib/session';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const t = getT();
   // Demo mode has no password store, so this endpoint must refuse rather than
   // reach for Supabase credentials that are not configured.
   if (isDemoMode()) {
     return NextResponse.json(
-      { error: 'This build runs in demo mode: use the sample-account picker on the sign-in page instead.' },
+      { error: t('apiSignIn.demoMode') },
       { status: 400 }
     );
   }
@@ -22,13 +24,13 @@ export async function POST(req: Request) {
   const requestedNext = safeNext(String(form?.get('next') ?? ''));
 
   if (!email || !password) {
-    return NextResponse.json({ error: 'Email and password are both required.' }, { status: 400 });
+    return NextResponse.json({ error: t('apiSignIn.emailPasswordRequired') }, { status: 400 });
   }
 
   const { data, error } = await supabaseServer().auth.signInWithPassword({ email, password });
   if (error || !data.session) {
     return NextResponse.json(
-      { error: error?.message ?? 'Could not sign in with those credentials.' },
+      { error: error?.message ?? t('apiSignIn.couldNotSignIn') },
       { status: 401 }
     );
   }

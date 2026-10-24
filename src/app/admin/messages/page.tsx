@@ -1,12 +1,14 @@
 import { getRepo } from '@/lib/repo';
 import { AdminSection, BackField } from '@/components/admin-shell';
 import { Badge, Button, Card, CardBody, Empty, Input, Select } from '@/components/ui';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
 export default async function AdminMessagesPage({ searchParams }: { searchParams: SearchParams }) {
+  const t = getT();
   const text = (key: string): string => (typeof searchParams[key] === 'string' ? (searchParams[key] as string) : '');
   const messages = await getRepo().listContactMessages();
   const q = text('q').trim().toLowerCase();
@@ -24,8 +26,12 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
 
   return (
     <AdminSection
-      title="Contact messages"
-      description={`${unread} of ${messages.length} ${messages.length === 1 ? 'message is' : 'messages are'} awaiting a reply. Marking one handled is a bookkeeping step for the team: nothing sends an email or SMS, so the reply itself has to go out through the channel the visitor used. Addresses here are private contact details — use them only to answer the message.`}
+      title={t('messageAdmin.title')}
+      description={
+        messages.length === 1
+          ? t('messageAdmin.descriptionOne', { unread, total: messages.length })
+          : t('messageAdmin.descriptionMany', { unread, total: messages.length })
+      }
       searchParams={searchParams}
     >
       <Card>
@@ -33,23 +39,23 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
           <form method="get" className="grid md:grid-cols-4 gap-3">
             <div className="md:col-span-2">
               <label htmlFor="q" className="block text-sm font-semibold text-ink-900 mb-1">
-                Search name, email or subject
+                {t('messageAdmin.searchLabel')}
               </label>
               <Input id="q" name="q" defaultValue={text('q')} />
             </div>
             <div>
               <label htmlFor="status" className="block text-sm font-semibold text-ink-900 mb-1">
-                Status
+                {t('reports.status')}
               </label>
               <Select id="status" name="status" defaultValue={status}>
-                <option value="">All</option>
-                <option value="new">Awaiting reply</option>
-                <option value="handled">Handled</option>
+                <option value="">{t('reports.allOptions')}</option>
+                <option value="new">{t('messageAdmin.filterAwaiting')}</option>
+                <option value="handled">{t('messageAdmin.filterHandled')}</option>
               </Select>
             </div>
             <div className="flex items-end">
               <Button type="submit" size="sm">
-                Apply
+                {t('buyerInquiries.apply')}
               </Button>
             </div>
           </form>
@@ -58,8 +64,8 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
 
       {rows.length === 0 ? (
         <Empty
-          title="No message matches"
-          body="Messages submitted through the contact page land here. If the mailbox is empty, nothing has been sent yet — the inbox is not pre-filled with sample traffic."
+          title={t('messageAdmin.emptyTitle')}
+          body={t('messageAdmin.emptyBody')}
         />
       ) : (
         <div className="space-y-3">
@@ -70,7 +76,7 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-ink-900">{m.subject}</h3>
                     <Badge tone={m.status === 'new' ? 'warning' : 'success'}>
-                      {m.status === 'new' ? 'awaiting reply' : 'handled'}
+                      {m.status === 'new' ? t('messageAdmin.badgeAwaiting') : t('messageAdmin.badgeHandled')}
                     </Badge>
                   </div>
                   <p className="mt-1 text-sm text-ink-500">
@@ -79,7 +85,7 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
                   <p className="mt-2 text-sm text-ink-700 whitespace-pre-line rounded-lg bg-clay-50 p-3">{m.message}</p>
                   <p className="mt-2 text-sm">
                     <a href={`mailto:${m.email}?subject=Re: ${encodeURIComponent(m.subject)}`} className="underline font-semibold text-clay-700">
-                      Reply in your email client
+                      {t('messageAdmin.replyLink')}
                     </a>
                   </p>
                 </div>
@@ -90,15 +96,15 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
                   <div className="flex flex-wrap gap-2">
                     {m.status === 'new' ? (
                       <Button type="submit" name="status" value="handled" size="sm">
-                        Mark handled
+                        {t('messageAdmin.markHandled')}
                       </Button>
                     ) : (
                       <Button type="submit" name="status" value="new" size="sm" variant="secondary">
-                        Reopen
+                        {t('messageAdmin.reopen')}
                       </Button>
                     )}
                   </div>
-                  <p className="text-xs text-ink-500">No automatic reply is sent, so remember to answer the person.</p>
+                  <p className="text-xs text-ink-500">{t('messageAdmin.noAutoReply')}</p>
                 </form>
               </CardBody>
             </Card>
@@ -108,11 +114,10 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">Where messages come from</h2>
+          <h2 className="font-semibold text-ink-900">{t('messageAdmin.sourceHeading')}</h2>
           <p className="mt-2 text-sm text-ink-700">
-            The public contact form posts to <code>/api/contact</code>, which stores the message here. It does not claim
-            delivery to an inbox. Configure a real mailbox or an SMTP relay only in the deployment environment — see the
-            README for the variables involved, and never commit their values.
+            {t('messageAdmin.sourceLead')} <code>/api/contact</code>
+            {t('messageAdmin.sourceTail')}
           </p>
         </CardBody>
       </Card>

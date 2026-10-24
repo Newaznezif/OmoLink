@@ -2,12 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { t, type TranslationKey } from '@/lib/i18n';
 import { Button, Input } from './ui';
 import { STATUS_LABELS } from './opportunity-form';
-import type { GroupContribution } from '@/lib/types';
+import type { GroupContribution, LanguageCode } from '@/lib/types';
 import type { CollectiveOpportunity } from '@/lib/types';
 
-function useRequest() {
+function useRequest(lang: LanguageCode) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -23,13 +24,13 @@ function useRequest() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ ok: false, text: json?.error ?? `The server refused (status ${res.status}).` });
+        setMessage({ ok: false, text: json?.error ?? t(lang, 'collectiveManage.serverRefused', { status: res.status }) });
         return;
       }
       setMessage({ ok: true, text: successText });
       router.refresh();
     } catch {
-      setMessage({ ok: false, text: 'Network problem: nothing was changed.' });
+      setMessage({ ok: false, text: t(lang, 'collectiveManage.networkError') });
     } finally {
       setBusy(false);
     }
@@ -47,8 +48,9 @@ function MessageLine({ message }: { message: { ok: boolean; text: string } | nul
   );
 }
 
-export function OpportunityStatusPicker({ opportunity }: { opportunity: CollectiveOpportunity }) {
-  const { busy, message, send } = useRequest();
+export function OpportunityStatusPicker({ lang, opportunity }: { lang: LanguageCode; opportunity: CollectiveOpportunity }) {
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) => t(lang, key, vars);
+  const { busy, message, send } = useRequest(lang);
   const states: CollectiveOpportunity['status'][] = ['open', 'closing_soon', 'closed', 'fulfilled', 'cancelled'];
 
   return (
@@ -65,19 +67,18 @@ export function OpportunityStatusPicker({ opportunity }: { opportunity: Collecti
               send(
                 `/api/collective/opportunities/${opportunity.id}`,
                 { status: state },
-                `State set to “${STATUS_LABELS[state]}”.`
+                tr('collectiveManage.stateSet', { label: t(lang, STATUS_LABELS[state]) })
               )
             }
           >
-            {STATUS_LABELS[state]}
+            {t(lang, STATUS_LABELS[state])}
           </Button>
         ))}
       </div>
       <MessageLine message={message} />
       {opportunity.status === 'fulfilled' && (
         <p className="mt-1 text-xs text-ink-500">
-          A fulfilled opportunity cannot be reopened. If the delivery did not actually happen, leave the record as it is
-          and open a new opportunity — the contributions stay truthful either way.
+          {tr('collectiveManage.fulfilledNote')}
         </p>
       )}
     </div>
@@ -85,17 +86,20 @@ export function OpportunityStatusPicker({ opportunity }: { opportunity: Collecti
 }
 
 export function ContributionActions({
+  lang,
   contribution,
   unitOfSale,
   canConfirm,
   acceptsChanges
 }: {
+  lang: LanguageCode;
   contribution: GroupContribution;
   unitOfSale: string;
   canConfirm: boolean;
   acceptsChanges: boolean;
 }) {
-  const { busy, message, send } = useRequest();
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) => t(lang, key, vars);
+  const { busy, message, send } = useRequest(lang);
   const [quantity, setQuantity] = useState(String(contribution.quantity));
   const withdrawn = contribution.status === 'withdrawn';
 
@@ -103,7 +107,7 @@ export function ContributionActions({
     <div className="mt-2">
       <div className="flex flex-wrap items-center gap-2">
         <label className="sr-only" htmlFor={`qty-${contribution.id}`}>
-          Quantity for this contribution
+          {tr('collectiveManage.qtyAria')}
         </label>
         <Input
           id={`qty-${contribution.id}`}
@@ -122,11 +126,11 @@ export function ContributionActions({
             send(
               `/api/collective/contributions/${contribution.id}`,
               { action: 'quantity', quantity: Number(quantity) },
-              `Contribution set to ${quantity} ${unitOfSale}.`
+              tr('collectiveManage.setQuantitySuccess', { quantity, unit: unitOfSale })
             )
           }
         >
-          Set quantity
+          {tr('collectiveManage.setQuantity')}
         </Button>
         {canConfirm && contribution.status !== 'confirmed' && (
           <Button
@@ -134,10 +138,10 @@ export function ContributionActions({
             size="sm"
             disabled={busy}
             onClick={() =>
-              send(`/api/collective/contributions/${contribution.id}`, { action: 'confirm' }, 'Contribution confirmed.')
+              send(`/api/collective/contributions/${contribution.id}`, { action: 'confirm' }, tr('collectiveManage.confirmed'))
             }
           >
-            Confirm
+            {tr('collectiveManage.confirm')}
           </Button>
         )}
         {!withdrawn && (
@@ -150,24 +154,24 @@ export function ContributionActions({
               send(
                 `/api/collective/contributions/${contribution.id}`,
                 { action: 'withdraw' },
-                'Contribution withdrawn. The aggregate total drops immediately.'
+                tr('collectiveManage.withdrawn')
               )
             }
           >
-            Withdraw
+            {tr('collectiveManage.withdraw')}
           </Button>
         )}
       </div>
       <MessageLine message={message} />
       {!acceptsChanges && !withdrawn && (
         <p className="mt-1 text-xs text-ink-500">
-          This opportunity is {opportunityClosedLabel(contribution.status)}; quantities can no longer be edited here.
+          {tr('collectiveManage.closedNote', { state: opportunityClosedLabel(lang, contribution.status) })}
         </p>
       )}
     </div>
   );
 }
 
-function opportunityClosedLabel(status: GroupContribution['status']): string {
-  return status === 'confirmed' ? 'closed to changes, contribution confirmed' : 'closed to quantity changes';
+function opportunityClosedLabel(lang: LanguageCode, status: GroupContribution['status']): string {
+  return t(lang, status === 'confirmed' ? 'collectiveManage.closedConfirmed' : 'collectiveManage.closedQuantity');
 }

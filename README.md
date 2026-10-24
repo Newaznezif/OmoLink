@@ -41,8 +41,9 @@ The product is a prototype and these value propositions have not been establishe
 | Account help flows | **Implemented; real mail paths untested** | `/onboarding`, `/forgot-password`, `/reset-password`, `/verify-email`, and role-aware `/auth/callback`. In demo mode these pages explain that no mail service exists rather than presenting a form that could not work. |
 | Buyer inquiries and arrangement status | **Implemented** | Buyers can submit inquiries; buyer and seller areas expose their records and status updates. Parties arrange payment and fulfilment themselves. |
 | Buyer and seller dashboards | **Implemented** | Inquiries, order arrangements, profile/settings, and related records. These are not payment receipts or a payment ledger. |
-| Collective opportunities | **Implemented** | Sample group opportunities, contributions, aggregation, and estimated shared transport costs. Estimates are not transport quotes. |
+| Collective opportunities | **Implemented** | Sample group opportunities, contributions, aggregation, and estimated shared transport costs. Estimates are not transport quotes. A visitor can pick a participating producer's product and send an inquiry for it; producers commit stock against the pool. There is no multi-seller basket. |
 | Price calculator | **Implemented** | Cost, markup, and margin calculations; this is a planning aid, not price verification. |
+| Founders & Team | **Implemented** | `/team` lists the five founders with role and contribution, initials avatars because no reviewed photograph is published, and a homepage preview card grid that links to it. Names are data, not markup, so they are never machine-translated. |
 | Contact and review workflows | **Implemented** | In-app message/review records depend on the configured repository. They do not imply email delivery or external moderation. |
 | Administration | **Implemented, with demo limitations** | Admin screens and role-protected actions cover site settings, homepage content, listings, categories, messages, reports, reviews, and account roles. Demo-mode changes exist only in the in-memory store; some verification/report actions are explicitly simulated. |
 | Offline support | **Implemented for reading, verified in a production build** | A service worker caches the app shell and the pages you browsed while it controlled the tab; a listing revisited without a connection still renders and its inquiry form still recalculates the subtotal. Listing drafts and queued inquiries are saved on-device. It is not a background-sync queue: nothing is sent to a server later that was not already waiting on the device. |
@@ -116,9 +117,9 @@ src/
 supabase/
   migrations/          Database schema and row-level security migrations
   seed.sql             Category seed data
-public/                Static assets: branding logo (images/branding/), icon, web manifest, service worker
+public/                Static assets: branding logo (images/branding/), favicon.ico, icon.svg, icons/ (32/48/180/192/512 PNG cut from that logo), web manifest, service worker
 tests/                 Node-based unit tests
-  http/                Demo-mode HTTP verification suites (admin, buyer, producer, workflow)
+  http/                Demo-mode HTTP verification suites (refinements, locale, catalogue, producer, buyer, admin, workflow, money)
 ```
 
 ## Installation and local development
@@ -636,13 +637,13 @@ The header offers seven languages. Every one of them is selectable and saves; **
 
 | Offered as | Code | Interface coverage | Review status | `<html lang>` |
 | --- | --- | --- | --- | --- |
-| English | `en` | 382/382 keys — the source of truth | Written in English, needs no review | `en` |
-| አማርኛ (Amharic) | `am` | 33/382 keys | **Draft, native review pending** — a header comment in `src/lib/i18n/am.ts` records that every term needs a competent speaker | `am` |
-| 简体中文 (Chinese, Simplified) | `zh-Hans` | 382/382 | Complete, **not yet reviewed by a speaker** | `zh-Hans` |
-| Italiano | `it` | 382/382 | Complete, **not yet reviewed by a speaker** | `it` |
-| Hamer | `hamer` | 0/382 | No translation exists | `en` — the page genuinely is English |
-| Dasenech | `dag` | 0/382 | No translation exists | `en` |
-| Tsamai | `tsamai` | 0/382 | No translation exists | `en` |
+| English | `en` | 2094/2094 keys — the source of truth | Written in English, needs no review | `en` |
+| አማርኛ (Amharic) | `am` | 112/2094 | **Draft, native review pending** — a header comment in `src/lib/i18n/am.ts` records that every term needs a competent speaker | `am` |
+| 简体中文 (Chinese, Simplified) | `zh-Hans` | 2094/2094 | Complete, **not yet reviewed by a speaker** | `zh-Hans` |
+| Italiano | `it` | 2094/2094 | Complete, **not yet reviewed by a speaker** | `it` |
+| Hamer | `hamer` | 0/2094 | No translation exists | `en` — the page genuinely is English |
+| Dasenech | `dag` | 0/2094 | No translation exists | `en` |
+| Tsamai | `tsamai` | 0/2094 | No translation exists | `en` |
 
 `hamer`, `dag` and `tsamai` are **identifiers this repository chose**, not tags claimed for the browser. No BCP-47 tag is asserted for them here, because none has been looked up and confirmed against a language registration — and a wrong tag would let the markup claim a language the page is not written in. So `documentLang` stays `en` for those three, which is the truth: the text on screen is English. Getting a speaker's dictionary in place is step one; choosing the correct registered tag is a lookup to do with them, in `src/lib/language.ts`, not a guess to make now. `rtl` is `false` for all seven options and no page is forced into a right-to-left layout.
 
@@ -656,14 +657,12 @@ The header offers seven languages. Every one of them is selectable and saves; **
 
 ### What is translated, and what is not
 
-Translated where the dictionary has the key: the site header, footer and navigation, the home page, the marketplace browse pages (`/products`, `/tourism`, `/explore`) with their filters and result counts, a listing page including its inquiry form, reviews, and report panel, the listing/producer cards, sign-in, the contact form, `/how-it-works`, `/privacy`, `/community-guidelines`, and the not-found and access-denied pages.
-
-**Still English-only:** producer profile pages, collective orders, `/impact`, `/pricing-tool`, `/offline`, `/register`, `/onboarding`, and every signed-in area (`/dashboard`, `/buyer`, `/admin`). Rather than hide that, each translated page ends its language notice with `language.notice.areas`, which names these routes in the visitor's own language. The `t()` fallback is English and it is visible — an untranslated string shows as English text on the page, never as a key or a blank.
+Translated where the dictionary has the key: essentially the whole interface. Header, footer and navigation; the home page including the Founders & Team preview; the marketplace browse pages (`/products`, `/tourism`, `/explore`) with their filters and result counts; listing pages with their inquiry, review and report panels; producer profile pages; `/team`, `/how-it-works`, `/privacy`, `/community-guidelines`, `/contact`, `/pricing-tool`; the collective order list, detail, new and manage pages with the buyer panel and the producer contribution form; sign-in, register and onboarding; `/impact` and `/offline`; and the signed-in areas (`/dashboard`, `/buyer`, `/admin`) including the admin analytics and audit screens. A missing key shows as English text rather than as a key or a blank — for Amharic that fallback is still visible on most of the interface, because only 112 keys exist.
 
 ### Honesty rules the code enforces
 
 - Coverage and review are **separate facts**. `languageStatus()` answers only coverage (`complete` / `partial` / `not_available`); `REVIEW_PENDING_LANGUAGES = ['zh-Hans','it','am']` and `amReviewPending` answer whether a speaker has read it. The dropdown suffix comes from `languageSuffixKey()`, which combines the two, so a complete-but-unreviewed dictionary says "complete, needs speaker review" and cannot be reported as done.
-- `LanguageNotice` states the same on the page, plus a catalogue warning while `CATALOG_REVIEWED` is `false`.
+- The dropdown itself carries the same admission: each `<option>` shows the suffix from `languageSuffixKey()`, and its `title` states the coverage in words plus ", wording not yet reviewed by a speaker" whenever `coverageFor(code).reviewPending` is true. There is no separate page-level draft banner — the site-wide demo notice and the `LanguageNotice` block were removed once the header stated the facts.
 - `zh-Hans` and `it` are typed as `TranslationSet = { [K in TranslationKey]: string }`, so a missing key is a **compile error** rather than a runtime surprise. Amharic is a `Partial<TranslationSet>` and the three local languages are empty objects — deliberately, so no future edit can imply coverage that a speaker has not reviewed.
 - `tests/language.test.ts` asserts the fallback dynamically (it finds a key Amharic genuinely lacks rather than a hardcoded one), that coverage equals the key count, that no invented tag exists, and that every offered code round-trips.
 
@@ -695,7 +694,7 @@ So the app is fully functional with zero provider configuration: dictionaries ar
 5. Add product/category text to `src/lib/i18n/catalog.ts` separately, and keep `CATALOG_REVIEWED` false until that wording is also reviewed.
 6. Run `npm test`, `npx tsc --noEmit`, and the buyer suite — its interface-language block is data-driven over `LANGUAGE_OPTIONS`, so a new dictionary is asserted as soon as it is offered.
 
-For Amharic specifically: the 33 keys in `am.ts` need a native speaker's review before `amReviewPending` is set to `false`. The rest of the dictionary still has to be written.
+For Amharic specifically: the 112 keys in `am.ts` need a competent speaker's review before `amReviewPending` is set to `false`. The remaining ~1,980 keys still have to be written, and the set covers the priority journeys (navigation, home, listing detail, Founders & Team, collective orders, inquiry validation, sign-in) rather than the whole interface.
 
 ## Payments, PDF receipts, admin reports, and appearance
 
@@ -884,7 +883,7 @@ Proposed next steps:
 - Agree community-led consent, profile verification, moderation, privacy, and cultural-representation practices before publishing real information.
 - Configure and security-test Supabase Auth, migrations, RLS, backups, and operational monitoring.
 - Test usability and resilient low-connectivity behavior on target devices and networks.
-- Get the existing dictionaries reviewed by competent speakers: Amharic needs its 33 terms checked and the remaining ~350 keys written; Simplified Chinese and Italian need a read of the rendered pages; Hamer, Dasenech and Tsamai need a dictionary from their communities before the selector's promise can be kept. Appropriate SMS/USSD options remain to be explored if communities request them.
+- Get the existing dictionaries reviewed by competent speakers: Amharic needs its 112 drafted terms checked and the remaining ~1,980 keys written; Simplified Chinese and Italian need a read of the rendered pages; Hamer, Dasenech and Tsamai need a dictionary from their communities before the selector's promise can be kept. Appropriate SMS/USSD options remain to be explored if communities request them.
 - Evaluate logistics and digital-payment integrations only with local partners, legal review, and a tested provider.
 - Replace sample data and placeholders with verified content only after receiving permission.
 

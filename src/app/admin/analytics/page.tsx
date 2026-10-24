@@ -4,6 +4,7 @@ import { isDemoMode } from '@/lib/store';
 import { AdminSection } from '@/components/admin-shell';
 import { Badge, Card, CardBody, Empty } from '@/components/ui';
 import { formatMoney } from '@/lib/money';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,7 @@ const INQUIRY_STATES = [
 ] as const;
 
 export default async function AdminAnalyticsPage() {
+  const t = getT();
   const repo = getRepo();
   const [stats, admin, listings, categories, opportunities, inquiries, profiles] = await Promise.all([
     repo.aggregateStats(),
@@ -52,69 +54,67 @@ export default async function AdminAnalyticsPage() {
 
   return (
     <AdminSection
-      title="Platform activity"
-      description="Every figure on this page is counted from the records that exist in the current data source. Nothing is estimated, extrapolated or carried over from a spreadsheet — and no visitor traffic is measured at all."
+      title={t('analytics.title')}
+      description={t('analytics.description')}
     >
       {isDemoMode() && (
         <p className="rounded-lg border border-clay-200 bg-clay-50 px-4 py-3 text-sm text-clay-800">
-          <strong>Demo data.</strong> The app is running with DATA_MODE=demo, so the counts below describe the sample
-          catalogue in memory for this instance. They are not evidence of real-world transactions or impact.
+          <strong>{t('analytics.demoTitle')}</strong> {t('analytics.demoBody')}
         </p>
       )}
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
           <CardBody>
-            <h2 className="font-semibold text-ink-900">Catalogue</h2>
+            <h2 className="font-semibold text-ink-900">{t('analytics.catalogue')}</h2>
             <dl className="mt-2 space-y-1 text-sm">
-              <Row label="Listings stored" value={listings.length} />
-              <Row label="Visible in the marketplace" value={publicListings.length} />
-              <Row label="Unpublished by a producer" value={listings.filter((l) => !l.published && !l.archived).length} />
-              <Row label="Archived" value={admin.archivedListings} />
-              <Row label="Promoted on the homepage" value={listings.filter((l) => l.featured).length} />
-              <Row label="Tourism services" value={publicListings.filter((l) => l.kind === 'service').length} />
-              <Row label="Categories in use" value={byCategory.filter((c) => c.total > 0).length} />
+              <Row label={t('analytics.listingsStored')} value={listings.length} />
+              <Row label={t('analytics.visibleInMarketplace')} value={publicListings.length} />
+              <Row label={t('analytics.unpublishedByProducer')} value={listings.filter((l) => !l.published && !l.archived).length} />
+              <Row label={t('myListings.badgeArchived')} value={admin.archivedListings} />
+              <Row label={t('analytics.promotedOnHomepage')} value={listings.filter((l) => l.featured).length} />
+              <Row label={t('footer.tourismServices')} value={publicListings.filter((l) => l.kind === 'service').length} />
+              <Row label={t('analytics.categoriesInUse')} value={byCategory.filter((c) => c.total > 0).length} />
             </dl>
           </CardBody>
         </Card>
 
         <Card>
           <CardBody>
-            <h2 className="font-semibold text-ink-900">Accounts</h2>
+            <h2 className="font-semibold text-ink-900">{t('nav.accounts')}</h2>
             <dl className="mt-2 space-y-1 text-sm">
-              <Row label="Profiles stored" value={profiles.length} />
-              <Row label="Selling accounts (producer)" value={admin.byRole.producer} />
-              <Row label="Group coordinators" value={admin.byRole.coordinator} />
-              <Row label="Buyers and tourists" value={admin.byRole.buyer} />
-              <Row label="Administrators" value={admin.byRole.admin} />
-              <Row label="Suspended" value={admin.suspended} />
-              <Row label="Verified profiles" value={stats.verified} />
-              <Row label="Awaiting a verification decision" value={admin.pendingVerifications} />
+              <Row label={t('analytics.profilesStored')} value={profiles.length} />
+              <Row label={t('analytics.sellingAccounts')} value={admin.byRole.producer} />
+              <Row label={t('analytics.groupCoordinators')} value={admin.byRole.coordinator} />
+              <Row label={t('analytics.buyersAndTourists')} value={admin.byRole.buyer} />
+              <Row label={t('analytics.administrators')} value={admin.byRole.admin} />
+              <Row label={t('accountSettings.statusSuspended')} value={admin.suspended} />
+              <Row label={t('impact.verifiedProfiles')} value={stats.verified} />
+              <Row label={t('analytics.awaitingVerification')} value={admin.pendingVerifications} />
             </dl>
           </CardBody>
         </Card>
 
         <Card>
           <CardBody>
-            <h2 className="font-semibold text-ink-900">Arrangements</h2>
+            <h2 className="font-semibold text-ink-900">{t('nav.arrangements')}</h2>
             <p className="mt-1 text-xs text-ink-500">
-              Requests and agreements between a buyer and a seller. Payment is not integrated, so none of these is a
-              completed sale in the accounting sense.
+              {t('analytics.arrangementsNote')}
             </p>
             <ul className="mt-2 space-y-1 text-sm">
               {inquiryRows.map((row) => (
                 <li key={row.state} className="flex justify-between">
-                  <span className="text-ink-500">{row.state.replace(/_/g, ' ')}</span>
+                  <span className="text-ink-500">{t(`inquiries.statusWord.${row.state}`)}</span>
                   <span className="font-semibold text-ink-900">{row.count}</span>
                 </li>
               ))}
             </ul>
             <dl className="mt-2 space-y-1 text-sm border-t border-ink-100 pt-2">
-              <Row label="Total recorded" value={inquiries.length} />
+              <Row label={t('analytics.totalRecorded')} value={inquiries.length} />
               <Row
-                label="Sum of buyer-side estimates"
+                label={t('analytics.buyerEstimateSum')}
                 value={formatMoney({ cents: estimatedValueCents, currency: 'ETB' })}
-                hint="Estimated subtotals the buyers asked for, not money that changed hands."
+                hint={t('analytics.buyerEstimateHint')}
               />
             </dl>
           </CardBody>
@@ -122,21 +122,20 @@ export default async function AdminAnalyticsPage() {
 
         <Card>
           <CardBody>
-            <h2 className="font-semibold text-ink-900">Group orders</h2>
+            <h2 className="font-semibold text-ink-900">{t('nav.groupOrders')}</h2>
             <dl className="mt-2 space-y-1 text-sm">
-              <Row label="Opportunities stored" value={opportunities.length} />
-              <Row label="Open or closing soon" value={admin.openOpportunities} />
-              <Row label="Quantity contributed" value={stats.collectiveContributed} />
-              <Row label="Quantity targeted" value={stats.collectiveTarget} />
-              <Row label="Producer groups" value={stats.groups} />
+              <Row label={t('analytics.opportunitiesStored')} value={opportunities.length} />
+              <Row label={t('analytics.openOrClosingSoon')} value={admin.openOpportunities} />
+              <Row label={t('analytics.quantityContributed')} value={stats.collectiveContributed} />
+              <Row label={t('analytics.quantityTargeted')} value={stats.collectiveTarget} />
+              <Row label={t('analytics.producerGroups')} value={stats.groups} />
             </dl>
             <p className="mt-2 text-xs text-ink-500">
-              Contributed quantity is summed from the individual contribution records. Percentages only mean something
-              once real orders exist.
+              {t('analytics.contributedNote')}
             </p>
             <p className="mt-2 text-sm">
               <Link href="/admin/opportunities" className="underline font-semibold text-clay-700">
-                Manage group orders →
+                {t('analytics.manageGroupOrders')}
               </Link>
             </p>
           </CardBody>
@@ -145,20 +144,20 @@ export default async function AdminAnalyticsPage() {
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">Listings by category</h2>
+          <h2 className="font-semibold text-ink-900">{t('analytics.listingsByCategory')}</h2>
           {byCategory.length === 0 ? (
-            <Empty title="No categories" body="Create one on the Categories tab." />
+            <Empty title={t('analytics.noCategoriesTitle')} body={t('analytics.noCategoriesBody')} />
           ) : (
             <div className="mt-2 overflow-x-auto">
               <table className="w-full text-sm">
                 <caption className="text-left text-xs text-ink-500 pb-2">
-                  Counted from stored listings. “Hidden” includes unpublished and archived records.
+                  {t('analytics.categoryCaption')}
                 </caption>
                 <thead>
                   <tr className="text-left border-b border-ink-100">
-                    <th className="py-2 pr-4 font-semibold text-ink-900">Category</th>
-                    <th className="py-2 pr-4 font-semibold text-ink-900">Visible</th>
-                    <th className="py-2 font-semibold text-ink-900">Stored</th>
+                    <th className="py-2 pr-4 font-semibold text-ink-900">{t('reports.category')}</th>
+                    <th className="py-2 pr-4 font-semibold text-ink-900">{t('analytics.thVisible')}</th>
+                    <th className="py-2 font-semibold text-ink-900">{t('analytics.thStored')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -170,7 +169,7 @@ export default async function AdminAnalyticsPage() {
                         {row.total}
                         {row.total > row.visible && (
                           <Badge tone="neutral" className="ml-2">
-                            {row.total - row.visible} hidden
+                            {t('analytics.hiddenBadge', { count: row.total - row.visible })}
                           </Badge>
                         )}
                       </td>
@@ -185,9 +184,9 @@ export default async function AdminAnalyticsPage() {
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">Where visible listings come from</h2>
+          <h2 className="font-semibold text-ink-900">{t('analytics.whereFromTitle')}</h2>
           {byCommunity.length === 0 ? (
-            <p className="mt-2 text-sm text-ink-700">No visible listing records a community, so there is nothing to group.</p>
+            <p className="mt-2 text-sm text-ink-700">{t('analytics.noCommunityBody')}</p>
           ) : (
             <ul className="mt-2 space-y-1 text-sm">
               {byCommunity.map((row) => (
@@ -199,27 +198,25 @@ export default async function AdminAnalyticsPage() {
             </ul>
           )}
           <p className="mt-2 text-xs text-ink-500">
-            The community label is typed by the producer on their own profile or listing. It is a self-description, not a
-            verified demographic, and this area does not present it as one.
+            {t('analytics.communityNote')}
           </p>
         </CardBody>
       </Card>
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">What is deliberately not measured</h2>
+          <h2 className="font-semibold text-ink-900">{t('analytics.notMeasuredTitle')}</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-ink-700">
-            <li>No page views, sessions or visitor analytics are collected, so there are no traffic numbers to show.</li>
-            <li>No revenue, commission or gross-merchandise figure exists: payments are not integrated.</li>
+            <li>{t('analytics.notMeasured1')}</li>
+            <li>{t('analytics.notMeasured2')}</li>
             <li>
-              “Households reached” and similar impact claims are not calculated here. The impact page states what is
-              designed rather than what is proven.
+              {t('analytics.notMeasured3')}
             </li>
-            <li>Verification counts decisions stored by an administrator, not independent field checks.</li>
+            <li>{t('analytics.notMeasured4')}</li>
           </ul>
           <p className="mt-2 text-sm">
             <Link href="/admin/audit-logs" className="underline font-semibold text-clay-700">
-              See the audit log for who changed what
+              {t('analytics.auditLogLink')}
             </Link>
           </p>
         </CardBody>

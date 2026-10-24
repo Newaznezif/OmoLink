@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
 import { formatMoney } from '@/lib/money';
+import { getLanguage, getT } from '@/lib/i18n/server';
+import type { TranslationKey } from '@/lib/i18n';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 import { InquiryStatusPicker } from '@/components/inquiry-status-picker';
 
@@ -9,11 +11,25 @@ export const dynamic = 'force-dynamic';
 
 const STATUSES = ['new', 'accepted', 'awaiting_confirmation', 'fulfillment_arranged', 'completed', 'cancelled'] as const;
 
+// The English entries are the lowercase words the chips and badges rendered
+// before localization, so the visible page is unchanged while other languages
+// get real wording.
+const STATUS_WORD: Record<(typeof STATUSES)[number], TranslationKey> = {
+  new: 'inquiries.statusWord.new',
+  accepted: 'inquiries.statusWord.accepted',
+  awaiting_confirmation: 'inquiries.statusWord.awaiting_confirmation',
+  fulfillment_arranged: 'inquiries.statusWord.fulfillment_arranged',
+  completed: 'inquiries.statusWord.completed',
+  cancelled: 'inquiries.statusWord.cancelled'
+};
+
 export default async function DashboardInquiriesPage({
   searchParams
 }: {
   searchParams: { listing?: string; status?: string };
 }) {
+  const t = getT();
+  const lang = getLanguage();
   const actor = await requireArea('/dashboard', ['producer', 'coordinator']);
   const repo = getRepo();
   const all = await repo.listInquiriesForSeller(actor.profileId);
@@ -33,12 +49,12 @@ export default async function DashboardInquiriesPage({
 
   return (
     <Section
-      eyebrow="Dashboard"
-      title="Incoming inquiries"
-      description="Each inquiry is a request, not a confirmed sale. Nothing here has been paid. Update status honestly as you and the buyer arrange pickup, delivery or booking."
+      eyebrow={t('myListings.eyebrow')}
+      title={t('inquiries.title')}
+      description={t('inquiries.description')}
     >
       <div className="flex flex-wrap gap-2 items-center text-sm">
-        <span className="font-semibold text-ink-900">Filter by status</span>
+        <span className="font-semibold text-ink-900">{t('inquiries.filterLabel')}</span>
         {STATUSES.map((s) =>
           s === statusFilter ? (
             <Link
@@ -46,7 +62,7 @@ export default async function DashboardInquiriesPage({
               href={listingFilter ? `/dashboard/inquiries?listing=${listingFilter}` : '/dashboard/inquiries'}
               className="rounded-full bg-clay-700 px-3 py-1 font-semibold text-white"
             >
-              {s.replace(/_/g, ' ')} ✕
+              {t(STATUS_WORD[s])} ✕
             </Link>
           ) : (
             <Link
@@ -54,41 +70,41 @@ export default async function DashboardInquiriesPage({
               href={`/dashboard/inquiries?status=${s}${listingFilter ? `&listing=${listingFilter}` : ''}`}
               className="rounded-full border border-ink-100 bg-white px-3 py-1 hover:bg-clay-50"
             >
-              {s.replace(/_/g, ' ')}
+              {t(STATUS_WORD[s])}
             </Link>
           )
         )}
-        <Badge tone={needsReply > 0 ? 'warning' : 'neutral'}>{needsReply} awaiting a first reply</Badge>
+        <Badge tone={needsReply > 0 ? 'warning' : 'neutral'}>{t('inquiries.awaitingFirstReply', { count: needsReply })}</Badge>
       </div>
 
       {filteredListing && (
         <p className="mt-2 text-sm text-ink-700">
-          Showing records for{' '}
+          {t('inquiries.showingFor')}{' '}
           <Link href={`/listings/${filteredListing.id}`} className="underline font-semibold text-clay-700">
             {filteredListing.title}
           </Link>{' '}
           ·{' '}
           <Link href="/dashboard/inquiries" className="underline text-ink-500">
-            show all listings
+            {t('inquiries.showAllListings')}
           </Link>
         </p>
       )}
       {!filteredListing && listingFilter && (
         <p className="mt-2 text-sm text-ink-500">
-          Filtered to a listing you do not manage, so nothing matches.{' '}
+          {t('inquiries.notManagedFilter')}{' '}
           <Link href="/dashboard/inquiries" className="underline text-clay-700">
-            Clear the filter
+            {t('inquiries.clearFilter')}
           </Link>
         </p>
       )}
 
       {inquiries.length === 0 ? (
         <Empty
-          title={all.length === 0 ? 'No inquiries yet' : 'Nothing matches this filter'}
+          title={all.length === 0 ? t('inquiries.emptyTitle') : t('inquiries.noMatchTitle')}
           body={
             all.length === 0
-              ? 'Once a buyer submits an inquiry on one of your listings it will appear here.'
-              : 'No inquiry for this listing has that status. Widen the filter or show all listings.'
+              ? t('inquiries.emptyBody')
+              : t('inquiries.noMatchBody')
           }
         />
       ) : (
@@ -102,35 +118,35 @@ export default async function DashboardInquiriesPage({
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <div>
                         <div className="text-sm text-ink-500">{i.reference}</div>
-                        <h3 className="font-semibold text-ink-900">{listing?.title ?? 'Listing removed'}</h3>
+                        <h3 className="font-semibold text-ink-900">{listing?.title ?? t('inquiries.listingRemoved')}</h3>
                       </div>
-                      <Badge tone={statusTone(i.status)}>{i.status.replace('_', ' ')}</Badge>
+                      <Badge tone={statusTone(i.status)}>{t(STATUS_WORD[i.status])}</Badge>
                     </div>
                     <dl className="mt-3 grid sm:grid-cols-3 gap-3 text-sm">
                       <div>
-                        <dt className="text-ink-500">Quantity</dt>
+                        <dt className="text-ink-500">{t('receipt.quantity')}</dt>
                         <dd className="text-ink-900 font-medium">
                           {i.quantity} {i.unitOfSale}
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-ink-500">Estimated subtotal</dt>
+                        <dt className="text-ink-500">{t('inquiry.subtotal')}</dt>
                         <dd className="text-ink-900 font-medium">{formatMoney({ cents: i.estimatedSubtotalCents, currency: i.currency })}</dd>
                       </div>
                       <div>
-                        <dt className="text-ink-500">Preference</dt>
+                        <dt className="text-ink-500">{t('inquiries.preference')}</dt>
                         <dd className="text-ink-900">{i.preference}</dd>
                       </div>
                       <div>
-                        <dt className="text-ink-500">Buyer</dt>
+                        <dt className="text-ink-500">{t('inquiries.buyer')}</dt>
                         <dd className="text-ink-900">{i.buyerName}</dd>
                       </div>
                       <div>
-                        <dt className="text-ink-500">Reply to</dt>
+                        <dt className="text-ink-500">{t('inquiries.replyTo')}</dt>
                         <dd className="text-ink-900">{i.buyerContact}</dd>
                       </div>
                       <div>
-                        <dt className="text-ink-500">Received</dt>
+                        <dt className="text-ink-500">{t('inquiries.received')}</dt>
                         <dd className="text-ink-900">{new Date(i.createdAt).toLocaleString()}</dd>
                       </div>
                     </dl>
@@ -139,20 +155,20 @@ export default async function DashboardInquiriesPage({
                     )}
                     <p className="mt-3 text-sm flex flex-wrap gap-4">
                       <Link href={`/dashboard/inquiries/${i.id}`} className="underline text-clay-800 font-semibold">
-                        Open the record →
+                        {t('inquiries.openRecord')}
                       </Link>
                       {listing && (
                         <Link href={`/listings/${listing.id}`} className="underline text-ink-500">
-                          See the listing
+                          {t('inquiries.seeListing')}
                         </Link>
                       )}
                     </p>
                     <div className="mt-3">
-                      <InquiryStatusPicker inquiryId={i.id} current={i.status} />
+                      <InquiryStatusPicker inquiryId={i.id} current={i.status} lang={lang} />
                     </div>
                     {i.events.length > 1 && (
                       <details className="mt-2 text-xs text-ink-500">
-                        <summary className="cursor-pointer font-semibold">Activity log</summary>
+                        <summary className="cursor-pointer font-semibold">{t('inquiries.activityLog')}</summary>
                         <ul className="mt-1 space-y-1 pl-4 list-disc">
                           {i.events.map((e) => (
                             <li key={e.id}>

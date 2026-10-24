@@ -1,16 +1,22 @@
 import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
+import { getT } from '@/lib/i18n/server';
+import type { Translator } from '@/lib/i18n';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: 'My profile',
-  description: 'What your OmoNetTab account holds, and what anyone else can see.'
-};
+export async function generateMetadata() {
+  const t = getT();
+  return {
+    title: t('nav.myProfile'),
+    description: t('buyerProfile.metaDescription')
+  };
+}
 
 export default async function BuyerProfilePage() {
+  const t = getT();
   const actor = await requireArea('/buyer', ['buyer']);
   const repo = getRepo();
   const [profile, reviews, inquiries] = await Promise.all([
@@ -20,13 +26,13 @@ export default async function BuyerProfilePage() {
   ]);
   if (!profile) {
     return (
-      <Section eyebrow="My account" title="My profile">
+      <Section eyebrow={t('nav.myAccountAria')} title={t('nav.myProfile')}>
         <Empty
-          title="No profile record"
-          body="This account has no profile yet. Finish onboarding or sign out and register again."
+          title={t('buyerProfile.noProfileTitle')}
+          body={t('buyerProfile.noProfileBody')}
           action={
             <Link href="/sign-in" className="underline font-semibold text-clay-700">
-              Sign in again
+              {t('buyerProfile.signInAgain')}
             </Link>
           }
         />
@@ -39,9 +45,9 @@ export default async function BuyerProfilePage() {
 
   return (
     <Section
-      eyebrow="My account"
-      title="My profile"
-      description="A buying account has no public page. Sellers see your name and contact details only on the specific inquiry you send them."
+      eyebrow={t('nav.myAccountAria')}
+      title={t('nav.myProfile')}
+      description={t('buyerProfile.description')}
     >
       <Card>
         <CardBody>
@@ -49,23 +55,26 @@ export default async function BuyerProfilePage() {
             <h2 className="font-semibold text-ink-900">{profile.displayName}</h2>
             <Badge tone="neutral">{profile.accountKind.replace(/_/g, ' ')}</Badge>
             <Badge tone="info">{profile.role}</Badge>
-            {profile.status === 'suspended' && <Badge tone="danger">suspended</Badge>}
-            {profile.isDemo && <Badge tone="warning">sample account</Badge>}
+            {profile.status === 'suspended' && <Badge tone="danger">{t('accountSettings.wordSuspended')}</Badge>}
+            {profile.isDemo && <Badge tone="warning">{t('buyerProfile.sampleAccountBadge')}</Badge>}
           </div>
           <dl className="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
-            <Line label="Community" value={profile.community || 'Not given'} />
-            <Line label="Operating area" value={profile.operatingArea || 'Not given'} />
-            <Line label="Preferred language" value={languageLabel(profile.preferredLanguage)} />
-            <Line label="Organisation" value={profile.organizationName || 'Not given'} />
-            <Line label="Contact shared with sellers" value={describeContact(profile.contactMethod)} />
-            <Line label="Member since" value={new Date(profile.createdAt).toLocaleDateString()} />
-            <Line label="Last updated" value={new Date(profile.updatedAt).toLocaleString()} />
-            <Line label="Consent to publish a profile" value={profile.consentToPublish ? 'Recorded' : 'Not recorded'} />
+            <Line label={t('filter.community')} value={profile.community || t('buyerProfile.notGiven')} />
+            <Line label={t('producers.operatingAreaLabel')} value={profile.operatingArea || t('buyerProfile.notGiven')} />
+            <Line label={t('producers.preferredLanguageLabel')} value={languageLabel(profile.preferredLanguage, t)} />
+            <Line label={t('buyerProfile.organisationLabel')} value={profile.organizationName || t('buyerProfile.notGiven')} />
+            <Line label={t('buyerProfile.contactSharedLabel')} value={describeContact(profile.contactMethod, t)} />
+            <Line label={t('buyerProfile.memberSinceLabel')} value={new Date(profile.createdAt).toLocaleDateString()} />
+            <Line label={t('listing.lastUpdated')} value={new Date(profile.updatedAt).toLocaleString()} />
+            <Line
+              label={t('buyerProfile.consentLabel')}
+              value={profile.consentToPublish ? t('buyerProfile.consentRecorded') : t('buyerProfile.consentNotRecorded')}
+            />
           </dl>
-          <p className="mt-3 text-sm text-ink-700">{profile.shortBio || 'No bio written yet.'}</p>
+          <p className="mt-3 text-sm text-ink-700">{profile.shortBio || t('buyerProfile.bioEmpty')}</p>
           <p className="mt-3 text-sm">
             <Link href="/buyer/settings" className="underline font-semibold text-clay-700">
-              Change these details, language or contact settings
+              {t('buyerProfile.settingsLink')}
             </Link>
           </p>
         </CardBody>
@@ -73,53 +82,53 @@ export default async function BuyerProfilePage() {
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">What is visible to whom</h2>
+          <h2 className="font-semibold text-ink-900">{t('buyerProfile.visibilityTitle')}</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-ink-700">
             <li>
-              <strong>The seller you contact:</strong> the name and contact you typed into that inquiry, plus the
-              quantity and dates. Nothing else.
+              <strong>{t('buyerProfile.visibleSellerLabel')}</strong> {t('buyerProfile.visibleSellerBody')}
             </li>
             <li>
-              <strong>Other visitors:</strong> your profile is not listed anywhere. Buying history is private to you.
+              <strong>{t('buyerProfile.visibleVisitorsLabel')}</strong> {t('buyerProfile.visibleVisitorsBody')}
             </li>
             <li>
-              <strong>An administrator:</strong> your account record, your inquiries and your reviews, to run the
-              marketplace and answer a report.
+              <strong>{t('buyerProfile.visibleAdminLabel')}</strong> {t('buyerProfile.visibleAdminBody')}
             </li>
             <li>
-              <strong>Never published:</strong> a phone number or email without the consent tick on the settings page.
+              <strong>{t('buyerProfile.visibleNeverLabel')}</strong> {t('buyerProfile.visibleNeverBody')}
             </li>
           </ul>
-          <p className="mt-2 text-xs text-ink-500">
-            Your reviews appear next to the listing they describe, under the name you chose to display.
-          </p>
+          <p className="mt-2 text-xs text-ink-500">{t('buyerProfile.reviewsVisibilityNote')}</p>
         </CardBody>
       </Card>
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">Reviews you wrote</h2>
+          <h2 className="font-semibold text-ink-900">{t('buyerProfile.reviewsTitle')}</h2>
           {mine.length === 0 ? (
             <p className="mt-2 text-sm text-ink-700">
               {listingIds.size === 0
-                ? 'You have not sent an inquiry yet, so there is nothing to review.'
-                : 'No review yet. Once an arrangement is recorded as completed, the option appears on that record.'}
+                ? t('buyerProfile.noInquiryToReview')
+                : t('buyerProfile.noReviewYet')}
             </p>
           ) : (
             <ul className="mt-2 space-y-3 text-sm">
               {mine.map((r) => (
                 <li key={r.id} className="border-b border-ink-100 last:border-0 pb-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone={r.status === 'published' ? 'success' : 'warning'}>{r.status}</Badge>
+                    <Badge tone={r.status === 'published' ? 'success' : 'warning'}>
+                      {r.status === 'published' ? t('buyerProfile.statusPublished') : t('buyerProfile.statusHidden')}
+                    </Badge>
                     <span className="font-semibold text-ink-900">{r.rating} / 5</span>
                     <span className="text-ink-500">{new Date(r.createdAt).toLocaleDateString()}</span>
                   </div>
                   <p className="mt-1 text-ink-700">{r.comment}</p>
                   <p className="mt-1 text-xs">
                     <Link href={`/listings/${r.listingId}`} className="underline font-semibold text-clay-700">
-                      On the listing page
+                      {t('buyerProfile.onListingPage')}
                     </Link>
-                    {r.status === 'hidden' && r.moderationNote ? ` · hidden: ${r.moderationNote}` : ''}
+                    {r.status === 'hidden' && r.moderationNote
+                      ? ` · ${t('buyerProfile.hiddenReviewNote', { note: r.moderationNote })}`
+                      : ''}
                   </p>
                 </li>
               ))}
@@ -140,17 +149,17 @@ function Line({ label, value }: { label: string; value: string }) {
   );
 }
 
-function describeContact(method: { kind: string } & Record<string, unknown>): string {
-  if (method.kind === 'in_app') return 'Through the platform inquiry form only';
-  if (method.kind === 'none') return 'Nothing shared';
+function describeContact(method: { kind: string } & Record<string, unknown>, t: Translator): string {
+  if (method.kind === 'in_app') return t('buyerProfile.contactInAppOnly');
+  if (method.kind === 'none') return t('buyerProfile.contactNothingShared');
   const consent = method.consent === true;
   const value = typeof method.value === 'string' ? method.value : '';
-  if (!consent) return 'Recorded but not shared';
+  if (!consent) return t('buyerProfile.contactStoredNotShared');
   return `${method.kind}: ${value}`;
 }
 
-function languageLabel(code: string): string {
-  if (code === 'en') return 'English';
-  if (code === 'am') return 'Amharic (interface copy still under review)';
-  return `${code} (no reviewed translation available yet)`;
+function languageLabel(code: string, t: Translator): string {
+  if (code === 'en') return t('register.langEnglish');
+  if (code === 'am') return t('buyerProfile.langAmharic');
+  return t('buyerProfile.langNoTranslation', { code });
 }

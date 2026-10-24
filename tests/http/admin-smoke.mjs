@@ -3,6 +3,8 @@
 // accounts, so a second run against the same process can fail on stale state.
 //   npm run dev
 //   SMOKE_BASE=http://localhost:3000 node tests/http/admin-smoke.mjs
+import { readFileSync } from 'node:fs';
+
 const BASE = process.env.SMOKE_BASE ?? 'http://localhost:3000';
 
 async function signIn(userId) {
@@ -132,7 +134,15 @@ if (targetId) {
 // Homepage save keeps at least one section visible.
 const homepage = await get('/admin/homepage', admin.cookie);
 const sections = [...homepage.body.matchAll(/name="section_([a-z_]+)"/g)].map((m) => m[1]);
-check('homepage editor lists every section', sections.length === 9, `${sections.length} checkboxes`);
+// The editor must offer every section the type file declares, so switching the
+// Founders & Team preview on or off is a real control rather than a missing box.
+const declaredSections = (() => {
+  const types = readFileSync(new URL('../../src/lib/types.ts', import.meta.url), 'utf8');
+  const block = types.split('HOMEPAGE_SECTIONS: HomepageSectionId[] = [')[1]?.split('];')[0] ?? '';
+  return [...block.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+})();
+check('homepage editor lists every section', declaredSections.length > 0 && sections.length === declaredSections.length, `${sections.length} checkboxes, ${declaredSections.length} declared`);
+check('the Founders & Team preview can be switched from the homepage editor', sections.includes('team'), sections.join(','));
 const allOff = Object.fromEntries([
   ['back', '/admin/homepage'],
   ['heroTitle', 'Sell directly. Price transparently. Deliver together.'],
@@ -204,7 +214,7 @@ check(
 );
 
 // Public pages still render after the settings change.
-for (const path of ['/', '/products', '/tourism', '/collective-orders', '/how-it-works', '/impact', '/pricing-tool', '/offline', '/producers', '/sign-in', '/register', '/community-guidelines', '/privacy']) {
+for (const path of ['/', '/products', '/tourism', '/collective-orders', '/how-it-works', '/impact', '/team', '/pricing-tool', '/offline', '/producers', '/sign-in', '/register', '/community-guidelines', '/privacy']) {
   const res = await get(path, '');
   check(`GET ${path}`, res.status === 200, `status=${res.status}`);
 }

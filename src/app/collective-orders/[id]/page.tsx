@@ -1,16 +1,37 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
-import { getSessionProfile } from '@/lib/session';
+import { getSessionActor, getSessionProfile } from '@/lib/session';
 import { formatMoney } from '@/lib/money';
+import type { TranslationKey } from '@/lib/i18n';
+import { getLanguage, getT } from '@/lib/i18n/server';
+import { listingTexts } from '@/lib/i18n/catalog';
+import type { CollectiveOpportunity, GroupContribution } from '@/lib/types';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 import { SampleTag, VerificationLabel } from '@/components/status-labels';
 import { ContributeForm } from '@/components/contribute-form';
+import { GroupOrderBuyer } from '@/components/group-order-buyer';
 import { TransportCalculator } from '@/components/transport-calculator';
 
 export const dynamic = 'force-dynamic';
 
+const OPPORTUNITY_STATUS_KEYS: Record<CollectiveOpportunity['status'], TranslationKey> = {
+  open: 'status.opportunity.open',
+  closing_soon: 'status.opportunity.closingSoon',
+  closed: 'status.opportunity.closed',
+  fulfilled: 'status.opportunity.fulfilled',
+  cancelled: 'status.opportunity.cancelled'
+};
+
+const CONTRIBUTION_STATUS_KEYS: Record<GroupContribution['status'], TranslationKey> = {
+  pending: 'collective.contributionStatus.pending',
+  confirmed: 'collective.contributionStatus.confirmed',
+  withdrawn: 'collective.contributionStatus.withdrawn'
+};
+
 export default async function CollectiveOpportunityPage({ params }: { params: { id: string } }) {
+  const t = getT();
+  const lang = getLanguage();
   const repo = getRepo();
   const opportunity = await repo.getOpportunity(params.id);
   if (!opportunity) notFound();
@@ -32,31 +53,63 @@ export default async function CollectiveOpportunityPage({ params }: { params: { 
   const category = categories.find((c) => c.id === opportunity.categoryId);
   const participants = new Set(contributions.filter((c) => c.status !== 'withdrawn').map((c) => c.producerProfileId));
 
+  // A buyer buys a product, not a category, so the products that back this pool
+  // are the participants' own published listings in the same category. Prices and
+  // availability are read from those records, never from anything the visitor sends.
+  const listings = await repo.listPublicListings();
+  const buyableProducts = listings
+    .filter((l) => l.categoryId === opportunity.categoryId && participants.has(l.producerId) && l.availability !== 'unavailable')
+    .map((l) => ({
+      id: l.id,
+      title: listingTexts(lang, l).title.text,
+      sellerId: l.producerId,
+      sellerName: producerById.get(l.producerId)?.displayName ?? t('collective.sampleProducer'),
+      unitPriceCents: l.unitPrice.cents,
+      unitOfSale: l.unitOfSale,
+      minOrderQuantity: l.minOrderQuantity,
+      availableQuantity: l.availableQuantity,
+      availability: l.availability
+    }));
+
+  // Exactly the stock rule the repository applies in contribute(), including the
+  // draft listings it does not exclude, so the figure shown is the figure enforced.
+  const myListings = sessionProfile
+    ? (await repo.listListingsByProducer(sessionProfile.id)).filter(
+        (l) => l.categoryId === opportunity.categoryId && l.availability !== 'unavailable'
+      )
+    : [];
+  const myAvailableStock = myListings.reduce((sum, l) => sum + l.availableQuantity, 0);
+  const myCommitted = contributions.find(
+    (c) => c.producerProfileId === sessionProfile?.id && c.status !== 'withdrawn'
+  )?.quantity ?? 0;
+  const actor = await getSessionActor();
+  const buyerRecordsPath = actor && actor.role === 'buyer' && actor.status === 'active' ? '/buyer/inquiries' : undefined;
+
   return (
-    <Section eyebrow={`Collective order · ${category?.name ?? ''}`} title={opportunity.title} actions={opportunity.isDemo ? <SampleTag /> : undefined}>
+    <Section eyebrow={t('collective.detailEyebrow', { category: category?.name ?? '' })} title={opportunity.title} actions={opportunity.isDemo ? <SampleTag /> : undefined}>
       <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6">
         <div className="space-y-6">
           <Card>
             <CardBody>
               <p className="text-ink-700">{opportunity.description}</p>
               <dl className="mt-4 grid sm:grid-cols-2 gap-3 text-sm">
-                <Info label="Organising group" value={group?.name ?? 'Independent coordinator'} />
+                <Info label={t('collective.organisingGroup')} value={group?.name ?? t('collective.independentCoordinator')} />
                 <Info
-                  label="Coordinator"
+                  label={t('collective.coordinator')}
                   value={
                     coordinator ? (
                       <Link href={`/producers/${coordinator.id}`} className="underline">
                         {coordinator.displayName}
                       </Link>
                     ) : (
-                      'Not specified'
+                      t('collective.notSpecified')
                     )
                   }
                 />
-                <Info label="Pickup plan" value={opportunity.pickupPlan} />
-                <Info label="Transport plan" value={opportunity.transportPlan ?? 'To be agreed'} />
-                <Info label="Order deadline" value={opportunity.orderDeadline ?? 'No deadline'} />
-                <Info label="Status" value={<Badge tone="success">{opportunity.status.replace('_', ' ')}</Badge>} />
+                <Info label={t('collective.pickupPlan')} value={opportunity.pickupPlan} />
+                <Info label={t('collective.transportPlan')} value={opportunity.transportPlan ?? t('collective.transportPlanNone')} />
+                <Info label={t('collective.orderDeadline')} value={opportunity.orderDeadline ?? t('collective.noDeadline')} />
+                <Info label={t('reports.status')} value={<Badge tone="success">{t(OPPORTUNITY_STATUS_KEYS[opportunity.status])}</Badge>} />
               </dl>
               {coordinator && (
                 <div className="mt-3 flex items-center gap-2">
@@ -69,9 +122,10 @@ export default async function CollectiveOpportunityPage({ params }: { params: { 
           <Card>
             <CardBody>
               <div className="flex items-baseline justify-between">
-                <h2 className="font-semibold text-ink-900">Progress</h2>
+                <h2 className="font-semibold text-ink-900">{t('collective.progress')}</h2>
                 <span className="text-sm text-ink-700">
-                  <strong>{opportunity.aggregateQuantity}</strong> / {opportunity.targetQuantity} {opportunity.unitOfSale}
+                  <strong>{opportunity.aggregateQuantity}</strong>
+                  {t('collective.progressTail', { target: opportunity.targetQuantity, unit: opportunity.unitOfSale })}
                   <span className="ml-2 text-ink-500">({progress}%)</span>
                 </span>
               </div>
@@ -87,11 +141,12 @@ export default async function CollectiveOpportunityPage({ params }: { params: { 
               <p className="mt-2 text-sm text-ink-700">
                 {remaining > 0 ? (
                   <>
-                    {remaining} {opportunity.unitOfSale} still needed. Participating producers so far:{' '}
+                    {t('collective.stillNeeded', { count: remaining, unit: opportunity.unitOfSale })}.{' '}
+                    {t('collective.participantsSoFar')}{' '}
                     <strong>{participants.size}</strong>.
                   </>
                 ) : (
-                  <>Target reached. New contributions can still be added up to twice the target for planning purposes.</>
+                  <>{t('collective.targetReachedNote')}</>
                 )}
               </p>
             </CardBody>
@@ -99,17 +154,27 @@ export default async function CollectiveOpportunityPage({ params }: { params: { 
 
           <Card>
             <CardBody>
-              <h2 className="font-semibold text-ink-900 mb-3">Recorded contributions</h2>
+              <h2 className="font-semibold text-ink-900">{t('collective.buyTitle')}</h2>
+              <p className="mt-1 text-sm text-ink-700">{t('collective.buyDescription')}</p>
+              <div className="mt-4">
+                <GroupOrderBuyer lang={lang} products={buyableProducts} recordsPath={buyerRecordsPath} />
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardBody>
+              <h2 className="font-semibold text-ink-900 mb-3">{t('collective.recordedContributions')}</h2>
               {contributions.length === 0 ? (
-                <Empty title="No contributions yet" body="Be the first producer to add available quantity to this opportunity." />
+                <Empty title={t('collective.contributionsEmptyTitle')} body={t('collective.contributionsEmptyBody')} />
               ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-ink-500">
-                      <th className="font-medium py-2">Producer</th>
-                      <th className="font-medium py-2">Quantity</th>
-                      <th className="font-medium py-2">Status</th>
-                      <th className="font-medium py-2">Note</th>
+                      <th className="font-medium py-2">{t('collective.producerHeader')}</th>
+                      <th className="font-medium py-2">{t('receipt.quantity')}</th>
+                      <th className="font-medium py-2">{t('reports.status')}</th>
+                      <th className="font-medium py-2">{t('collective.noteHeader')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -117,7 +182,7 @@ export default async function CollectiveOpportunityPage({ params }: { params: { 
                       <tr key={c.id} className="border-t border-ink-100">
                         <td className="py-2">
                           <Link href={`/producers/${c.producerProfileId}`} className="underline">
-                            {producerById.get(c.producerProfileId)?.displayName ?? 'Sample producer'}
+                            {producerById.get(c.producerProfileId)?.displayName ?? t('collective.sampleProducer')}
                           </Link>
                         </td>
                         <td className="py-2">
@@ -125,7 +190,7 @@ export default async function CollectiveOpportunityPage({ params }: { params: { 
                         </td>
                         <td className="py-2">
                           <Badge tone={c.status === 'confirmed' ? 'success' : c.status === 'withdrawn' ? 'danger' : 'warning'}>
-                            {c.status}
+                            {t(CONTRIBUTION_STATUS_KEYS[c.status])}
                           </Badge>
                         </td>
                         <td className="py-2 text-ink-700">{c.note ?? '—'}</td>
@@ -138,40 +203,48 @@ export default async function CollectiveOpportunityPage({ params }: { params: { 
           </Card>
 
           <TransportCalculator
+            lang={lang}
             opportunityId={opportunity.id}
             unitOfSale={opportunity.unitOfSale}
             totalCostCents={transportPlan?.totalCostCents ?? 0}
             totalQuantity={opportunity.aggregateQuantity}
             quoteConfirmed={false}
-            contributions={contributions.map((c) => ({ producerProfileId: c.producerProfileId, quantity: c.quantity, name: producerById.get(c.producerProfileId)?.displayName ?? 'Sample producer' }))}
+            contributions={contributions.map((c) => ({ producerProfileId: c.producerProfileId, quantity: c.quantity, name: producerById.get(c.producerProfileId)?.displayName ?? t('collective.sampleProducer') }))}
           />
         </div>
 
         <aside className="space-y-4">
           {sessionProfile ? (
             <ContributeForm
+              lang={lang}
               opportunity={{
                 id: opportunity.id,
-                title: opportunity.title,
                 unitOfSale: opportunity.unitOfSale,
                 targetQuantity: opportunity.targetQuantity,
                 aggregateQuantity: opportunity.aggregateQuantity,
                 status: opportunity.status
               }}
-              producer={{ id: sessionProfile.id, displayName: sessionProfile.displayName, categories: sessionProfile.categories }}
-              categoryId={opportunity.categoryId}
+              producer={{ displayName: sessionProfile.displayName }}
+              stock={{
+                items: myListings.map((l) => ({
+                  id: l.id,
+                  title: listingTexts(lang, l).title.text,
+                  availableQuantity: l.availableQuantity,
+                  unitOfSale: l.unitOfSale
+                })),
+                available: myAvailableStock,
+                committed: myCommitted
+              }}
             />
           ) : (
             <Card>
               <CardBody>
-                <h2 className="font-semibold text-ink-900">Contribute as a producer</h2>
+                <h2 className="font-semibold text-ink-900">{t('collective.contributeAsProducer')}</h2>
                 <p className="mt-1 text-sm text-ink-700">
-                  Sign in with a demo producer account to add available quantity to this opportunity. Contributions are
-                  validated: quantity must be a positive whole number, must not exceed your available stock, and cannot
-                  be duplicated.
+                  {t('collective.signInProducerBody')}
                 </p>
                 <Link href="/sign-in" className="mt-3 inline-block font-semibold text-clay-800 underline">
-                  Sign in as a demo producer →
+                  {t('collective.signInDemoProducer')}
                 </Link>
               </CardBody>
             </Card>
@@ -179,21 +252,20 @@ export default async function CollectiveOpportunityPage({ params }: { params: { 
 
           <Card>
             <CardBody>
-              <h3 className="font-semibold text-ink-900 mb-1">Indicative group price</h3>
+              <h3 className="font-semibold text-ink-900 mb-1">{t('collective.indicativePrice')}</h3>
               <p className="text-sm text-ink-700">
                 {opportunity.indicativeGroupPrice ? (
                   <>
-                    <strong>{formatMoney(opportunity.indicativeGroupPrice)}</strong> per {opportunity.unitOfSale}. The
-                    indicative price is a planning reference only — producers keep the right to negotiate and the
-                    platform never imposes a mandatory price.
+                    <strong>{formatMoney(opportunity.indicativeGroupPrice)}</strong>{' '}
+                    {t('collective.indicativePriceBody', { unit: opportunity.unitOfSale })}
                   </>
                 ) : opportunity.buyerOfferedPrice ? (
                   <>
-                    Buyer offered <strong>{formatMoney(opportunity.buyerOfferedPrice)}</strong> per{' '}
-                    {opportunity.unitOfSale}. Confirm with the coordinator before committing stock.
+                    {t('collective.buyerOfferPrefix')} <strong>{formatMoney(opportunity.buyerOfferedPrice)}</strong>{' '}
+                    {t('collective.buyerOfferTail', { unit: opportunity.unitOfSale })}
                   </>
                 ) : (
-                  'Not published. Contact the coordinator for the buyer’s offer.'
+                  t('collective.priceNotPublished')
                 )}
               </p>
             </CardBody>

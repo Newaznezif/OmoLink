@@ -83,10 +83,14 @@ for (const item of CATALOGUE) {
 }
 
 // Positive control for the check above: the labelled sample fixtures still
-// carry their own badge, and demo mode is still announced site-wide.
+// carry their own badge. The site-wide "running in demo mode" footer banner was
+// removed on purpose, so it must be gone while the disclosure that governs this
+// page — an inquiry is not a payment — stays.
 const fixturePage = visible((await get('/listings/lst_forest_honey')).body);
 check('the sample fixture is still tagged as a sample record', fixturePage.includes('This record is sample data used for demonstration'), 'sample tag disappeared');
-check('demo mode is still announced on a real listing page', visible(pages.get('lst_kashi').body).includes('demo mode'), 'demo labelling was removed');
+const kashiText = visible(pages.get('lst_kashi').body);
+check('the site-wide demo-mode banner is gone from a listing page', !/Running in demo mode/i.test(kashiText), 'the banner is still printed');
+check('the listing still says an inquiry is not a payment', kashiText.includes('Nothing here is a payment.'), 'the payment disclosure was removed');
 
 // ---------- 2. no two products share a description or a gallery ----------
 // The producer notes for the big and the small shorka were word-for-word

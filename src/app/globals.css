@@ -217,6 +217,24 @@ button.accent-bg:hover {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
+/* The guide panel changes when a step is picked; the movement is a hint that the
+   text below changed, not information in itself, so the reduced-motion rule at the
+   bottom of this file is allowed to remove it entirely. */
+@keyframes guide-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.guide-panel-in {
+  animation: guide-step-in 160ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

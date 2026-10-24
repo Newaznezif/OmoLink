@@ -3,6 +3,7 @@ import { getRepo } from '@/lib/repo';
 import { AdminSection, BackField, ConfirmField } from '@/components/admin-shell';
 import { Badge, Button, Card, CardBody, Empty, Input, Select } from '@/components/ui';
 import { formatMoney } from '@/lib/money';
+import { getT } from '@/lib/i18n/server';
 import type { Listing } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +11,7 @@ export const dynamic = 'force-dynamic';
 type SearchParams = Record<string, string | string[] | undefined>;
 
 export default async function AdminListingsPage({ searchParams }: { searchParams: SearchParams }) {
+  const t = getT();
   const text = (key: string): string => (typeof searchParams[key] === 'string' ? (searchParams[key] as string) : '');
   const repo = getRepo();
   const [listings, profiles, categories] = await Promise.all([
@@ -35,8 +37,8 @@ export default async function AdminListingsPage({ searchParams }: { searchParams
 
   return (
     <AdminSection
-      title="Listing moderation"
-      description="Published, unpublished and archived records. Unpublishing hides a listing from shoppers without deleting the producer’s work or its inquiry history."
+      title={t('moderation.title')}
+      description={t('moderation.description')}
       searchParams={searchParams}
     >
       <Card>
@@ -44,41 +46,41 @@ export default async function AdminListingsPage({ searchParams }: { searchParams
           <form method="get" className="grid md:grid-cols-4 gap-3">
             <div>
               <label htmlFor="q" className="block text-sm font-semibold text-ink-900 mb-1">
-                Search title, community or producer
+                {t('moderation.searchLabel')}
               </label>
               <Input id="q" name="q" defaultValue={text('q')} />
             </div>
             <div>
               <label htmlFor="state" className="block text-sm font-semibold text-ink-900 mb-1">
-                State
+                {t('opportunityForm.stateLabel')}
               </label>
               <Select id="state" name="state" defaultValue={state}>
-                <option value="">All</option>
-                <option value="published">Published</option>
-                <option value="unpublished">Unpublished</option>
-                <option value="archived">Archived</option>
+                <option value="">{t('reports.allOptions')}</option>
+                <option value="published">{t('myListings.badgePublished')}</option>
+                <option value="unpublished">{t('moderation.stateUnpublished')}</option>
+                <option value="archived">{t('myListings.badgeArchived')}</option>
               </Select>
             </div>
             <div>
               <label htmlFor="category" className="block text-sm font-semibold text-ink-900 mb-1">
-                Category
+                {t('filter.category')}
               </label>
               <Select id="category" name="category" defaultValue={categoryId}>
-                <option value="">All categories</option>
+                <option value="">{t('producers.allCategories')}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
-                    {c.active === false ? ' (hidden)' : ''}
+                    {c.active === false ? t('moderation.categoryHiddenSuffix') : ''}
                   </option>
                 ))}
               </Select>
             </div>
             <div className="flex items-end gap-2">
               <button type="submit" className="rounded-lg bg-clay-700 text-white px-4 py-2 min-h-11 font-semibold">
-                Apply
+                {t('buyerInquiries.apply')}
               </button>
               <Link href="/admin/listings" className="rounded-lg border border-ink-100 bg-white px-4 py-2 min-h-11 font-semibold">
-                Clear
+                {t('common.clear')}
               </Link>
             </div>
           </form>
@@ -86,7 +88,7 @@ export default async function AdminListingsPage({ searchParams }: { searchParams
       </Card>
 
       {rows.length === 0 ? (
-        <Empty title="No listing matches" body="Try clearing the filters. Nothing here is generated as a placeholder." />
+        <Empty title={t('moderation.emptyTitle')} body={t('moderation.emptyBody')} />
       ) : (
         <div className="space-y-3">
           {rows.map((listing) => (
@@ -112,6 +114,7 @@ function ModerationRow({
   producerName: string;
   categoryName: string;
 }) {
+  const t = getT();
   const visible = listing.published && !listing.archived;
   return (
     <Card>
@@ -119,18 +122,18 @@ function ModerationRow({
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-ink-900">{listing.title}</h3>
-            {visible ? <Badge tone="success">published</Badge> : listing.archived ? <Badge tone="neutral">archived</Badge> : <Badge tone="warning">unpublished</Badge>}
-            {listing.featured && <Badge tone="info">homepage</Badge>}
-            {listing.kind === 'service' ? <Badge tone="neutral">tourism service</Badge> : null}
+            {visible ? <Badge tone="success">{t('buyerProfile.statusPublished')}</Badge> : listing.archived ? <Badge tone="neutral">{t('listingReports.badgeArchived')}</Badge> : <Badge tone="warning">{t('moderation.badgeUnpublished')}</Badge>}
+            {listing.featured && <Badge tone="info">{t('moderation.badgeHomepage')}</Badge>}
+            {listing.kind === 'service' ? <Badge tone="neutral">{t('moderation.badgeTourismService')}</Badge> : null}
           </div>
           <p className="mt-1 text-sm text-ink-500">
-            {producerName} · {categoryName} · {formatMoney(listing.unitPrice)} per {listing.unitOfSale} ·{' '}
-            {listing.availability} · {listing.availableQuantity} available
+            {producerName} · {categoryName} · {t('moderation.pricePerUnit', { price: formatMoney(listing.unitPrice), unit: listing.unitOfSale })} ·{' '}
+            {listing.availability} · {t('moderation.quantityAvailable', { count: listing.availableQuantity })}
           </p>
           <p className="mt-1 text-sm text-ink-700 line-clamp-2">{listing.description}</p>
           <div className="mt-2 flex flex-wrap gap-3 text-sm">
             <Link href={`/listings/${listing.id}`} className="underline font-semibold text-clay-700">
-              Open public page
+              {t('moderation.openPublicPage')}
             </Link>
           </div>
         </div>
@@ -140,31 +143,31 @@ function ModerationRow({
           <input type="hidden" name="listingId" value={listing.id} />
           <div className="flex flex-wrap gap-2">
             <Button type="submit" name="action" value={listing.featured ? 'unfeature' : 'feature'} size="sm" variant="secondary">
-              {listing.featured ? 'Remove from homepage' : 'Feature on homepage'}
+              {listing.featured ? t('moderation.featureOff') : t('moderation.featureOn')}
             </Button>
             {listing.published ? (
               <Button type="submit" name="action" value="unpublish" size="sm" variant="secondary">
-                Unpublish
+                {t('listingActions.unpublish')}
               </Button>
             ) : (
               <Button type="submit" name="action" value="publish" size="sm">
-                Publish
+                {t('listingActions.publish')}
               </Button>
             )}
           </div>
           <div className="flex flex-wrap gap-2 items-start">
-            <ConfirmField id={`confirm-${listing.id}`} label="Confirm archive or delete" />
+            <ConfirmField id={`confirm-${listing.id}`} label={t('moderation.confirmArchiveDelete')} />
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" name="action" value="archive" size="sm" variant="danger">
-              Archive
+              {t('listingActions.archive')}
             </Button>
             <Button type="submit" name="action" value="delete" size="sm" variant="danger">
-              Delete
+              {t('listingActions.delete')}
             </Button>
           </div>
           <p className="text-xs text-ink-500">
-            Delete is refused while inquiries are attached; archiving keeps the history.
+            {t('moderation.deleteRefusedNote')}
           </p>
         </form>
       </CardBody>

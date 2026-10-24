@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
+import { getLanguage, getT } from '@/lib/i18n/server';
 import { Section } from '@/components/ui';
 import { ListingForm, type ListingFormValues } from '@/components/listing-form';
 import { ListingImages } from '@/components/listing-images';
@@ -8,14 +9,16 @@ import { ListingImages } from '@/components/listing-images';
 export const dynamic = 'force-dynamic';
 
 export default async function EditListingPage({ params }: { params: { id: string } }) {
+  const t = getT();
+  const lang = getLanguage();
   const actor = await requireArea('/dashboard', ['producer', 'coordinator']);
   const repo = getRepo();
   const listing = await repo.getListing(params.id);
   if (!listing) notFound();
   if (listing.producerId !== actor.profileId) {
     return (
-      <Section eyebrow="Authorization required" title="You cannot edit this listing">
-        <p className="text-ink-700">This listing belongs to another producer. Only its creator can edit it.</p>
+      <Section eyebrow={t('listingForm.notAllowedEyebrow')} title={t('listingForm.notAllowedTitle')}>
+        <p className="text-ink-700">{t('listingForm.notAllowedBody')}</p>
       </Section>
     );
   }
@@ -47,9 +50,9 @@ export default async function EditListingPage({ params }: { params: { id: string
       : undefined
   };
   return (
-    <Section eyebrow="Dashboard" title={`Edit “${listing.title}”`}>
-      <ListingForm categories={categories} producerId={actor.profileId} initial={initial} listingId={listing.id} />
-      <ListingImages listing={listing} />
+    <Section eyebrow={t('myListings.eyebrow')} title={t('listingForm.editTitle', { title: listing.title })}>
+      <ListingForm lang={lang} categories={categories} producerId={actor.profileId} initial={initial} listingId={listing.id} />
+      <ListingImages lang={lang} listing={listing} />
     </Section>
   );
 }

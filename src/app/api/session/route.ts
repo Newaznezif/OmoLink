@@ -3,6 +3,7 @@ import { getRepo } from '@/lib/repo';
 import { writeSession } from '@/lib/session';
 import { restoreThemeFromAccount } from '@/lib/theme-server';
 import { canSignInAsDemo, isDemoMode } from '@/lib/store';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,20 +14,21 @@ export const dynamic = 'force-dynamic';
  * data, but requireRole() blocks it from acting.
  */
 export async function POST(req: Request) {
+  const t = getT();
   if (!isDemoMode()) {
     return NextResponse.json(
-      { error: 'Demo sign-in is disabled while DATA_MODE=supabase. Use the email and password form.' },
+      { error: t('apiSession.demoSignInDisabled') },
       { status: 400 }
     );
   }
   const body = (await req.json().catch(() => ({}))) as { userId?: string };
   const userId = typeof body.userId === 'string' ? body.userId : '';
   if (!canSignInAsDemo(userId)) {
-    return NextResponse.json({ error: 'Unknown demo user.' }, { status: 400 });
+    return NextResponse.json({ error: t('apiSession.unknownDemoUser') }, { status: 400 });
   }
   const profile = await getRepo().getProfileByUserId(userId);
   if (!profile) {
-    return NextResponse.json({ error: 'No profile exists for that demo account.' }, { status: 404 });
+    return NextResponse.json({ error: t('apiSession.noProfile') }, { status: 404 });
   }
   writeSession({ userId });
   // The saved scheme travels with the account: without this, signing in on a

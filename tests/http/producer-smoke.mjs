@@ -494,6 +494,40 @@ check('an unknown inquiry id is a 404', missingInquiry.status === 404, `status=$
 const missingOpportunity = await get('/dashboard/collective-orders/col_nope', honey.cookie);
 check('an unknown group order id is a 404', missingOpportunity.status === 404, `status=${missingOpportunity.status}`);
 
+// ---------- the producer contribution panel on a group order page ----------
+const plain = (html) => visible(html).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ');
+const groupOrderAsProducer = await get('/collective-orders/col_honey_bulk', honey.cookie);
+const gop = plain(groupOrderAsProducer.body);
+check('the contributing producer sees the stock the rule counts',
+  groupOrderAsProducer.status === 200 &&
+    gop.includes('Stock you can commit') &&
+    gop.includes('Sample forest honey, 500g jar') &&
+    gop.includes('Contribute as'),
+  `status=${groupOrderAsProducer.status} stock=${gop.includes('Stock you can commit')}`);
+
+check('the pool progress is the summed contributions, not the stored field',
+  gop.includes('55 / 200 kg'), `snippet=${gop.match(/\d+ \/ 200 kg/)?.[0] ?? 'none'}`);
+
+const tooMuch = await send('POST', '/api/collective/col_honey_bulk/contribute', honey.cookie, {
+  quantity: 999999,
+  note: 'More stock than this account has.'
+});
+check('committing more than the account holds is refused', tooMuch.status === 400,
+  `status=${tooMuch.status} error=${tooMuch.json.error}`);
+
+const extraCommit = await send('POST', '/api/collective/col_honey_bulk/contribute', honey.cookie, {
+  quantity: 5,
+  note: 'Smoke test second commitment.'
+});
+const committed = extraCommit.json.contribution ?? {};
+check('a valid commitment is stored and merged into the account\'s existing contribution',
+  extraCommit.status === 201 && committed.id === 'con_sample_honey_1' && committed.quantity === 60,
+  `status=${extraCommit.status} id=${committed.id} quantity=${committed.quantity} status=${committed.status}`);
+
+const groupOrderAfterCommit = plain((await get('/collective-orders/col_honey_bulk', honey.cookie)).body);
+check('the pool total on the page reflects the stored contribution', groupOrderAfterCommit.includes('60 / 200 kg'),
+  `snippet=${groupOrderAfterCommit.match(/\d+ \/ 200 kg/)?.[0] ?? 'none'}`);
+
 const failures = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failures.length}/${results.length} checks passed.`);
 if (failures.length) {

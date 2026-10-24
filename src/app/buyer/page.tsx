@@ -2,20 +2,26 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { getSessionProfile } from '@/lib/session';
 import { requireArea } from '@/lib/area';
+import { getLanguage, getT } from '@/lib/i18n/server';
 import { ArrangementCard } from '@/components/arrangement-card';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: 'My account',
-  description: 'Your inquiries, order arrangements and bookings on OmoNetTab.'
-};
+export async function generateMetadata() {
+  const tr = getT();
+  return {
+    title: tr('nav.myAccountAria'),
+    description: tr('buyerHome.metaDescription')
+  };
+}
 
 export default async function BuyerOverview() {
   const actor = await requireArea('/buyer', ['buyer']);
   const profile = await getSessionProfile();
   const repo = getRepo();
+  const lang = getLanguage();
+  const tr = getT();
   const [inquiries, listings] = await Promise.all([
     repo.listInquiriesForBuyer(actor.profileId),
     repo.listPublicListings()
@@ -31,38 +37,40 @@ export default async function BuyerOverview() {
 
   const kindLabel =
     profile?.accountKind === 'tourist'
-      ? 'visitor'
+      ? tr('buyerHome.kindVisitor')
       : profile?.accountKind === 'business_buyer'
-        ? `${profile.organizationName ? 'business ' : ''}buyer`
-        : 'buyer';
+        ? profile.organizationName
+          ? tr('buyerHome.kindBusiness')
+          : tr('buyerHome.kindBuyer')
+        : tr('buyerHome.kindBuyer');
 
   return (
     <Section
-      eyebrow="My account"
-      title={`Welcome, ${profile?.displayName ?? 'there'}`}
-      description="Everything here is your own record: requests you sent, and what the other side noted. An arrangement is not a receipt — payment, where it is taken through OmoNetTab, is recorded separately and shown on the inquiry page."
+      eyebrow={tr('nav.myAccountAria')}
+      title={tr('buyerHome.welcome', { name: profile?.displayName ?? tr('buyerHome.there') })}
+      description={tr('buyerHome.description')}
     >
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <Stat label="Awaiting a reply" value={waitingSeller} tone="warning" href="/buyer/inquiries" />
-        <Stat label="Being arranged" value={inProgress} tone="info" href="/buyer/inquiries" />
-        <Stat label="Completed" value={done} tone="success" href="/buyer/orders" />
-        <Stat label="Cancelled" value={cancelled} tone="neutral" href="/buyer/inquiries" />
+        <Stat label={tr('buyerHome.statAwaiting')} value={waitingSeller} tone="warning" href="/buyer/inquiries" recordUnit={tr('buyerHome.recordUnit')} recordsUnit={tr('buyerHome.recordsUnit')} />
+        <Stat label={tr('buyerHome.statArranged')} value={inProgress} tone="info" href="/buyer/inquiries" recordUnit={tr('buyerHome.recordUnit')} recordsUnit={tr('buyerHome.recordsUnit')} />
+        <Stat label={tr('inquiry.status.completed')} value={done} tone="success" href="/buyer/orders" recordUnit={tr('buyerHome.recordUnit')} recordsUnit={tr('buyerHome.recordsUnit')} />
+        <Stat label={tr('inquiry.status.cancelled')} value={cancelled} tone="neutral" href="/buyer/inquiries" recordUnit={tr('buyerHome.recordUnit')} recordsUnit={tr('buyerHome.recordsUnit')} />
       </div>
 
       {recent.length === 0 ? (
         <Empty
-          title="You have not contacted anyone yet"
-          body="Find what you need in the marketplace, then send an inquiry with your quantity and preferred date. The seller replies and you arrange pickup, delivery or the booking."
+          title={tr('buyerHome.emptyTitle')}
+          body={tr('buyerHome.emptyBody')}
           action={
             <div className="flex flex-wrap gap-3 text-sm">
               <Link href="/products" className="underline font-semibold text-clay-700">
-                Browse products
+                {tr('home.browseProducts')}
               </Link>
               <Link href="/tourism" className="underline font-semibold text-clay-700">
-                Browse tours and guides
+                {tr('buyerHome.browseTours')}
               </Link>
               <Link href="/how-it-works" className="underline font-semibold text-clay-700">
-                How the arrangement works
+                {tr('buyerHome.howArrangementWorks')}
               </Link>
             </div>
           }
@@ -70,39 +78,39 @@ export default async function BuyerOverview() {
       ) : (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-bold text-ink-900">Most recent activity</h2>
+            <h2 className="text-lg font-bold text-ink-900">{tr('buyerHome.recentTitle')}</h2>
             <Link href="/buyer/inquiries" className="underline font-semibold text-sm text-clay-700">
-              All {inquiries.length} inquiries
+              {tr('buyerHome.allInquiries', { count: inquiries.length })}
             </Link>
           </div>
           {recent.map((i) => (
-            <ArrangementCard key={i.id} inquiry={i} listing={listingById.get(i.listingId)} canAct={actor.status === 'active'} />
+            <ArrangementCard key={i.id} inquiry={i} listing={listingById.get(i.listingId)} canAct={actor.status === 'active'} lang={lang} />
           ))}
         </div>
       )}
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">As a {kindLabel} on OmoNetTab</h2>
+          <h2 className="font-semibold text-ink-900">{tr('buyerHome.roleHeading', { kind: kindLabel })}</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-ink-700">
             <li>
               <Link href="/buyer/orders" className="underline">
-                Orders
+                {tr('nav.orders')}
               </Link>{' '}
-              tracks goods you asked for;{' '}
+              {tr('buyerHome.ordersMiddle')}{' '}
               <Link href="/buyer/bookings" className="underline">
-                Bookings
+                {tr('nav.bookings')}
               </Link>{' '}
-              tracks tours, guides and transfers with a date.
+              {tr('buyerHome.bookingsTail')}
             </li>
-            <li>Confirm completion only when you actually received the goods or the visit took place — that is what makes a later review honest.</li>
-            <li>Your contact details are visible to the seller you chose, never published on a listing page.</li>
+            <li>{tr('buyerHome.honestItem')}</li>
+            <li>{tr('buyerHome.contactItem')}</li>
             <li>
-              Something wrong?{' '}
+              {tr('buyerHome.reportPrefix')}{' '}
               <Link href="/community-guidelines" className="underline">
-                The guidelines
+                {tr('buyerHome.guidelinesLink')}
               </Link>{' '}
-              explain what a listing may claim, and every listing page has a report link.
+              {tr('buyerHome.reportSuffix')}
             </li>
           </ul>
         </CardBody>
@@ -110,18 +118,16 @@ export default async function BuyerOverview() {
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">Buying in bulk, or for a hotel or shop?</h2>
+          <h2 className="font-semibold text-ink-900">{tr('buyerHome.bulkTitle')}</h2>
           <p className="mt-2 text-sm text-ink-700">
-            A group order lets several producers contribute quantity toward one buyer order, which is often the only way
-            to reach a volume that is worth transporting. Prices shown for group orders are indicative until a quote is
-            confirmed.
+            {tr('buyerHome.bulkBody')}
           </p>
           <div className="mt-2 flex flex-wrap gap-3 text-sm">
             <Link href="/collective-orders" className="underline font-semibold text-clay-700">
-              Open group orders
+              {tr('home.collectiveTitle')}
             </Link>
             <Link href="/pricing-tool" className="underline font-semibold text-clay-700">
-              Work out a fair price
+              {tr('buyerHome.pricingLink')}
             </Link>
           </div>
         </CardBody>
@@ -134,12 +140,16 @@ function Stat({
   label,
   value,
   tone,
-  href
+  href,
+  recordUnit,
+  recordsUnit
 }: {
   label: string;
   value: number;
   tone: 'neutral' | 'success' | 'warning' | 'danger' | 'info';
   href: string;
+  recordUnit: string;
+  recordsUnit: string;
 }) {
   return (
     <Link href={href} className="block">
@@ -147,7 +157,7 @@ function Stat({
         <CardBody>
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-2xl font-black text-ink-900">{value}</span>
-            <Badge tone={tone}>{value === 1 ? 'record' : 'records'}</Badge>
+            <Badge tone={tone}>{value === 1 ? recordUnit : recordsUnit}</Badge>
           </div>
           <p className="mt-1 text-sm font-semibold text-clay-800 underline">{label}</p>
         </CardBody>

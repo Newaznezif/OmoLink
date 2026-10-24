@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRepo } from '@/lib/repo';
 import { authErrorResponse, requireSignedIn } from '@/lib/session';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,11 +12,12 @@ export const dynamic = 'force-dynamic';
  * cannot skip it.
  */
 export async function POST(req: Request) {
+  const t = getT();
   let actor;
   try {
     actor = await requireSignedIn();
   } catch (err) {
-    const { body, status } = authErrorResponse(err, 'Sign in to leave a review.');
+    const { body, status } = authErrorResponse(err, t('apiReviews.signIn'));
     return NextResponse.json(body, { status });
   }
 
@@ -29,13 +31,13 @@ export async function POST(req: Request) {
   const rating = Number(body.rating);
   const comment = typeof body.comment === 'string' ? body.comment : '';
   if (!body.listingId || !body.inquiryId) {
-    return NextResponse.json({ error: 'The review needs a listing and an arrangement.' }, { status: 400 });
+    return NextResponse.json({ error: t('apiReviews.needsListingAndArrangement') }, { status: 400 });
   }
 
   const repo = getRepo();
   // The displayed name comes from the signed-in profile, never from the request.
   const profile = await repo.getProfile(actor.profileId);
-  if (!profile) return NextResponse.json({ error: 'No profile found for this account.' }, { status: 401 });
+  if (!profile) return NextResponse.json({ error: t('apiReviews.noProfile') }, { status: 401 });
 
   try {
     const review = await repo.createReview({
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ review }, { status: 201 });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Could not save the review.';
+    const message = err instanceof Error ? err.message : t('reviewForm.saveFailed');
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

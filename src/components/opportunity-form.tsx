@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Card, CardBody, Field, Input, Select, Textarea } from './ui';
-import type { Category, CollectiveOpportunity, ProducerGroup, UnitOfSale } from '@/lib/types';
+import { t, type TranslationKey } from '@/lib/i18n';
+import type { Category, CollectiveOpportunity, LanguageCode, ProducerGroup, UnitOfSale } from '@/lib/types';
 import { UNIT_OF_SALES } from '@/lib/types';
 
 export type OpportunityFormValues = {
@@ -23,23 +24,26 @@ export type OpportunityFormValues = {
   status: CollectiveOpportunity['status'];
 };
 
-const STATUS_LABELS: Record<CollectiveOpportunity['status'], string> = {
-  open: 'Open for contributions',
-  closing_soon: 'Closing soon',
-  closed: 'Closed — no more contributions',
-  fulfilled: 'Fulfilled — the goods were delivered',
-  cancelled: 'Cancelled'
+const STATUS_LABELS: Record<CollectiveOpportunity['status'], TranslationKey> = {
+  open: 'opportunityForm.status.open',
+  closing_soon: 'opportunityForm.status.closingSoon',
+  closed: 'opportunityForm.status.closed',
+  fulfilled: 'opportunityForm.status.fulfilled',
+  cancelled: 'opportunityForm.status.cancelled'
 };
 
 export function OpportunityForm({
+  lang,
   categories,
   groups,
   initial
 }: {
+  lang: LanguageCode;
   categories: Category[];
   groups: ProducerGroup[];
   initial?: Partial<OpportunityFormValues>;
 }) {
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) => t(lang, key, vars);
   const router = useRouter();
   const editing = Boolean(initial?.id);
   const [draft, setDraft] = useState<OpportunityFormValues>(() => ({
@@ -75,17 +79,17 @@ export function OpportunityForm({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setResult({ ok: false, text: json?.error ?? `Could not save (status ${res.status}).` });
+        setResult({ ok: false, text: json?.error ?? tr('opportunityForm.saveError', { status: res.status }) });
         return;
       }
       setResult({
         ok: true,
-        text: editing ? 'Opportunity updated.' : 'Opportunity opened. Members of the group can now contribute.',
+        text: editing ? tr('opportunityForm.updated') : tr('opportunityForm.opened'),
         opportunityId: json?.opportunity?.id
       });
       router.refresh();
     } catch {
-      setResult({ ok: false, text: 'Network problem: nothing was saved. Try again.' });
+      setResult({ ok: false, text: tr('opportunityForm.networkError') });
     } finally {
       setBusy(false);
     }
@@ -95,20 +99,20 @@ export function OpportunityForm({
     <form onSubmit={submit} className="space-y-4">
       <Card>
         <CardBody className="space-y-4">
-          <Field label="Title" htmlFor="title" required hint="What buyers and members read in the list of group orders.">
+          <Field label={tr('opportunityForm.titleLabel')} htmlFor="title" required hint={tr('opportunityForm.titleHint')}>
             <Input id="title" value={draft.title} maxLength={120} onChange={(e) => set('title', e.target.value)} />
           </Field>
           <Field
-            label="What is being collected, and on what terms"
+            label={tr('opportunityForm.descLabel')}
             htmlFor="description"
             required
-            hint="20 characters minimum. Say what the buyer wants and what a member is expected to bring."
+            hint={tr('opportunityForm.descHint')}
           >
             <Textarea id="description" value={draft.description} maxLength={2000} onChange={(e) => set('description', e.target.value)} />
           </Field>
 
           <div className="grid md:grid-cols-3 gap-4">
-            <Field label="Category" htmlFor="categoryId" required>
+            <Field label={tr('filter.category')} htmlFor="categoryId" required>
               <Select id="categoryId" value={draft.categoryId} onChange={(e) => set('categoryId', e.target.value)}>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -117,13 +121,13 @@ export function OpportunityForm({
                 ))}
               </Select>
             </Field>
-            <Field label="Organising group" htmlFor="organizingGroupId" required hint="Only groups you coordinate are accepted.">
+            <Field label={tr('collective.organisingGroup')} htmlFor="organizingGroupId" required hint={tr('opportunityForm.groupHint')}>
               <Select
                 id="organizingGroupId"
                 value={draft.organizingGroupId}
                 onChange={(e) => set('organizingGroupId', e.target.value)}
               >
-                {groups.length === 0 && <option value="">No group available</option>}
+                {groups.length === 0 && <option value="">{tr('opportunityForm.noGroup')}</option>}
                 {groups.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.name}
@@ -131,7 +135,7 @@ export function OpportunityForm({
                 ))}
               </Select>
             </Field>
-            <Field label="Unit of sale" htmlFor="unitOfSale" required>
+            <Field label={tr('listing.unitOfSale')} htmlFor="unitOfSale" required>
               <Select id="unitOfSale" value={draft.unitOfSale} onChange={(e) => set('unitOfSale', e.target.value as UnitOfSale)}>
                 {UNIT_OF_SALES.map((u) => (
                   <option key={u} value={u}>
@@ -143,7 +147,7 @@ export function OpportunityForm({
           </div>
 
           <div className="grid md:grid-cols-4 gap-4">
-            <Field label={`Target quantity (${draft.unitOfSale})`} htmlFor="targetQuantity" required>
+            <Field label={tr('opportunityForm.targetLabel', { unit: draft.unitOfSale })} htmlFor="targetQuantity" required>
               <Input
                 id="targetQuantity"
                 inputMode="numeric"
@@ -151,13 +155,13 @@ export function OpportunityForm({
                 onChange={(e) => set('targetQuantity', e.target.value.replace(/\D/g, ''))}
               />
             </Field>
-            <Field label="Indicative price per unit (ETB)" htmlFor="indicative" hint="Optional. An estimate for planning, never an invoice.">
+            <Field label={tr('opportunityForm.indicativeLabel')} htmlFor="indicative" hint={tr('opportunityForm.indicativeHint')}>
               <Input id="indicative" inputMode="decimal" value={draft.indicativeGroupPriceEtb} onChange={(e) => set('indicativeGroupPriceEtb', e.target.value)} />
             </Field>
-            <Field label="Buyer offered price per unit (ETB)" htmlFor="offered" hint="Optional. What the buyer has said they would pay.">
+            <Field label={tr('opportunityForm.offeredLabel')} htmlFor="offered" hint={tr('opportunityForm.offeredHint')}>
               <Input id="offered" inputMode="decimal" value={draft.buyerOfferedPriceEtb} onChange={(e) => set('buyerOfferedPriceEtb', e.target.value)} />
             </Field>
-            <Field label="Order deadline" htmlFor="orderDeadline" hint="Optional date the group stops collecting.">
+            <Field label={tr('collective.orderDeadline')} htmlFor="orderDeadline" hint={tr('opportunityForm.deadlineHint')}>
               <Input id="orderDeadline" type="date" value={draft.orderDeadline} onChange={(e) => set('orderDeadline', e.target.value)} />
             </Field>
           </div>
@@ -166,13 +170,13 @@ export function OpportunityForm({
 
       <Card>
         <CardBody className="space-y-4">
-          <Field label="Pickup plan" htmlFor="pickupPlan" required hint="Where members bring goods and where the buyer collects.">
+          <Field label={tr('opportunityForm.pickupLabel')} htmlFor="pickupPlan" required hint={tr('opportunityForm.pickupHint')}>
             <Textarea id="pickupPlan" value={draft.pickupPlan} maxLength={1200} onChange={(e) => set('pickupPlan', e.target.value)} />
           </Field>
           <Field
-            label="Transport plan"
+            label={tr('opportunityForm.transportLabel')}
             htmlFor="transportPlan"
-            hint="Optional. Share the vehicle and the split, but say it is an estimate unless a quote is confirmed."
+            hint={tr('opportunityForm.transportHint')}
           >
             <Textarea
               id="transportPlan"
@@ -182,7 +186,7 @@ export function OpportunityForm({
             />
           </Field>
           {editing && (
-            <Field label="State" htmlFor="status" hint="Fulfilled means the goods were actually delivered; do not set it early.">
+            <Field label={tr('opportunityForm.stateLabel')} htmlFor="status" hint={tr('opportunityForm.stateHint')}>
               <Select
                 id="status"
                 value={draft.status}
@@ -190,7 +194,7 @@ export function OpportunityForm({
               >
                 {(Object.keys(STATUS_LABELS) as CollectiveOpportunity['status'][]).map((s) => (
                   <option key={s} value={s}>
-                    {STATUS_LABELS[s]}
+                    {tr(STATUS_LABELS[s])}
                   </option>
                 ))}
               </Select>
@@ -201,11 +205,11 @@ export function OpportunityForm({
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy}>
-          {busy ? 'Saving…' : editing ? 'Save changes' : 'Open the opportunity'}
+          {busy ? tr('opportunityForm.saving') : editing ? tr('opportunityForm.saveChanges') : tr('opportunityForm.openOpportunity')}
         </Button>
         {result?.ok && result.opportunityId && (
           <Link href={`/dashboard/collective-orders/${result.opportunityId}`} className="underline font-semibold text-clay-700 text-sm">
-            Manage contributions for this opportunity →
+            {tr('opportunityForm.manageLink')}
           </Link>
         )}
       </div>
@@ -215,8 +219,7 @@ export function OpportunityForm({
         </p>
       )}
       <p className="text-xs text-ink-500">
-        Prices entered here are planning figures shared with the group. OmoNetTab moves no money: who pays what, and when,
-        is agreed between the buyer and the members and recorded in the notes.
+        {tr('opportunityForm.planningNote')}
       </p>
     </form>
   );

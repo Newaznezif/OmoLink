@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRepo } from '@/lib/repo';
 import { buildReceiptDocument, renderReceiptPdf } from '@/lib/receipts';
-import { getLanguage } from '@/lib/i18n/server';
+import { getLanguage, getT } from '@/lib/i18n/server';
 import { authErrorResponse, requireRole, type Actor } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -21,25 +21,25 @@ export const dynamic = 'force-dynamic';
  * money.
  */
 export async function GET(_req: Request, { params }: { params: { reference: string } }) {
+  const t = getT();
   let actor: Actor;
   try {
     actor = await requireRole(['buyer', 'producer', 'coordinator', 'admin']);
   } catch (err) {
-    const { body, status } = authErrorResponse(err, 'Sign in to open this document.');
+    const { body, status } = authErrorResponse(err, t('apiReceipt.signInToOpen'));
     return NextResponse.json(body, { status });
   }
 
   const repo = getRepo();
   const payment = await repo.getPayment(params.reference);
   if (!payment) {
-    return NextResponse.json({ error: 'No payment with that reference is on the record.' }, { status: 404 });
+    return NextResponse.json({ error: t('apiReceipt.noPayment') }, { status: 404 });
   }
   const isOwner = payment.buyerProfileId === actor.profileId;
   if (!isOwner && actor.role !== 'admin') {
     return NextResponse.json(
       {
-        error:
-          'A payment receipt is the payer’s own document. As the seller you can print the inquiry record instead, which shows the same payment status.'
+        error: t('apiReceipt.sellerNotOwner')
       },
       { status: 403 }
     );
@@ -49,7 +49,7 @@ export async function GET(_req: Request, { params }: { params: { reference: stri
   if (!inquiry) {
     // A payment whose inquiry has gone cannot be printed: the document would
     // have to invent the part it is a receipt for.
-    return NextResponse.json({ error: 'The inquiry this payment belongs to is not on the record.' }, { status: 404 });
+    return NextResponse.json({ error: t('apiReceipt.noInquiry') }, { status: 404 });
   }
 
   const [listing, buyerProfile, sellerProfile] = await Promise.all([

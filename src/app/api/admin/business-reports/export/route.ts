@@ -1,5 +1,5 @@
 import { getRepo } from '@/lib/repo';
-import { getLanguage } from '@/lib/i18n/server';
+import { getLanguage, getT } from '@/lib/i18n/server';
 import { authErrorResponse, requireRole } from '@/lib/session';
 import {
   buildBusinessReport,
@@ -23,10 +23,11 @@ export const dynamic = 'force-dynamic';
  * on, because a download link can be opened directly.
  */
 export async function GET(req: Request) {
+  const t = getT();
   try {
     await requireRole('admin');
   } catch (err) {
-    const { body, status } = authErrorResponse(err, 'Sign in as an administrator to export reports.');
+    const { body, status } = authErrorResponse(err, t('apiExport.signInAdmin'));
     return Response.json(body, { status });
   }
 
@@ -90,7 +91,7 @@ export async function GET(req: Request) {
   }
 
   return Response.json(
-    { error: 'Unknown export format. Use format=csv or format=pdf.' },
+    { error: t('apiExport.unknownFormat') },
     { status: 400, headers: safeHeaders }
   );
 }

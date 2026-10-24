@@ -1,18 +1,24 @@
 import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
+import { getLanguage, getT } from '@/lib/i18n/server';
 import { ArrangementCard } from '@/components/arrangement-card';
 import { Card, CardBody, Empty, Section } from '@/components/ui';
 import { formatMoney } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: 'My orders',
-  description: 'Goods you asked for, and where each arrangement stands.'
-};
+export async function generateMetadata() {
+  const t = getT();
+  return {
+    title: t('buyerOrders.metaTitle'),
+    description: t('buyerOrders.metaDescription')
+  };
+}
 
 export default async function BuyerOrdersPage() {
+  const t = getT();
+  const lang = getLanguage();
   const actor = await requireArea('/buyer', ['buyer']);
   const repo = getRepo();
   const [inquiries, listings] = await Promise.all([repo.listInquiriesForBuyer(actor.profileId), repo.listAllListings()]);
@@ -29,40 +35,37 @@ export default async function BuyerOrdersPage() {
 
   return (
     <Section
-      eyebrow="My account"
-      title="Orders"
-      description="Goods you asked a producer or group to supply. Each row is an arrangement you and the seller are organising — OmoNetTab does not charge or move money, so this is not a payment history."
+      eyebrow={t('nav.myAccountAria')}
+      title={t('nav.orders')}
+      description={t('buyerOrders.description')}
     >
       <Card>
         <CardBody>
           <dl className="grid sm:grid-cols-3 gap-3 text-sm">
             <div>
-              <dt className="text-ink-500">Still being arranged</dt>
+              <dt className="text-ink-500">{t('buyerOrders.statOpen')}</dt>
               <dd className="text-2xl font-black text-ink-900">{live.length}</dd>
             </div>
             <div>
-              <dt className="text-ink-500">Finished or cancelled</dt>
+              <dt className="text-ink-500">{t('buyerOrders.statClosed')}</dt>
               <dd className="text-2xl font-black text-ink-900">{closed.length}</dd>
             </div>
             <div>
-              <dt className="text-ink-500">Sum of open estimates</dt>
+              <dt className="text-ink-500">{t('buyerOrders.statEstimate')}</dt>
               <dd className="text-2xl font-black text-ink-900">{formatMoney({ cents: estimate, currency: 'ETB' })}</dd>
             </div>
           </dl>
-          <p className="mt-2 text-xs text-ink-500">
-            The estimate is the listing’s unit price multiplied by the quantity you asked for, computed when you sent the
-            request. The final figure is whatever you and the seller agree.
-          </p>
+          <p className="mt-2 text-xs text-ink-500">{t('buyerOrders.estimateNote')}</p>
         </CardBody>
       </Card>
 
       {rows.length === 0 ? (
         <Empty
-          title="No orders yet"
-          body="Send an inquiry from a product listing, and it appears here until it is completed or cancelled."
+          title={t('buyerOrders.emptyTitle')}
+          body={t('buyerOrders.emptyBody')}
           action={
             <Link href="/products" className="underline font-semibold text-clay-700">
-              Browse products
+              {t('home.browseProducts')}
             </Link>
           }
         />
@@ -70,10 +73,10 @@ export default async function BuyerOrdersPage() {
         <div className="space-y-3">
           {rows.map((i) => (
             <div key={i.id}>
-              <ArrangementCard inquiry={i} listing={listingById.get(i.listingId)} canAct={actor.status === 'active'} />
+              <ArrangementCard inquiry={i} listing={listingById.get(i.listingId)} canAct={actor.status === 'active'} lang={lang} />
               <p className="mt-1 px-1 text-sm">
                 <Link href={`/buyer/inquiries/${i.id}`} className="underline font-semibold text-clay-700">
-                  Open the record
+                  {t('orders.openRecord')}
                 </Link>
               </p>
             </div>
@@ -83,19 +86,15 @@ export default async function BuyerOrdersPage() {
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">Getting it to you</h2>
-          <p className="mt-2 text-sm text-ink-700">
-            Pickup and delivery options are written by the seller on each listing. For bulk quantities, transport is
-            usually shared — the group order pages show how a delivery plan is split, and any figure there is an
-            estimate until a quote is confirmed.
-          </p>
+          <h2 className="font-semibold text-ink-900">{t('buyerOrders.deliveryTitle')}</h2>
+          <p className="mt-2 text-sm text-ink-700">{t('buyerOrders.deliveryBody')}</p>
           <p className="mt-2 text-sm">
             <Link href="/collective-orders" className="underline font-semibold text-clay-700">
-              Group orders
+              {t('nav.groupOrders')}
             </Link>{' '}
             ·{' '}
             <Link href="/pricing-tool" className="underline font-semibold text-clay-700">
-              Price and transport calculator
+              {t('buyerOrders.pricingToolLink')}
             </Link>
           </p>
         </CardBody>

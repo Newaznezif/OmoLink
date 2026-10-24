@@ -2,15 +2,19 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { isDemoMode } from '@/lib/store';
 import { requireArea } from '@/lib/area';
+import { getT } from '@/lib/i18n/server';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 import { VerificationLabel } from '@/components/status-labels';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: 'Public profile preview',
-  description: 'Exactly what a buyer reads on your seller page, with nothing hidden and nothing editable.'
-};
+export async function generateMetadata() {
+  const t = getT();
+  return {
+    title: t('producerProfile.metaTitle'),
+    description: t('producerProfile.metaDescription')
+  };
+}
 
 /**
  * Read-only by design: the editable version of these fields lives on
@@ -19,6 +23,7 @@ export const metadata = {
  * unvalidated bio.
  */
 export default async function DashboardProfilePage() {
+  const t = getT();
   const actor = await requireArea('/dashboard', ['producer', 'coordinator']);
   const repo = getRepo();
   const [profile, categories, myListings] = await Promise.all([
@@ -29,13 +34,13 @@ export default async function DashboardProfilePage() {
 
   if (!profile) {
     return (
-      <Section eyebrow="Dashboard" title="My profile">
+      <Section eyebrow={t('myListings.eyebrow')} title={t('nav.myProfile')}>
         <Empty
-          title="No profile for this account"
-          body="This account has no profile record yet, so there is nothing to show buyers."
+          title={t('accountSettings.noProfileTitle')}
+          body={t('producerProfile.noProfileBody')}
           action={
             <Link href="/dashboard/settings" className="underline font-semibold text-clay-700">
-              Open settings
+              {t('producerProfile.openSettings')}
             </Link>
           }
         />
@@ -48,39 +53,41 @@ export default async function DashboardProfilePage() {
 
   const contactLine =
     profile.contactMethod.kind === 'in_app'
-      ? 'In-app inquiries only. No phone number or email address is published.'
+      ? t('producerProfile.contactInApp')
       : 'consent' in profile.contactMethod && profile.contactMethod.consent
-        ? `${profile.contactMethod.kind === 'email' ? 'Email' : 'Phone'}: ${profile.contactMethod.value}`
-        : 'A contact detail is stored but not published, because consent for it is not recorded.';
+        ? profile.contactMethod.kind === 'email'
+          ? t('producerProfile.contactEmail', { value: profile.contactMethod.value })
+          : t('producerProfile.contactPhone', { value: profile.contactMethod.value })
+        : t('producerProfile.contactWithheld');
 
   return (
     <Section
-      eyebrow="Dashboard"
-      title="My profile"
-      description="A preview of the page buyers reach from your listings. Everything here is published text; edit it on Settings, never on this page."
+      eyebrow={t('myListings.eyebrow')}
+      title={t('nav.myProfile')}
+      description={t('producerProfile.sectionDescription')}
     >
       <Card>
         <CardBody>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <VerificationLabel status={profile.verification} isDemo={profile.isDemo} />
-            <Badge tone="neutral">Member since {new Date(profile.createdAt).toLocaleDateString()}</Badge>
+            <Badge tone="neutral">{t('producerProfile.memberSince', { date: new Date(profile.createdAt).toLocaleDateString() })}</Badge>
           </div>
 
           <h2 className="font-semibold text-ink-900">{profile.displayName}</h2>
           <p className="mt-1 text-sm text-ink-500">
-            {profile.producerType.replace(/_/g, ' ')} · {profile.community || 'community not set'} ·{' '}
-            {profile.operatingArea || 'operating area not set'}
+            {profile.producerType.replace(/_/g, ' ')} · {profile.community || t('producerProfile.communityMissing')} ·{' '}
+            {profile.operatingArea || t('producerProfile.operatingAreaMissing')}
           </p>
 
           <div className="mt-3">
-            <h3 className="text-sm font-semibold text-ink-900">About your work</h3>
+            <h3 className="text-sm font-semibold text-ink-900">{t('producerProfile.aboutHeading')}</h3>
             <p className="mt-1 text-sm text-ink-700 whitespace-pre-line">
-              {profile.shortBio || 'No bio written yet. Buyers see an empty line, so it is worth filling in.'}
+              {profile.shortBio || t('producerProfile.bioEmpty')}
             </p>
           </div>
 
           <div className="mt-4">
-            <h3 className="text-sm font-semibold text-ink-900">Categories you work in</h3>
+            <h3 className="text-sm font-semibold text-ink-900">{t('register.workCategories')}</h3>
             <div className="mt-1 flex flex-wrap gap-2">
               {myCategories.map((c) => (
                 <Badge key={c.id} tone="info">
@@ -89,28 +96,28 @@ export default async function DashboardProfilePage() {
               ))}
               {myCategories.length === 0 && (
                 <span className="text-sm text-ink-500">
-                  None selected. Categories come from your listings; a seller page without any still works.
+                  {t('producerProfile.categoriesEmpty')}
                 </span>
               )}
             </div>
           </div>
 
           <div className="mt-4">
-            <h3 className="text-sm font-semibold text-ink-900">Contact shown to buyers</h3>
+            <h3 className="text-sm font-semibold text-ink-900">{t('producerProfile.contactHeading')}</h3>
             <p className="mt-1 text-sm text-ink-700">{contactLine}</p>
           </div>
 
           <div className="mt-4">
             <h3 className="text-sm font-semibold text-ink-900">
-              Listings a buyer can reach from this page
+              {t('producerProfile.listingsHeading')}
             </h3>
             {published.length === 0 ? (
               <p className="mt-1 text-sm text-ink-500">
-                None published yet.{' '}
+                {t('producerProfile.nonePublishedLead')}{' '}
                 <Link href="/dashboard/listings/new" className="underline font-semibold text-clay-700">
-                  Add a listing
+                  {t('producerProfile.addListingLink')}
                 </Link>{' '}
-                or publish an existing one.
+                {t('producerProfile.nonePublishedTail')}
               </p>
             ) : (
               <ul className="mt-2 space-y-1 text-sm">
@@ -119,52 +126,48 @@ export default async function DashboardProfilePage() {
                     <Link href={`/listings/${l.id}`} className="underline font-semibold text-clay-700">
                       {l.title}
                     </Link>{' '}
-                    <span className="text-ink-500">· {l.kind === 'service' ? 'experience' : 'goods'}</span>
+                    <span className="text-ink-500">· {l.kind === 'service' ? t('producerProfile.kindExperience') : t('producerProfile.kindGoods')}</span>
                   </li>
                 ))}
               </ul>
             )}
             <p className="mt-2 text-xs text-ink-500">
-              {myListings.length - published.length} of your {myListings.length} listing record(s) are hidden from buyers
-              (unpublished or archived).
+              {t('producerProfile.hiddenFromBuyers', { hidden: myListings.length - published.length, total: myListings.length })}
             </p>
           </div>
 
           <div className="mt-4">
             <Link href="/dashboard/settings" className="underline font-semibold text-clay-700">
-              Edit these details on Settings →
+              {t('producerProfile.editOnSettings')}
             </Link>
           </div>
 
           <p className="mt-3 text-xs text-ink-500">
-            {isDemoMode()
-              ? 'Demo mode: this is a sample profile, and it resets when the server restarts.'
-              : 'Saved in the profiles table; your public page reads the same record, so a buyer never sees more than what appears above.'}
+            {isDemoMode() ? t('producerProfile.demoNote') : t('producerProfile.supabaseNote')}
           </p>
         </CardBody>
       </Card>
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">What is not on this page</h2>
+          <h2 className="font-semibold text-ink-900">{t('producerProfile.notShownTitle')}</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-ink-700">
-            <li>Your role and account status — set by an administrator, never editable by you.</li>
-            <li>Verification decisions, and the audit trail behind them.</li>
-            <li>Buyer names, contacts and inquiry terms from other accounts.</li>
-            <li>Any identity document number. OmoNetTab does not store or demand one for a basic seller account.</li>
+            <li>{t('producerProfile.notShown1')}</li>
+            <li>{t('producerProfile.notShown2')}</li>
+            <li>{t('producerProfile.notShown3')}</li>
+            <li>{t('producerProfile.notShown4')}</li>
           </ul>
           {profile.consentToPublish ? (
             <p className="mt-2 text-sm text-ink-700">
-              To see the page exactly as a visitor does, open{' '}
+              {t('producerProfile.consentOnLead')}{' '}
               <Link href={`/producers/${profile.id}`} className="underline font-semibold text-clay-700">
-                your public producer page
+                {t('producerProfile.consentOnLink')}
               </Link>
               .
             </p>
           ) : (
             <p className="mt-2 text-sm text-ink-700">
-              Publishing consent is currently off, so this profile has no public producer page — buyers reach you only
-              through your listings. Turn it on from the header consent control or ask an administrator.
+              {t('producerProfile.consentOffBody')}
             </p>
           )}
         </CardBody>

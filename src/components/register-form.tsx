@@ -1,37 +1,47 @@
 'use client';
 
-import type { Category, Profile } from '@/lib/types';
+import type { Category, LanguageCode, Profile } from '@/lib/types';
+import { t, type TranslationKey } from '@/lib/i18n';
 import { Field, Input, Textarea, Select, Button } from './ui';
 
-export function RegisterForm({ categories, mode }: { categories: Category[]; mode: 'demo' | 'supabase' }) {
+export function RegisterForm({
+  categories,
+  mode,
+  lang
+}: {
+  categories: Category[];
+  mode: 'demo' | 'supabase';
+  lang: LanguageCode;
+}) {
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) =>
+    t(lang, key, vars);
   return (
     <div className="space-y-4">
       {mode === 'supabase' && (
         <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Email" htmlFor="email" required>
+          <Field label={tr('auth.email')} htmlFor="email" required>
             <Input id="email" name="email" type="email" autoComplete="email" required />
           </Field>
-          <Field label="Password" htmlFor="password" required hint="At least 6 characters.">
+          <Field label={tr('auth.password')} htmlFor="password" required hint={tr('register.passwordHint')}>
             <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={6} />
           </Field>
         </div>
       )}
-      <Field label="Display name or group name" htmlFor="displayName" required>
+      <Field label={tr('register.displayNameLabel')} htmlFor="displayName" required>
         <Input id="displayName" name="displayName" required maxLength={120} />
       </Field>
       <fieldset>
-        <legend className="text-sm font-semibold text-ink-900 mb-1">What do you want to do on OmoNetTab?</legend>
+        <legend className="text-sm font-semibold text-ink-900 mb-1">{tr('register.roleLegend')}</legend>
         <p className="text-xs text-ink-500 mb-2">
-          This chooses the shape of your account. It does not give you administrative rights — an administrator has to
-          assign those separately.
+          {tr('register.roleHint')}
         </p>
         <div className="grid sm:grid-cols-2 gap-2">
           {[
-            { value: 'producer', label: 'Sell my products or services' },
-            { value: 'group_or_cooperative', label: 'Represent a group or cooperative' },
-            { value: 'individual_buyer', label: 'Buy as an individual' },
-            { value: 'business_buyer', label: 'Buy for a business (shop, hotel, institution)' },
-            { value: 'tourist', label: 'Visit the area and book experiences' }
+            { value: 'producer', label: tr('register.roleProducer') },
+            { value: 'group_or_cooperative', label: tr('register.roleGroup') },
+            { value: 'individual_buyer', label: tr('register.roleIndividual') },
+            { value: 'business_buyer', label: tr('register.roleBusiness') },
+            { value: 'tourist', label: tr('register.roleTourist') }
           ].map((option, index) => (
             <label
               key={option.value}
@@ -50,55 +60,51 @@ export function RegisterForm({ categories, mode }: { categories: Category[]; mod
           ))}
         </div>
       </fieldset>
-      <Field
-        label="Organisation name"
-        htmlFor="organizationName"
-        hint="Only for a business buyer or a registered group. Leave empty otherwise."
-      >
+      <Field label={tr('register.organizationLabel')} htmlFor="organizationName" hint={tr('register.organizationHint')}>
         <Input id="organizationName" name="organizationName" maxLength={120} />
       </Field>
       <div className="grid md:grid-cols-2 gap-4">
-        <Field label="Producer type" htmlFor="producerType" required>
+        <Field label={tr('register.producerTypeLabel')} htmlFor="producerType" required>
           <Select id="producerType" name="producerType" defaultValue="artisan">
-            <option value="artisan">Artisan</option>
-            <option value="farmer">Smallholder farmer</option>
-            <option value="producer_group">Producer group</option>
-            <option value="cooperative">Cooperative</option>
-            <option value="guide">Guide</option>
-            <option value="tourism_operator">Tourism operator</option>
-            <option value="household">Household</option>
-            <option value="other">Other (buyers and visitors)</option>
+            <option value="artisan">{tr('register.producerTypeArtisan')}</option>
+            <option value="farmer">{tr('register.producerTypeFarmer')}</option>
+            <option value="producer_group">{tr('register.producerTypeGroup')}</option>
+            <option value="cooperative">{tr('register.producerTypeCooperative')}</option>
+            <option value="guide">{tr('register.producerTypeGuide')}</option>
+            <option value="tourism_operator">{tr('register.producerTypeOperator')}</option>
+            <option value="household">{tr('register.producerTypeHousehold')}</option>
+            <option value="other">{tr('register.producerTypeOther')}</option>
           </Select>
         </Field>
-        <Field label="Preferred language" htmlFor="preferredLanguage" required>
+        <Field label={tr('register.preferredLanguageLabel')} htmlFor="preferredLanguage" required>
           <Select id="preferredLanguage" name="preferredLanguage" defaultValue="en">
-            <option value="en">English</option>
-            <option value="am">Amharic (partial — review pending)</option>
+            <option value="en">{tr('register.langEnglish')}</option>
+            <option value="am">{tr('register.langAmharic')}</option>
             <option value="hamer" disabled>
-              Hamer (not available)
+              {tr('register.langHamer')}
             </option>
             <option value="dag" disabled>
-              Dasenech (not available)
+              {tr('register.langDasenech')}
             </option>
             <option value="tsamai" disabled>
-              Tsamai (not available)
+              {tr('register.langTsamai')}
             </option>
           </Select>
         </Field>
       </div>
       <div className="grid md:grid-cols-2 gap-4">
-        <Field label="Community" htmlFor="community" required hint="Text description only. No exact geo-data is stored.">
+        <Field label={tr('filter.community')} htmlFor="community" required hint={tr('register.communityHint')}>
           <Input id="community" name="community" required maxLength={120} />
         </Field>
-        <Field label="Operating area" htmlFor="operatingArea" required>
+        <Field label={tr('register.operatingAreaLabel')} htmlFor="operatingArea" required>
           <Input id="operatingArea" name="operatingArea" required maxLength={120} />
         </Field>
       </div>
-      <Field label="Short profile description" htmlFor="shortBio" required>
+      <Field label={tr('register.shortBioLabel')} htmlFor="shortBio" required>
         <Textarea id="shortBio" name="shortBio" required />
       </Field>
       <fieldset>
-        <legend className="text-sm font-semibold text-ink-900 mb-1">Product or service categories</legend>
+        <legend className="text-sm font-semibold text-ink-900 mb-1">{tr('register.categoriesLegend')}</legend>
         <div className="grid sm:grid-cols-2 gap-2">
           {categories.map((c) => (
             <label key={c.id} className="flex gap-2 items-center text-sm rounded-lg border border-ink-100 px-3 py-2">
@@ -109,40 +115,31 @@ export function RegisterForm({ categories, mode }: { categories: Category[]; mod
         </div>
       </fieldset>
       <Field
-        label="Contact method"
+        label={tr('register.contactMethodLabel')}
         htmlFor="contactMethod"
-        hint="Basic accounts use in-app inquiries only. Do not collect private phone numbers or IDs for a demo profile."
+        hint={tr('register.contactMethodHint')}
       >
-        <Input id="contactMethod" value="In-app inquiry" readOnly />
+        <Input id="contactMethod" value={tr('register.contactMethodValue')} readOnly />
       </Field>
       <label className="flex gap-2 items-start text-sm rounded-lg border border-ink-100 p-3">
         <input type="checkbox" name="consent" className="mt-1 w-4 h-4" required />
         <span>
-          I consent to publishing this profile information on OmoNetTab. Sensitive cultural knowledge, community
-          imagery, or ceremony details are <strong>not</strong> commercialised by default.
+          {tr('register.consentLead')}
+          <strong>{tr('register.consentNot')}</strong>
+          {tr('register.consentTail')}
         </span>
       </label>
-      <Button type="submit">{mode === 'demo' ? 'Create demo profile' : 'Create account and profile'}</Button>
+      <Button type="submit">{mode === 'demo' ? tr('register.submitDemo') : tr('register.submitAccount')}</Button>
       <p className="text-xs text-ink-500">
-        <ProfileDisclaimer mode={mode} />
+        <ProfileDisclaimer mode={mode} lang={lang} />
       </p>
     </div>
   );
 }
 
-function ProfileDisclaimer({ mode }: { mode: 'demo' | 'supabase' }) {
+function ProfileDisclaimer({ mode, lang }: { mode: 'demo' | 'supabase'; lang: LanguageCode }) {
   if (mode === 'supabase') {
-    return (
-      <span>
-        This creates a real Supabase Auth account. If email confirmation is enabled on the project, confirm the link
-        before the profile becomes visible. A new profile always starts as unverified.
-      </span>
-    );
+    return <span>{t(lang, 'register.disclaimerSupabase')}</span>;
   }
-  return (
-    <span>
-      Demo mode stores this account in an in-memory store that resets when the server cold-restarts. Do not enter real
-      private data. A new profile always starts as unverified.
-    </span>
-  );
+  return <span>{t(lang, 'register.disclaimerDemo')}</span>;
 }

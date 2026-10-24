@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { t, type TranslationKey } from '@/lib/i18n';
 import { Badge, Button, Card, CardBody, Field, Input } from './ui';
-import type { Listing, ListingImage } from '@/lib/types';
+import type { LanguageCode, Listing, ListingImage } from '@/lib/types';
 
 type Draft = { src: string; alt: string; caption: string; consent: boolean };
 
@@ -22,8 +23,9 @@ function toPayload(images: ListingImage[]): Payload[] {
  * that is already hosted somewhere else. Every save replaces the whole set and
  * reports the server's own answer, so a rejected image never looks like it stuck.
  */
-export function ListingImages({ listing }: { listing: Listing }) {
+export function ListingImages({ lang, listing }: { lang: LanguageCode; listing: Listing }) {
   const router = useRouter();
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) => t(lang, key, vars);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -39,14 +41,14 @@ export function ListingImages({ listing }: { listing: Listing }) {
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setMessage({ ok: false, text: json?.error ?? `The server refused this change (status ${res.status}).` });
+        setMessage({ ok: false, text: json?.error ?? tr('listingImages.refused', { status: res.status }) });
         return;
       }
       setMessage({ ok: true, text: successText });
       setDraft(emptyDraft);
       router.refresh();
     } catch {
-      setMessage({ ok: false, text: 'Network problem: nothing was changed. Try again.' });
+      setMessage({ ok: false, text: tr('listingImages.network') });
     } finally {
       setBusy(false);
     }
@@ -55,23 +57,21 @@ export function ListingImages({ listing }: { listing: Listing }) {
   const add = () => {
     save(
       [...toPayload(listing.images), { src: draft.src.trim(), alt: draft.alt.trim(), caption: draft.caption.trim(), consentRecorded: true }],
-      'Picture added. Buyers see it on the listing page.'
+      tr('listingImages.added')
     );
   };
 
   return (
     <Card>
       <CardBody>
-        <h2 className="font-semibold text-ink-900">Pictures</h2>
+        <h2 className="font-semibold text-ink-900">{tr('listingImages.heading')}</h2>
         <p className="mt-1 text-sm text-ink-500">
-          {listing.images.length} of 6 picture(s) attached. This build stores a web address for each picture and does not
-          upload files — there is no storage service configured yet, so a picture must already be hosted somewhere you
-          may link to.
+          {tr('listingImages.countLine', { count: listing.images.length, max: 6 })}
         </p>
 
         {listing.images.length === 0 ? (
           <p className="mt-2 text-sm text-ink-500 rounded-lg border border-ink-100 bg-white p-3">
-            No picture is attached, so the listing page shows its title only.
+            {tr('listingImages.emptyNote')}
           </p>
         ) : (
           <ul className="mt-3 space-y-3">
@@ -83,8 +83,8 @@ export function ListingImages({ listing }: { listing: Listing }) {
                   {img.caption && <p className="mt-1 text-xs text-ink-500">{img.caption}</p>}
                   <p className="mt-1 text-xs break-all text-ink-500">{img.src}</p>
                   <div className="mt-1 flex flex-wrap gap-2">
-                    {img.isSample && <Badge tone="warning">Sample placeholder</Badge>}
-                    {!img.consentRecorded && <Badge tone="danger">Consent not recorded</Badge>}
+                    {img.isSample && <Badge tone="warning">{tr('listingImages.sampleBadge')}</Badge>}
+                    {!img.consentRecorded && <Badge tone="danger">{tr('listingImages.consentBadge')}</Badge>}
                   </div>
                 </div>
                 <Button
@@ -92,9 +92,9 @@ export function ListingImages({ listing }: { listing: Listing }) {
                   variant="ghost"
                   size="sm"
                   disabled={busy}
-                  onClick={() => save(toPayload(listing.images.filter((i) => i.id !== img.id)), 'Picture removed from the listing.')}
+                  onClick={() => save(toPayload(listing.images.filter((i) => i.id !== img.id)), tr('listingImages.removed'))}
                 >
-                  {busy ? 'Saving…' : 'Remove'}
+                  {busy ? tr('listingImages.saving') : tr('listingImages.remove')}
                 </Button>
               </li>
             ))}
@@ -104,9 +104,9 @@ export function ListingImages({ listing }: { listing: Listing }) {
         {listing.images.length < 6 && (
           <div className="mt-4 rounded-lg border border-ink-100 bg-white p-3 space-y-2">
             <Field
-              label="Picture web address"
+              label={tr('listingImages.srcLabel')}
               htmlFor={`img-src-${listing.id}`}
-              hint="A full https:// address of a picture you may publish."
+              hint={tr('listingImages.srcHint')}
             >
               <Input
                 id={`img-src-${listing.id}`}
@@ -117,23 +117,23 @@ export function ListingImages({ listing }: { listing: Listing }) {
               />
             </Field>
             <Field
-              label="Description for readers who cannot see it"
+              label={tr('listingImages.altLabel')}
               htmlFor={`img-alt-${listing.id}`}
-              hint="Say what the picture shows, so the page still makes sense without sight of it."
+              hint={tr('listingImages.altHint')}
             >
               <Input
                 id={`img-alt-${listing.id}`}
                 value={draft.alt}
                 onChange={(e) => setDraft({ ...draft, alt: e.target.value })}
-                placeholder="Woven basket set on a market table"
+                placeholder={tr('listingImages.altPlaceholder')}
               />
             </Field>
-            <Field label="Caption (optional)" htmlFor={`img-caption-${listing.id}`}>
+            <Field label={tr('listingImages.captionLabel')} htmlFor={`img-caption-${listing.id}`}>
               <Input
                 id={`img-caption-${listing.id}`}
                 value={draft.caption}
                 onChange={(e) => setDraft({ ...draft, caption: e.target.value })}
-                placeholder="Shown at the Saturday market in Key Afer"
+                placeholder={tr('listingImages.captionPlaceholder')}
               />
             </Field>
             <label className="flex items-start gap-2 text-sm text-ink-700">
@@ -144,12 +144,11 @@ export function ListingImages({ listing }: { listing: Listing }) {
                 onChange={(e) => setDraft({ ...draft, consent: e.target.checked })}
               />
               <span>
-                I may publish this picture. If it shows a person, a ceremony or cultural property, the people concerned
-                agreed to it being shown.
+                {tr('listingImages.consentStatement')}
               </span>
             </label>
             <Button type="button" size="sm" disabled={busy || !/^https?:\/\/\S+$/i.test(draft.src) || draft.alt.trim().length < 3 || !draft.consent} onClick={add}>
-              {busy ? 'Saving…' : 'Add picture'}
+              {busy ? tr('listingImages.saving') : tr('listingImages.add')}
             </Button>
           </div>
         )}
@@ -160,8 +159,7 @@ export function ListingImages({ listing }: { listing: Listing }) {
           </p>
         )}
         <p className="mt-2 text-xs text-ink-500">
-          The consent statement is recorded on this listing; nobody has verified it. An administrator can hide a listing
-          whose pictures are contested.
+          {tr('listingImages.consentNote')}
         </p>
       </CardBody>
     </Card>

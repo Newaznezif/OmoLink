@@ -66,7 +66,7 @@ export default async function AdminBusinessReportsPage({ searchParams }: { searc
     source = { payments, inquiries, listings, profiles, categories };
     report = buildBusinessReport({ source, range, filters, nowIso });
   } catch (err: unknown) {
-    loadError = err instanceof Error && err.message ? err.message : 'The records behind this report could not be read.';
+    loadError = err instanceof Error && err.message ? err.message : tr('reports.recordsUnreadable');
   }
 
   // Options are built from every record rather than from the filtered report, so
@@ -221,7 +221,9 @@ export default async function AdminBusinessReportsPage({ searchParams }: { searc
         </CardBody>
       </Card>
 
-      {loadError && <ErrorState title="Report records are unavailable" body={loadError} retryHref="/admin/business-reports" />}
+      {loadError && (
+        <ErrorState lang={lang} title={tr('reports.recordsUnavailable')} body={loadError} retryHref="/admin/business-reports" />
+      )}
 
       {report && (
         <>

@@ -370,9 +370,9 @@ const languageChecks = [
   { code: 'zh-Hans', htmlLang: 'zh-Hans', marker: '产品', note: 'simplified chinese renders and stays selected' },
   { code: 'it', htmlLang: 'it', marker: 'Prodotti', note: 'italian renders and stays selected' },
   { code: 'am', htmlLang: 'am', marker: 'ምርቶች', note: 'the amharic draft renders where wording exists' },
-  { code: 'hamer', htmlLang: 'en', marker: 'No verified Hamer translation exists yet', note: 'homer says plainly that it has no translation' },
-  { code: 'dag', htmlLang: 'en', marker: 'No verified Dasenech translation exists yet', note: 'dasenech says plainly that it has no translation' },
-  { code: 'tsamai', htmlLang: 'en', marker: 'No verified Tsamai translation exists yet', note: 'tsamai says plainly that it has no translation' }
+  { code: 'hamer', htmlLang: 'en', marker: 'Products', note: 'hamer has no dictionary so the page renders in English while the preference stays' },
+  { code: 'dag', htmlLang: 'en', marker: 'Products', note: 'dasenech falls back to English and keeps its own document language honest' },
+  { code: 'tsamai', htmlLang: 'en', marker: 'Products', note: 'tsamai falls back to English and keeps its own document language honest' }
 ];
 
 for (const { code, htmlLang, marker, note } of languageChecks) {
@@ -385,6 +385,26 @@ for (const { code, htmlLang, marker, note } of languageChecks) {
       visible(page.body).includes(marker) &&
       selectedOption,
     `status=${page.status} lang=${htmlLang} marker=${visible(page.body).includes(marker)} selected=${selectedOption}`
+  );
+}
+
+// The site-wide demo banner and the language-draft strip were removed from the
+// public chrome, so no page may print either of their wordings in any locale.
+const removedNotices = [
+  'This preview runs in demo mode',
+  'is a machine draft that has not been reviewed',
+  'Unreviewed text is shown in English',
+  'No verified Hamer translation exists yet',
+  'No verified Dasenech translation exists yet',
+  'No verified Tsamai translation exists yet'
+];
+for (const [route, code] of [['/', 'en'], ['/products', 'en'], ['/listings/lst_basket_set', 'it'], ['/contact', 'am']]) {
+  const page = await get(route, `omonettab_lang=${code}`);
+  const found = removedNotices.filter((s) => visible(page.body).includes(s));
+  check(
+    `${route} in ${code} prints neither the demo banner nor the language-draft notice`,
+    page.status === 200 && found.length === 0,
+    `status=${page.status} found=${found.join(' | ')}`
   );
 }
 
@@ -407,10 +427,53 @@ check(
 
 const itListing = await get('/listings/lst_basket_set', 'omonettab_lang=it');
 check(
-  'the Italian listing page warns that catalogue wording is unverified',
-  itListing.status === 200 && visible(itListing.body).includes('non sono ancora stati verificati da un madrelingua'),
-  `status=${itListing.status}`
+  'the Italian listing page keeps the per-item sample and unverified labels',
+  itListing.status === 200 && visible(itListing.body).includes('Dati di esempio') && visible(itListing.body).includes('Non verificato'),
+  `status=${itListing.status} sample=${visible(itListing.body).includes('Dati di esempio')} unverified=${visible(itListing.body).includes('Non verificato')}`
 );
+
+// ---------- collective order: the customer panel ----------
+// The group order page offers the participating producers' own listings to buy
+// from. Prices and limits must come from the record, not from the visitor.
+const groupPage = await get('/collective-orders/col_honey_bulk', tourist.cookie);
+const gp = visible(groupPage.body);
+check('the group order page offers a product to buy with the seller\'s published price',
+  groupPage.status === 200 &&
+    gp.includes('Buy from this group order') &&
+    gp.includes('Choose a product') &&
+    gp.includes('Sample forest honey') &&
+    gp.includes('68.00'),
+  `status=${groupPage.status} panel=${gp.includes('Buy from this group order')} price=${gp.includes('68.00')}`);
+
+const groupPageGuest = await get('/collective-orders/col_honey_bulk');
+check('a visitor with no account can still see the products in the group order',
+  groupPageGuest.status === 200 && visible(groupPageGuest.body).includes('Buy from this group order'),
+  `status=${groupPageGuest.status}`);
+
+const groupInquiry = await send('POST', '/api/inquiries', tourist.cookie, {
+  listingId: 'lst_forest_honey',
+  buyerName: 'Group order buyer',
+  buyerContact: 'group.buyer@example.test',
+  quantity: 8,
+  preference: 'pickup',
+  message: 'Smoke test inquiry sent from the group order panel.'
+});
+const groupInquiryRecord = groupInquiry.json.inquiry ?? {};
+check('the inquiry the panel sends is stored and gets a real reference',
+  groupInquiry.status === 201 && typeof groupInquiryRecord.reference === 'string' && groupInquiryRecord.reference.length > 0,
+  `status=${groupInquiry.status} reference=${groupInquiryRecord.reference}`);
+
+const groupInquiryPage = await get(`/buyer/inquiries/${groupInquiryRecord.id}`, tourist.cookie);
+check('the buyer can open that inquiry record and see its status',
+  groupInquiryPage.status === 200 && visible(groupInquiryPage.body).includes(groupInquiryRecord.reference),
+  `status=${groupInquiryPage.status}`);
+
+const buyerContributes = await send('POST', '/api/collective/col_honey_bulk/contribute', tourist.cookie, {
+  quantity: 10,
+  note: 'A buyer should not be able to commit stock.'
+});
+check('a buyer cannot commit stock to a group order', buyerContributes.status === 403,
+  `status=${buyerContributes.status} error=${buyerContributes.json.error}`);
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} PASS`);

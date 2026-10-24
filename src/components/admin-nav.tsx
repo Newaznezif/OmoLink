@@ -2,33 +2,35 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { t, type TranslationKey } from '@/lib/i18n';
+import type { LanguageCode } from '@/lib/types';
 
-const tabs = [
-  { href: '/admin', label: 'Overview' },
-  { href: '/admin/users', label: 'Accounts' },
-  { href: '/admin/roles', label: 'Roles' },
-  { href: '/admin/listings', label: 'Listings' },
-  { href: '/admin/categories', label: 'Categories' },
-  { href: '/admin/verifications', label: 'Verifications' },
-  { href: '/admin/reviews', label: 'Reviews' },
-  { href: '/admin/reports', label: 'Reports' },
-  { href: '/admin/orders', label: 'Arrangements' },
-  { href: '/admin/payments', label: 'Payments' },
-  { href: '/admin/business-reports', label: 'Business reports' },
-  { href: '/admin/messages', label: 'Messages' },
-  { href: '/admin/opportunities', label: 'Group orders' },
-  { href: '/admin/homepage', label: 'Homepage' },
-  { href: '/admin/settings', label: 'Settings' },
-  { href: '/admin/analytics', label: 'Activity' },
-  { href: '/admin/audit-logs', label: 'Audit log' }
+const tabs: { href: string; key: TranslationKey }[] = [
+  { href: '/admin', key: 'nav.overview' },
+  { href: '/admin/users', key: 'nav.accounts' },
+  { href: '/admin/roles', key: 'nav.roles' },
+  { href: '/admin/listings', key: 'nav.listings' },
+  { href: '/admin/categories', key: 'nav.categories' },
+  { href: '/admin/verifications', key: 'nav.verifications' },
+  { href: '/admin/reviews', key: 'nav.reviews' },
+  { href: '/admin/reports', key: 'nav.reports' },
+  { href: '/admin/orders', key: 'nav.arrangements' },
+  { href: '/admin/payments', key: 'nav.payments' },
+  { href: '/admin/business-reports', key: 'nav.businessReports' },
+  { href: '/admin/messages', key: 'nav.messages' },
+  { href: '/admin/opportunities', key: 'nav.groupOrders' },
+  { href: '/admin/homepage', key: 'nav.homepage' },
+  { href: '/admin/settings', key: 'nav.settings' },
+  { href: '/admin/analytics', key: 'nav.activity' },
+  { href: '/admin/audit-logs', key: 'nav.auditLog' }
 ];
 
-export function AdminNav() {
+export function AdminNav({ lang }: { lang: LanguageCode }) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === '/admin' ? pathname === '/admin' : pathname.startsWith(href));
 
   return (
-    <nav aria-label="Administration" className="border-b border-ink-100 bg-white">
+    <nav aria-label={t(lang, 'nav.administrationAria')} className="border-b border-ink-100 bg-white">
       <div className="mx-auto max-w-6xl px-4 md:px-6 flex gap-1 overflow-x-auto py-2">
         {tabs.map((tab) => (
           <Link
@@ -39,7 +41,7 @@ export function AdminNav() {
               isActive(tab.href) ? 'bg-clay-50 text-clay-800' : 'text-ink-700 hover:bg-clay-50'
             }`}
           >
-            {tab.label}
+            {t(lang, tab.key)}
           </Link>
         ))}
       </div>

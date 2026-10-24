@@ -1175,17 +1175,17 @@ export function buildSeed() {
       'OmoNetTab helps rural entrepreneurs, local producers, artisans, and community tourism providers in South Omo present their offerings and receive inquiries from potential customers. Most listings here carry a producer’s own photographs, price and contact details, supplied for this pilot. OmoNetTab has not verified any of them yet, and a few records are labelled as samples because they exist only to demonstrate the platform.',
     announcementBar: {
       enabled: true,
-      text: 'Pilot build — listings show what producers supplied us, unverified. No payment is taken and no sale is recorded.'
+      text: 'Listings show what producers supplied and stay unverified until a reviewer checks them. No payment is taken and no sale is recorded here.'
     },
     featuredProductIds: ['lst_kashi', 'lst_chele_bracelet', 'lst_fota_menswear'],
     featuredServiceIds: ['lst_alpha_omega_guest_house', 'lst_kizo_lodge'],
     featuredProducerIds: ['prof_gado_gofa', 'prof_getachew_kafa', 'prof_tate'],
     homepageSections: HOMEPAGE_SECTIONS.map((id) => ({ id, visible: true })),
-    contactEmail: 'hello@omonetab.example',
+    contactEmail: '',
     contactPhone: '',
     addressNote: 'Sample coordination point: Jinka weekly market, South Omo (illustrative).',
     socialLinks: [],
-    footerNote: 'Built for a community-led pilot. Producer data is never sold.',
+    footerNote: 'Producer data is never sold.',
     accentColor: '#b2542a',
     updatedAt: now,
     isDemo: true

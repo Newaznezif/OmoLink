@@ -1,7 +1,8 @@
 import clsx from 'clsx';
 import Link from 'next/link';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import type { VerificationStatus } from '@/lib/types';
+import { t } from '@/lib/i18n';
+import type { LanguageCode, VerificationStatus } from '@/lib/types';
 
 type ButtonBase = {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -152,14 +153,24 @@ export function Empty({ title, body, action }: { title: string; body: string; ac
   );
 }
 
-export function ErrorState({ title, body, retryHref }: { title: string; body: string; retryHref?: string }) {
+export function ErrorState({
+  lang,
+  title,
+  body,
+  retryHref
+}: {
+  lang?: LanguageCode;
+  title: string;
+  body: string;
+  retryHref?: string;
+}) {
   return (
     <div role="alert" className="border border-red-100 bg-red-50 text-red-900 rounded-2xl p-6">
       <h3 className="font-semibold">{title}</h3>
       <p className="mt-1 text-sm">{body}</p>
       {retryHref && (
         <Link href={retryHref} className="mt-3 inline-block underline font-semibold">
-          Retry
+          {t(lang ?? 'en', 'common.retry')}
         </Link>
       )}
     </div>

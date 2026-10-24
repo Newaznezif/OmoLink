@@ -2,18 +2,31 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { t, type TranslationKey } from '@/lib/i18n';
+import type { LanguageCode } from '@/lib/types';
 import { Button } from './ui';
 
-export function InquiryStatusPicker({ inquiryId, current }: { inquiryId: string; current: string }) {
+const STATUS_OPTIONS: { v: string; label: TranslationKey }[] = [
+  { v: 'new', label: 'inquiries.statusNew' },
+  { v: 'accepted', label: 'inquiries.statusAccepted' },
+  { v: 'awaiting_confirmation', label: 'inquiry.status.awaiting_confirmation' },
+  { v: 'fulfillment_arranged', label: 'inquiries.statusFulfillment' },
+  { v: 'completed', label: 'inquiry.status.completed' },
+  { v: 'cancelled', label: 'inquiry.status.cancelled' }
+];
+
+// `lang` defaults to English only so the seller card in arrangement-card.tsx,
+// which is keyed by another pass, keeps rendering until it threads the prop in.
+export function InquiryStatusPicker({
+  inquiryId,
+  current,
+  lang = 'en'
+}: {
+  inquiryId: string;
+  current: string;
+  lang?: LanguageCode;
+}) {
   const router = useRouter();
-  const options = [
-    { v: 'new', label: 'New' },
-    { v: 'accepted', label: 'Accepted' },
-    { v: 'awaiting_confirmation', label: 'Awaiting confirmation' },
-    { v: 'fulfillment_arranged', label: 'Fulfillment arranged' },
-    { v: 'completed', label: 'Completed' },
-    { v: 'cancelled', label: 'Cancelled' }
-  ];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,10 +41,10 @@ export function InquiryStatusPicker({ inquiryId, current }: { inquiryId: string;
         body: JSON.stringify({ status: next })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error ?? 'Could not update status.');
+      if (!res.ok) throw new Error(json?.error ?? t(lang, 'inquiries.updateFailed'));
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setError(err instanceof Error ? err.message : t(lang, 'report.generic'));
     } finally {
       setBusy(false);
     }
@@ -40,10 +53,10 @@ export function InquiryStatusPicker({ inquiryId, current }: { inquiryId: string;
   return (
     <div>
       <label htmlFor={`status-${inquiryId}`} className="text-sm font-semibold text-ink-900">
-        Update status
+        {t(lang, 'inquiries.updateLabel')}
       </label>
       <div className="mt-1 flex flex-wrap gap-2">
-        {options.map((o) => (
+        {STATUS_OPTIONS.map((o) => (
           <Button
             key={o.v}
             type="button"
@@ -52,7 +65,7 @@ export function InquiryStatusPicker({ inquiryId, current }: { inquiryId: string;
             disabled={busy || o.v === current}
             onClick={() => change(o.v)}
           >
-            {o.label}
+            {t(lang, o.label)}
           </Button>
         ))}
       </div>

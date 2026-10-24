@@ -3,6 +3,7 @@ import { getRepo } from '@/lib/repo';
 import { authErrorResponse, requireRole, type Actor } from '@/lib/session';
 import { parseDecimalAmount } from '@/lib/money';
 import { makeId } from '@/lib/ids';
+import { getT } from '@/lib/i18n/server';
 import { UNIT_OF_SALES, type CollectiveOpportunity, type UnitOfSale } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -26,11 +27,12 @@ function slugify(value: string): string {
  * by editing the request body.
  */
 export async function POST(req: Request) {
+  const t = getT();
   let actor: Actor;
   try {
     actor = await requireRole(['coordinator', 'admin']);
   } catch (err) {
-    const { body, status } = authErrorResponse(err, 'Sign in before editing a collective opportunity.');
+    const { body, status } = authErrorResponse(err, t('apiCollective.signInToEdit'));
     return NextResponse.json(body, { status });
   }
 
@@ -51,30 +53,30 @@ export async function POST(req: Request) {
 
   const bad = (message: string) => NextResponse.json({ error: message }, { status: 400 });
 
-  if (title.length < 6) return bad('Give the opportunity a title of at least 6 characters.');
-  if (description.length < 20) return bad('Explain what the group is collecting in at least 20 characters.');
-  if (pickupPlan.length < 3) return bad('Say where and how the goods are picked up.');
-  if (transportPlan.length > 800) return bad('Keep the transport note under 800 characters.');
-  if (!UNIT_OF_SALES.includes(unitOfSale)) return bad('Unknown unit of sale.');
+  if (title.length < 6) return bad(t('apiCollective.titleTooShort'));
+  if (description.length < 20) return bad(t('apiCollective.descriptionTooShort'));
+  if (pickupPlan.length < 3) return bad(t('apiCollective.pickupPlanRequired'));
+  if (transportPlan.length > 800) return bad(t('apiCollective.transportTooLong'));
+  if (!UNIT_OF_SALES.includes(unitOfSale)) return bad(t('apiCollective.unknownUnitOfSale'));
   if (!Number.isInteger(targetQuantity) || targetQuantity < 1 || targetQuantity > 100000) {
-    return bad('Target quantity must be a whole number between 1 and 100000.');
+    return bad(t('apiCollective.targetQuantityRange'));
   }
-  if (!STATUSES.includes(status)) return bad('Unknown opportunity status.');
-  if (orderDeadline && Number.isNaN(Date.parse(orderDeadline))) return bad('The deadline is not a readable date.');
+  if (!STATUSES.includes(status)) return bad(t('apiCollective.unknownStatus'));
+  if (orderDeadline && Number.isNaN(Date.parse(orderDeadline))) return bad(t('apiCollective.deadlineUnreadable'));
 
   const categories = await repo.listCategories();
-  if (!categories.some((c) => c.id === categoryId)) return bad('Choose which category this opportunity is for.');
+  if (!categories.some((c) => c.id === categoryId)) return bad(t('apiCollective.chooseCategory'));
 
   const groups = await repo.listGroups();
   if (organizingGroupId) {
     const group = groups.find((g) => g.id === organizingGroupId);
-    if (!group) return bad('That group does not exist.');
+    if (!group) return bad(t('apiCollective.groupNotFound'));
     // An administrator may file on behalf of any group; a coordinator must belong to it.
     if (actor.role !== 'admin' && group.coordinatorProfileId !== actor.profileId) {
-      return bad('You can only open an opportunity for a group you coordinate.');
+      return bad(t('apiCollective.onlyCoordinateOwnGroup'));
     }
   } else if (actor.role !== 'admin') {
-    return bad('Choose the group this opportunity is organised under.');
+    return bad(t('apiCollective.chooseGroup'));
   }
 
   const priceInput = (value: unknown) => {
@@ -85,10 +87,10 @@ export async function POST(req: Request) {
   };
   const indicative = priceInput(body.indicativeGroupPriceEtb);
   const offered = priceInput(body.buyerOfferedPriceEtb);
-  if (!indicative.ok || !offered.ok) return bad('Prices must be numbers like 450 or 1250.50.');
+  if (!indicative.ok || !offered.ok) return bad(t('apiCollective.priceFormat'));
 
   const existing = id ? await repo.getOpportunity(id) : undefined;
-  if (id && !existing) return NextResponse.json({ error: 'Opportunity not found.' }, { status: 404 });
+  if (id && !existing) return NextResponse.json({ error: t('apiCollective.opportunityNotFound') }, { status: 404 });
 
   let slug = slugify(title) || `collective-${makeId('s').slice(2)}`;
   if (existing?.slug === slug) {
@@ -124,7 +126,7 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ opportunity }, { status: existing ? 200 : 201 });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Could not save the opportunity.';
+    const message = err instanceof Error ? err.message : t('apiCollective.saveFailed');
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRepo } from '@/lib/repo';
 import { getSessionActor } from '@/lib/session';
+import { getT } from '@/lib/i18n/server';
 import type { InquiryStatus } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -22,14 +23,15 @@ const ALL_STATUSES: InquiryStatus[] = [
 const BUYER_STATUSES: InquiryStatus[] = ['completed', 'cancelled'];
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const t = getT();
   const actor = await getSessionActor();
-  if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
+  if (!actor) return NextResponse.json({ error: t('apiArrangement.notSignedIn') }, { status: 401 });
   if (actor.status === 'suspended') {
-    return NextResponse.json({ error: 'This account is suspended. Contact an administrator.' }, { status: 403 });
+    return NextResponse.json({ error: t('apiArrangement.accountSuspended') }, { status: 403 });
   }
   const body = (await req.json().catch(() => ({}))) as { status?: string };
   if (!body.status || !ALL_STATUSES.includes(body.status as InquiryStatus)) {
-    return NextResponse.json({ error: 'Invalid status.' }, { status: 400 });
+    return NextResponse.json({ error: t('apiArrangement.invalidStatus') }, { status: 400 });
   }
   const status = body.status as InquiryStatus;
 
@@ -44,11 +46,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const mine = await repo.listInquiriesForBuyer(actor.profileId);
     if (mine.some((i) => i.id === params.id)) side = 'buyer';
   }
-  if (!side) return NextResponse.json({ error: 'No such arrangement in your records.' }, { status: 404 });
+  if (!side) return NextResponse.json({ error: t('apiArrangement.notInRecords') }, { status: 404 });
 
   if (side === 'buyer' && !BUYER_STATUSES.includes(status)) {
     return NextResponse.json(
-      { error: 'Only the seller records acceptance or fulfilment. You can confirm completion or cancel.' },
+      { error: t('apiArrangement.sellerOnlyStep') },
       { status: 403 }
     );
   }
@@ -62,7 +64,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const updated = await repo.updateInquiryStatus(params.id, status, side, detail);
     return NextResponse.json({ inquiry: updated });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Could not update.';
+    const message = err instanceof Error ? err.message : t('apiArrangement.updateFailed');
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

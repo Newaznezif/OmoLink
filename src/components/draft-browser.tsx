@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { t } from '@/lib/i18n';
+import type { LanguageCode } from '@/lib/types';
 import { Card, CardBody, Empty, Badge, Button } from './ui';
 
 type DraftRecord = { key: string; producerId: string; listingId: string | null; updatedAt: string; title: string };
@@ -11,7 +13,7 @@ type DraftRecord = { key: string; producerId: string; listingId: string | null; 
  * and remove stale drafts. This is intentionally minimal — the real editing
  * surface is the listing form itself.
  */
-export function DraftBrowser() {
+export function DraftBrowser({ lang }: { lang: LanguageCode }) {
   const [drafts, setDrafts] = useState<DraftRecord[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,11 +23,11 @@ export function DraftBrowser() {
         const all = await listDrafts();
         setDrafts(all);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Could not read local drafts.');
+        setError(err instanceof Error ? err.message : t(lang, 'offline.draftReadError'));
         setDrafts([]);
       }
     })();
-  }, []);
+  }, [lang]);
 
   async function clearAll() {
     await clearAllDrafts();
@@ -36,27 +38,27 @@ export function DraftBrowser() {
     <Card>
       <CardBody>
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-ink-900">Drafts saved on this device</h2>
+          <h2 className="font-semibold text-ink-900">{t(lang, 'offline.draftBrowserTitle')}</h2>
           {drafts !== null && drafts.length > 0 && (
             <Button variant="ghost" size="sm" onClick={clearAll}>
-              Clear all
+              {t(lang, 'offline.draftClearAll')}
             </Button>
           )}
         </div>
         {error && <p className="mt-1 text-sm text-red-700">{error}</p>}
         {drafts === null ? (
-          <p className="mt-1 text-sm text-ink-500">Loading…</p>
+          <p className="mt-1 text-sm text-ink-500">{t(lang, 'offline.draftLoading')}</p>
         ) : drafts.length === 0 ? (
           <div className="mt-3">
-            <Empty title="No drafts on this device" body="Fill out the new-listing form and press “Save draft on device” to create one." />
+            <Empty title={t(lang, 'offline.draftEmptyTitle')} body={t(lang, 'offline.draftEmptyBody')} />
           </div>
         ) : (
           <ul className="mt-3 space-y-2">
             {drafts.map((d) => (
               <li key={d.key} className="flex items-center justify-between gap-3 border border-ink-100 rounded-lg px-3 py-2">
-                <span className="text-sm font-semibold text-ink-900">{d.title || '(untitled)'}</span>
+                <span className="text-sm font-semibold text-ink-900">{d.title || t(lang, 'offline.draftUntitled')}</span>
                 <span className="text-xs text-ink-500">{new Date(d.updatedAt).toLocaleString()}</span>
-                <Badge tone="warning">Local</Badge>
+                <Badge tone="warning">{t(lang, 'offline.draftLocalBadge')}</Badge>
               </li>
             ))}
           </ul>

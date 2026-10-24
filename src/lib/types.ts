@@ -455,6 +455,7 @@ export type HomepageSectionId =
   | 'categories'
   | 'producer_highlights'
   | 'collective'
+  | 'team'
   | 'how_it_works'
   | 'trust';
 
@@ -466,6 +467,7 @@ export const HOMEPAGE_SECTIONS: HomepageSectionId[] = [
   'categories',
   'producer_highlights',
   'collective',
+  'team',
   'how_it_works',
   'trust'
 ];

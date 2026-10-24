@@ -3,8 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Field, Textarea } from './ui';
+import { t } from '@/lib/i18n';
+import type { LanguageCode } from '@/lib/types';
 
-export function VerificationAction({ profileId, sampleRecords }: { profileId: string; sampleRecords: boolean }) {
+export function VerificationAction({ lang, profileId, sampleRecords }: { lang: LanguageCode; profileId: string; sampleRecords: boolean }) {
   const router = useRouter();
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState<null | 'approved' | 'rejected' | 'needs_more_info'>(null);
@@ -12,7 +14,7 @@ export function VerificationAction({ profileId, sampleRecords }: { profileId: st
 
   async function submit(decision: 'approved' | 'rejected' | 'needs_more_info') {
     if (!reason.trim()) {
-      setMessage('A reason must be recorded with every decision.');
+      setMessage(t(lang, 'verificationAdmin.reasonRequired'));
       return;
     }
     setBusy(decision);
@@ -25,12 +27,12 @@ export function VerificationAction({ profileId, sampleRecords }: { profileId: st
         body: JSON.stringify({ profileId, decision, reason })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error ?? 'Failed to record decision.');
-      setMessage(sampleRecords ? 'Decision recorded against sample data.' : 'Decision recorded against this profile.');
+      if (!res.ok) throw new Error(json?.error ?? t(lang, 'verificationAdmin.saveFailed'));
+      setMessage(sampleRecords ? t(lang, 'verificationAdmin.recordedSample') : t(lang, 'verificationAdmin.recordedProfile'));
       setReason('');
       router.refresh();
     } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : 'Something went wrong.');
+      setMessage(err instanceof Error ? err.message : t(lang, 'report.generic'));
     } finally {
       setBusy(null);
     }
@@ -38,18 +40,18 @@ export function VerificationAction({ profileId, sampleRecords }: { profileId: st
 
   return (
     <div>
-      <Field label="Recorded reason" htmlFor={`reason-${profileId}`} required hint="Approvals and rejections must both carry a reason.">
+      <Field label={t(lang, 'verificationAdmin.reasonLabel')} htmlFor={`reason-${profileId}`} required hint={t(lang, 'verificationAdmin.reasonHint')}>
         <Textarea id={`reason-${profileId}`} value={reason} onChange={(e) => setReason(e.target.value)} />
       </Field>
       <div className="mt-2 flex flex-wrap gap-2">
         <Button size="sm" onClick={() => submit('approved')} disabled={busy !== null}>
-          {busy === 'approved' ? 'Recording…' : 'Approve'}
+          {busy === 'approved' ? t(lang, 'arrangement.recording') : t(lang, 'verificationAdmin.approve')}
         </Button>
         <Button size="sm" variant="secondary" onClick={() => submit('needs_more_info')} disabled={busy !== null}>
-          {busy === 'needs_more_info' ? 'Recording…' : 'Request more info'}
+          {busy === 'needs_more_info' ? t(lang, 'arrangement.recording') : t(lang, 'verificationAdmin.requestMoreInfo')}
         </Button>
         <Button size="sm" variant="danger" onClick={() => submit('rejected')} disabled={busy !== null}>
-          {busy === 'rejected' ? 'Recording…' : 'Reject'}
+          {busy === 'rejected' ? t(lang, 'arrangement.recording') : t(lang, 'verificationAdmin.reject')}
         </Button>
       </div>
       {message && <p className="mt-2 text-sm text-ink-700">{message}</p>}

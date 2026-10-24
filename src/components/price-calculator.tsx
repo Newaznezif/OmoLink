@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react';
 import { formatMoney, parseDecimalAmount } from '@/lib/money';
 import { suggestSellingPrice } from '@/lib/pricing';
+import { t, type TranslationKey } from '@/lib/i18n';
+import type { LanguageCode } from '@/lib/types';
 import { Card, CardBody, Field, Input } from './ui';
 
 type Inputs = {
@@ -21,7 +23,8 @@ const defaults: Inputs = {
   markupPct: '25'
 };
 
-export function PriceCalculator() {
+export function PriceCalculator({ lang }: { lang: LanguageCode }) {
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) => t(lang, key, vars);
   const [values, setValues] = useState<Inputs>(defaults);
 
   const parsed = useMemo(() => {
@@ -54,51 +57,49 @@ export function PriceCalculator() {
     <div className="grid md:grid-cols-[minmax(0,1fr)_360px] gap-4">
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">Enter your costs (ETB per unit)</h2>
+          <h2 className="font-semibold text-ink-900">{tr('pricing.enterCosts')}</h2>
           <div className="mt-3 grid sm:grid-cols-2 gap-4">
-            <Field label="Production or acquisition cost" htmlFor="pc-prod" required>
+            <Field label={tr('pricing.productionCost')} htmlFor="pc-prod" required>
               <Input id="pc-prod" inputMode="decimal" value={values.production} onChange={(e) => set('production', e.target.value)} invalid={invalidSet.has('production')} />
             </Field>
-            <Field label="Packaging cost" htmlFor="pc-pack" required>
+            <Field label={tr('pricing.packagingCost')} htmlFor="pc-pack" required>
               <Input id="pc-pack" inputMode="decimal" value={values.packaging} onChange={(e) => set('packaging', e.target.value)} invalid={invalidSet.has('packaging')} />
             </Field>
-            <Field label="Transport cost to point of sale" htmlFor="pc-trans" required>
+            <Field label={tr('pricing.transportCost')} htmlFor="pc-trans" required>
               <Input id="pc-trans" inputMode="decimal" value={values.transport} onChange={(e) => set('transport', e.target.value)} invalid={invalidSet.has('transport')} />
             </Field>
-            <Field label="Other operating costs" htmlFor="pc-other" required>
+            <Field label={tr('pricing.otherCosts')} htmlFor="pc-other" required>
               <Input id="pc-other" inputMode="decimal" value={values.other} onChange={(e) => set('other', e.target.value)} invalid={invalidSet.has('other')} />
             </Field>
-            <Field label="Desired markup on cost (%)" htmlFor="pc-markup" required hint="Markup is applied on top of your total cost.">
+            <Field label={tr('pricing.markupLabel')} htmlFor="pc-markup" required hint={tr('pricing.markupHint')}>
               <Input id="pc-markup" inputMode="decimal" value={values.markupPct} onChange={(e) => set('markupPct', e.target.value)} invalid={invalidSet.has('markupPct')} />
             </Field>
           </div>
           {parsed.invalid.length > 0 && (
-            <p className="mt-3 text-sm text-red-700">Fill every field with a positive number (up to two decimals).</p>
+            <p className="mt-3 text-sm text-red-700">{tr('pricing.fillFields')}</p>
           )}
         </CardBody>
       </Card>
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">Suggestion</h2>
+          <h2 className="font-semibold text-ink-900">{tr('pricing.suggestionHeading')}</h2>
           {parsed.result ? (
             <dl className="mt-3 space-y-2 text-sm">
-              <Row label="Total cost" value={formatMoney({ cents: parsed.result.totalCostCents, currency: 'ETB' })} />
+              <Row label={tr('pricing.totalCost')} value={formatMoney({ cents: parsed.result.totalCostCents, currency: 'ETB' })} />
               <Row
-                label="Suggested selling price"
+                label={tr('pricing.suggestedPrice')}
                 value={formatMoney({ cents: parsed.result.suggestedPriceCents, currency: 'ETB' })}
                 strong
               />
-              <Row label="Estimated profit" value={formatMoney({ cents: parsed.result.profitCents, currency: 'ETB' })} />
-              <Row label="Profit margin on selling price" value={`${parsed.result.marginPercent.toFixed(2)} %`} />
+              <Row label={tr('pricing.estimatedProfit')} value={formatMoney({ cents: parsed.result.profitCents, currency: 'ETB' })} />
+              <Row label={tr('pricing.marginOnSellingPrice')} value={`${parsed.result.marginPercent.toFixed(2)} %`} />
             </dl>
           ) : (
-            <p className="text-sm text-ink-500">Complete the form to see a suggestion.</p>
+            <p className="text-sm text-ink-500">{tr('pricing.completeForm')}</p>
           )}
           <p className="mt-3 text-xs text-ink-500">
-            Example: with total cost 800.00 ETB and 25% markup on cost, suggested selling price is 1,000.00 ETB,
-            profit 200.00 ETB, margin 20.00%. Always override this suggestion if your market or collective agreement
-            requires a different number.
+            {tr('pricing.exampleNote')}
           </p>
         </CardBody>
       </Card>

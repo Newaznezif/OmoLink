@@ -2,18 +2,37 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
 import { formatMoney } from '@/lib/money';
+import { getLanguage, getT } from '@/lib/i18n/server';
+import { t as translate, type TranslationKey } from '@/lib/i18n';
+import type { LanguageCode } from '@/lib/types';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 import { VerificationLabel } from '@/components/status-labels';
 import { ListingLifecycleActions } from '@/components/listing-actions';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: 'My listings',
-  description: 'Every listing you manage: what buyers see, what each one is priced at, and what you can do with it.'
+export async function generateMetadata() {
+  const t = getT();
+  return {
+    title: t('nav.myListings'),
+    description: t('myListings.metaDescription')
+  };
+}
+
+const AVAILABILITY_KEY: Record<
+  'available' | 'limited' | 'made_to_order' | 'seasonal' | 'unavailable',
+  TranslationKey
+> = {
+  available: 'status.available',
+  limited: 'status.limitedOption',
+  made_to_order: 'status.madeToOrder',
+  seasonal: 'status.seasonal',
+  unavailable: 'status.unavailable'
 };
 
 export default async function DashboardListingsPage() {
+  const t = getT();
+  const lang = getLanguage();
   const actor = await requireArea('/dashboard', ['producer', 'coordinator']);
   const repo = getRepo();
   const [listings, inquiries] = await Promise.all([
@@ -30,24 +49,24 @@ export default async function DashboardListingsPage() {
 
   return (
     <Section
-      eyebrow="Dashboard"
-      title="My listings"
-      description="Publish, hide, change the price, or archive. A listing you archive keeps its inquiry history, so a record you both rely on stays correct."
+      eyebrow={t('myListings.eyebrow')}
+      title={t('nav.myListings')}
+      description={t('myListings.sectionDescription')}
       actions={
         <Link href="/dashboard/listings/new" className="inline-flex bg-clay-700 text-white font-semibold px-4 py-2 rounded-lg">
-          New listing
+          {t('myListings.newListing')}
         </Link>
       }
     >
       {sorted.length === 0 ? (
         <Empty
-          title="No listings yet"
-          body="Create your first listing. You can save it unpublished and publish it when the details and the photos are ready."
+          title={t('myListings.emptyTitle')}
+          body={t('myListings.emptyBody')}
         />
       ) : (
         <>
           <p className="text-sm text-ink-500">
-            {publishedCount} of {sorted.length} listing(s) are visible in the marketplace right now.
+            {t('myListings.visibleCount', { published: publishedCount, total: sorted.length })}
           </p>
           <ul className="space-y-3 mt-2">
             {sorted.map((l) => {
@@ -62,17 +81,17 @@ export default async function DashboardListingsPage() {
                             {l.title}
                           </Link>
                           <div className="text-sm text-ink-500">
-                            {formatMoney(l.unitPrice)} · per {l.unitOfSale} · {l.availableQuantity} {l.unitOfSale} available
-                            {l.minOrderQuantity > 1 ? ` · minimum ${l.minOrderQuantity}` : ''}
+                            {t('myListings.priceLine', { price: formatMoney(l.unitPrice), unit: l.unitOfSale, quantity: l.availableQuantity })}
+                            {l.minOrderQuantity > 1 ? t('myListings.minimumSuffix', { count: l.minOrderQuantity }) : ''}
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2 items-center">
                           <Badge tone={l.archived ? 'neutral' : l.published ? 'success' : 'warning'}>
-                            {l.archived ? 'Archived' : l.published ? 'Published' : 'Draft'}
+                            {l.archived ? t('myListings.badgeArchived') : l.published ? t('myListings.badgePublished') : t('myListings.badgeDraft')}
                           </Badge>
                           <VerificationLabel status={l.verification} isDemo={l.isDemo} />
-                          <AvailabilityBadge availability={l.availability} />
-                          {linkedInquiries > 0 && <Badge tone="info">{linkedInquiries} inquiry record(s)</Badge>}
+                          <AvailabilityBadge lang={lang} availability={l.availability} />
+                          {linkedInquiries > 0 && <Badge tone="info">{t('myListings.inquiryCountBadge', { count: linkedInquiries })}</Badge>}
                         </div>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -80,16 +99,16 @@ export default async function DashboardListingsPage() {
                           href={`/dashboard/listings/${l.id}`}
                           className="rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm font-semibold hover:bg-clay-50"
                         >
-                          Edit
+                          {t('myListings.edit')}
                         </Link>
                         <Link
                           href={`/dashboard/inquiries?listing=${l.id}`}
                           className="rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm font-semibold hover:bg-clay-50"
                         >
-                          Inquiries for this listing
+                          {t('myListings.inquiriesForListing')}
                         </Link>
                       </div>
-                      <ListingLifecycleActions listing={l} inquiryCount={linkedInquiries} />
+                      <ListingLifecycleActions lang={lang} listing={l} inquiryCount={linkedInquiries} />
                     </CardBody>
                   </Card>
                 </li>
@@ -101,32 +120,26 @@ export default async function DashboardListingsPage() {
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">Publish, archive or delete — what each one means</h2>
+          <h2 className="font-semibold text-ink-900">{t('myListings.rulesTitle')}</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-ink-700">
             <li>
-              <strong>Publish</strong> puts the listing in the marketplace with the price and quantity you set here. Only
-              published, unarchived listings appear in search.
+              <strong>{t('myListings.termPublish')}</strong>{t('myListings.bodyPublish')}
             </li>
             <li>
-              <strong>Unpublish</strong> keeps the page and its history but hides it from buyers. Existing inquiries stay
-              open — hiding a listing does not cancel anyone’s request.
+              <strong>{t('myListings.termUnpublish')}</strong>{t('myListings.bodyUnpublish')}
             </li>
             <li>
-              <strong>Archive</strong> is the permanent-feeling option that still keeps records: the listing leaves the
-              marketplace, its inquiries remain readable by you and by the buyers who sent them.
+              <strong>{t('myListings.termArchive')}</strong>{t('myListings.bodyArchive')}
             </li>
             <li>
-              <strong>Delete</strong> is offered only when no inquiry has ever been sent for that listing. Once there is a
-              record, the server refuses, because removing it would erase the other side’s evidence of an arrangement.
+              <strong>{t('myListings.termDelete')}</strong>{t('myListings.bodyDelete')}
             </li>
             <li>
-              <strong>Availability</strong> tells buyers whether you can supply now. It is separate from publishing: an
-              out-of-season listing can stay readable while nobody can order it.
+              <strong>{t('listing.availabilityLabel')}</strong>{t('myListings.bodyAvailability')}
             </li>
           </ul>
           <p className="mt-2 text-xs text-ink-500">
-            Changes are checked on the server against your own account: another seller’s listing cannot be edited from
-            here, and a suspended account cannot change any listing at all.
+            {t('myListings.serverCheckNote')}
           </p>
         </CardBody>
       </Card>
@@ -134,7 +147,7 @@ export default async function DashboardListingsPage() {
   );
 }
 
-function AvailabilityBadge({ availability }: { availability: 'available' | 'limited' | 'made_to_order' | 'seasonal' | 'unavailable' }) {
+function AvailabilityBadge({ lang, availability }: { lang: LanguageCode; availability: 'available' | 'limited' | 'made_to_order' | 'seasonal' | 'unavailable' }) {
   const tone = availability === 'unavailable' ? 'danger' : availability === 'limited' || availability === 'seasonal' ? 'warning' : 'neutral';
-  return <Badge tone={tone}>{availability.replace('_', ' ')}</Badge>;
+  return <Badge tone={tone}>{translate(lang, AVAILABILITY_KEY[availability])}</Badge>;
 }

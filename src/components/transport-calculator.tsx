@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import { formatMoney } from '@/lib/money';
-import type { UnitOfSale } from '@/lib/types';
+import { t, type TranslationKey } from '@/lib/i18n';
+import type { LanguageCode, UnitOfSale } from '@/lib/types';
 import { Card, CardBody, Field, Input } from './ui';
 
 export function TransportCalculator({
+  lang = 'en',
   opportunityId,
   unitOfSale,
   totalCostCents,
@@ -13,6 +15,7 @@ export function TransportCalculator({
   quoteConfirmed,
   contributions
 }: {
+  lang?: LanguageCode;
   opportunityId: string;
   unitOfSale: UnitOfSale;
   totalCostCents: number;
@@ -20,6 +23,7 @@ export function TransportCalculator({
   quoteConfirmed: boolean;
   contributions: { producerProfileId: string; quantity: number; name: string }[];
 }) {
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) => t(lang, key, vars);
   const [costEtb, setCostEtb] = useState((totalCostCents / 100).toString());
   const [qty, setQty] = useState(String(Math.max(totalQuantity, 1)));
   const [customShare, setCustomShare] = useState<Record<string, string>>({});
@@ -39,35 +43,35 @@ export function TransportCalculator({
   return (
     <Card>
       <CardBody>
-        <h2 className="font-semibold text-ink-900">Shared transport calculator</h2>
+        <h2 className="font-semibold text-ink-900">{tr('pricing.transportTitle')}</h2>
         <p className="mt-1 text-sm text-ink-700">
           {quoteConfirmed
-            ? 'A confirmed transport quote has been recorded for this plan.'
-            : 'This is an estimate. No real transport quote has been confirmed. Actual costs may be higher or lower — do not treat the numbers below as savings that have already occurred.'}
+            ? tr('pricing.quoteConfirmed')
+            : tr('pricing.quoteEstimate')}
         </p>
 
         <div className="mt-4 grid sm:grid-cols-2 gap-3">
-          <Field label="Total transport cost (ETB)" htmlFor={`tp-cost-${opportunityId}`} hint="Enter the shared cost agreed by the group.">
+          <Field label={tr('pricing.totalTransportCost')} htmlFor={`tp-cost-${opportunityId}`} hint={tr('pricing.sharedCostHint')}>
             <Input id={`tp-cost-${opportunityId}`} inputMode="decimal" value={costEtb} onChange={(e) => setCostEtb(e.target.value)} />
           </Field>
-          <Field label={`Total quantity (${unitOfSale})`} htmlFor={`tp-qty-${opportunityId}`}>
+          <Field label={tr('pricing.totalQuantityUnit', { unit: unitOfSale })} htmlFor={`tp-qty-${opportunityId}`}>
             <Input id={`tp-qty-${opportunityId}`} inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value.replace(/\D/g, ''))} />
           </Field>
         </div>
 
         <div className="mt-4 rounded-lg bg-clay-50 p-3 text-sm">
           <div className="flex justify-between">
-            <span className="text-ink-700">Estimated transport cost per {unitOfSale}</span>
+            <span className="text-ink-700">{tr('pricing.perUnitCost', { unit: unitOfSale })}</span>
             <span className="font-bold text-clay-800">{formatMoney({ cents: perUnit, currency: 'ETB' })}</span>
           </div>
           <p className="mt-1 text-xs text-ink-500">
-            Formula: total transport cost ÷ total quantity. Rounded to the nearest cent.
+            {tr('pricing.formulaNote')}
           </p>
         </div>
 
         {effectiveQuantities.length > 0 && (
           <div className="mt-4">
-            <h3 className="font-semibold text-ink-900 mb-2">Per-producer share (by contribution)</h3>
+            <h3 className="font-semibold text-ink-900 mb-2">{tr('pricing.producerShare')}</h3>
             <ul className="space-y-2 text-sm">
               {effectiveQuantities.map((c) => {
                 const share = sumQty > 0 ? Math.round((c.quantity / sumQty) * parsedCost) : 0;
@@ -75,7 +79,7 @@ export function TransportCalculator({
                   <li key={c.producerProfileId} className="grid sm:grid-cols-[1fr_140px_160px] gap-2 items-center">
                     <span className="text-ink-900">{c.name}</span>
                     <label className="text-xs text-ink-500">
-                      <span className="sr-only">Quantity for {c.name}</span>
+                      <span className="sr-only">{tr('pricing.quantityFor', { name: c.name })}</span>
                       <input
                         type="number"
                         min={0}
@@ -90,8 +94,7 @@ export function TransportCalculator({
               })}
             </ul>
             <p className="mt-2 text-xs text-ink-500">
-              Editing a quantity here only previews a different split — it does not change the recorded contribution.
-              Adjust contributions through the form on this page.
+              {tr('pricing.editShareNote')}
             </p>
           </div>
         )}

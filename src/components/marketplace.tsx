@@ -198,7 +198,8 @@ function FilterBar({
         <button type="submit" className="bg-clay-700 text-white font-semibold rounded-lg px-4 py-2 min-h-11">
           {t('filter.apply')}
         </button>
-        <a href={kind ? `/${kind}` : '/explore'} className="border border-ink-100 rounded-lg px-4 py-2 min-h-11 font-semibold text-ink-700">
+        {/* The kind values are not route names: /products and /tourism serve them. */}
+        <a href={kind === 'product' ? '/products' : kind === 'service' ? '/tourism' : '/explore'} className="border border-ink-100 rounded-lg px-4 py-2 min-h-11 font-semibold text-ink-700">
           {t('filter.reset')}
         </a>
       </div>

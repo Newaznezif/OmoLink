@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { getT } from './i18n/server';
 import { getRepo } from './repo';
 import { isDemoMode } from './store';
 import { supabaseServer } from './supabase/server';
@@ -106,7 +107,7 @@ export function getSession(): DemoSession | undefined {
 }
 
 export function writeSession(session: DemoSession) {
-  if (!isDemoMode()) throw new Error('Demo sessions are only valid in demo mode.');
+  if (!isDemoMode()) throw new Error(getT()('auth.demoSessionModeOnly'));
   cookies().set(SESSION_COOKIE, JSON.stringify(session), {
     httpOnly: true,
     sameSite: 'lax',
@@ -158,13 +159,13 @@ export function landingFor(role: Role): string {
  */
 export async function requireRole(role: Role | Role[]): Promise<Actor> {
   const actor = await getSessionActor();
-  if (!actor) throw new AuthorizationError('Sign in to continue.', 401);
+  if (!actor) throw new AuthorizationError(getT()('auth.signInToContinue'), 401);
   if (actor.status === 'suspended') {
-    throw new AuthorizationError('This account is suspended. Contact an administrator.', 403);
+    throw new AuthorizationError(getT()('auth.accountSuspendedContact'), 403);
   }
   const required = Array.isArray(role) ? role : [role];
   if (!required.includes(actor.role)) {
-    throw new AuthorizationError('Your account is not permitted to do this.', 403);
+    throw new AuthorizationError(getT()('auth.notPermitted'), 403);
   }
   return actor;
 }
@@ -172,7 +173,7 @@ export async function requireRole(role: Role | Role[]): Promise<Actor> {
 /** Anyone with an account, suspended or not — used by pages that must show the suspension notice. */
 export async function requireSignedIn(): Promise<Actor> {
   const actor = await getSessionActor();
-  if (!actor) throw new AuthorizationError('Sign in to continue.', 401);
+  if (!actor) throw new AuthorizationError(getT()('auth.signInToContinue'), 401);
   return actor;
 }
 

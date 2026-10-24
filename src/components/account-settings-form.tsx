@@ -2,9 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { t, type TranslationKey } from '@/lib/i18n';
 import { Button, Card, CardBody, Field, Input, Select, Textarea } from './ui';
 import { LANGUAGE_OPTIONS } from '@/lib/language';
-import type { ContactMethod, Profile } from '@/lib/types';
+import type { ContactMethod, LanguageCode, Profile } from '@/lib/types';
 
 type Draft = {
   displayName: string;
@@ -31,38 +32,62 @@ function draftFrom(profile: Profile): Draft {
 }
 
 /** The same four fields mean different things to each side of a sale. */
-const COPY = {
+type VariantCopy = {
+  details: TranslationKey;
+  name: TranslationKey;
+  nameHint: TranslationKey;
+  area: TranslationKey;
+  areaHint: TranslationKey;
+  bio: TranslationKey;
+  bioHint: TranslationKey;
+  contact: TranslationKey;
+  in_app: TranslationKey;
+  phone: TranslationKey;
+  email: TranslationKey;
+  none: TranslationKey;
+};
+
+const COPY: Record<'buyer' | 'seller', VariantCopy> = {
   buyer: {
-    details: 'Your details',
-    name: 'Name you want people to see',
-    nameHint: 'Sellers receive this on an inquiry.',
-    area: 'Where you usually are',
-    areaHint: 'Helps a seller judge pickup or meeting point.',
-    bio: 'A note about what you are looking for',
-    bioHint: 'Optional here, but sellers see it when you inquire. 20 characters minimum.',
-    contact: 'How sellers reach you',
-    in_app: 'Only through the platform inquiry form',
-    phone: 'Add my phone number to each inquiry I send',
-    email: 'Add my email address to each inquiry I send',
-    none: 'Do not share a direct contact detail'
+    details: 'buyerProfile.detailsHeading',
+    name: 'register.displayNameBuyer',
+    nameHint: 'buyerProfile.nameHint',
+    area: 'register.operatingAreaBuyer',
+    areaHint: 'buyerProfile.areaHint',
+    bio: 'buyerProfile.bioLabel',
+    bioHint: 'buyerProfile.bioHint',
+    contact: 'buyerProfile.contactHeading',
+    in_app: 'buyerProfile.contactOptionInApp',
+    phone: 'buyerProfile.contactOptionPhone',
+    email: 'buyerProfile.contactOptionEmail',
+    none: 'buyerProfile.contactOptionNone'
   },
   seller: {
-    details: 'How you appear to buyers',
-    name: 'Display name',
-    nameHint: 'Shown on your public seller page and on every listing.',
-    area: 'Where buyers can collect or meet you',
-    areaHint: 'Shown beside your listings so pickup expectations are clear.',
-    bio: 'About your work',
-    bioHint: 'Shown on your public seller page. 20 characters minimum. No identity documents are ever stored here.',
-    contact: 'How buyers reach you',
-    in_app: 'Only through the inquiry form on my listings',
-    phone: 'Publish my phone number on my listings',
-    email: 'Publish my email address on my listings',
-    none: 'Do not publish a direct contact detail'
+    details: 'accountSettings.sellerDetailsHeading',
+    name: 'accountSettings.sellerNameLabel',
+    nameHint: 'accountSettings.sellerNameHint',
+    area: 'accountSettings.sellerAreaLabel',
+    areaHint: 'accountSettings.sellerAreaHint',
+    bio: 'producerProfile.aboutHeading',
+    bioHint: 'accountSettings.sellerBioHint',
+    contact: 'accountSettings.sellerContactHeading',
+    in_app: 'accountSettings.sellerContactInApp',
+    phone: 'accountSettings.sellerContactPhone',
+    email: 'accountSettings.sellerContactEmail',
+    none: 'accountSettings.sellerContactNone'
   }
-} as const;
+};
 
-export function AccountSettingsForm({ profile, variant }: { profile: Profile; variant: 'buyer' | 'seller' }) {
+export function AccountSettingsForm({
+  profile,
+  variant,
+  lang
+}: {
+  profile: Profile;
+  variant: 'buyer' | 'seller';
+  lang: LanguageCode;
+}) {
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) => t(lang, key, vars);
   const copy = COPY[variant];
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(() => draftFrom(profile));
@@ -92,11 +117,11 @@ export function AccountSettingsForm({ profile, variant }: { profile: Profile; va
         })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error ?? 'Could not save.');
-      setMessage({ ok: true, text: 'Saved.' });
+      if (!res.ok) throw new Error(json?.error ?? tr('accountSettings.saveFailed'));
+      setMessage({ ok: true, text: tr('accountSettings.savedMessage') });
       router.refresh();
     } catch (err: unknown) {
-      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Something went wrong.' });
+      setMessage({ ok: false, text: err instanceof Error ? err.message : tr('listingForm.genericError') });
     } finally {
       setBusy(false);
     }
@@ -108,9 +133,9 @@ export function AccountSettingsForm({ profile, variant }: { profile: Profile; va
     <div className="space-y-4">
       <Card>
         <CardBody className="space-y-4">
-          <h2 className="font-semibold text-ink-900">{copy.details}</h2>
+          <h2 className="font-semibold text-ink-900">{tr(copy.details)}</h2>
           <div className="grid md:grid-cols-2 gap-4">
-            <Field label={copy.name} htmlFor="displayName" hint={copy.nameHint}>
+            <Field label={tr(copy.name)} htmlFor="displayName" hint={tr(copy.nameHint)}>
               <Input
                 id="displayName"
                 value={draft.displayName}
@@ -118,10 +143,10 @@ export function AccountSettingsForm({ profile, variant }: { profile: Profile; va
                 onChange={(e) => set('displayName', e.target.value)}
               />
             </Field>
-            <Field label="Community or town" htmlFor="community">
+            <Field label={tr('register.communityTownLabel')} htmlFor="community">
               <Input id="community" value={draft.community} maxLength={120} onChange={(e) => set('community', e.target.value)} />
             </Field>
-            <Field label={copy.area} htmlFor="operatingArea" hint={copy.areaHint}>
+            <Field label={tr(copy.area)} htmlFor="operatingArea" hint={tr(copy.areaHint)}>
               <Input
                 id="operatingArea"
                 value={draft.operatingArea}
@@ -129,7 +154,7 @@ export function AccountSettingsForm({ profile, variant }: { profile: Profile; va
                 onChange={(e) => set('operatingArea', e.target.value)}
               />
             </Field>
-            <Field label="Interface language" htmlFor="preferredLanguage">
+            <Field label={tr('common.interfaceLanguage')} htmlFor="preferredLanguage">
               <Select
                 id="preferredLanguage"
                 value={draft.preferredLanguage}
@@ -141,13 +166,10 @@ export function AccountSettingsForm({ profile, variant }: { profile: Profile; va
                   </option>
                 ))}
               </Select>
-              <p className="mt-1 text-xs text-ink-500">
-                Every offered language can be saved as your preference. Pages state plainly which ones still have no
-                reviewed wording instead of pretending support exists.
-              </p>
+              <p className="mt-1 text-xs text-ink-500">{tr('accountSettings.languageNote')}</p>
             </Field>
           </div>
-          <Field label={copy.bio} htmlFor="shortBio" hint={copy.bioHint}>
+          <Field label={tr(copy.bio)} htmlFor="shortBio" hint={tr(copy.bioHint)}>
             <Textarea id="shortBio" value={draft.shortBio} maxLength={1200} onChange={(e) => set('shortBio', e.target.value)} />
           </Field>
         </CardBody>
@@ -155,14 +177,14 @@ export function AccountSettingsForm({ profile, variant }: { profile: Profile; va
 
       <Card>
         <CardBody className="space-y-4">
-          <h2 className="font-semibold text-ink-900">{copy.contact}</h2>
+          <h2 className="font-semibold text-ink-900">{tr(copy.contact)}</h2>
           <div className="space-y-2 text-sm">
             {(
               [
-                ['in_app', copy.in_app],
-                ['phone', copy.phone],
-                ['email', copy.email],
-                ['none', copy.none]
+                ['in_app', tr(copy.in_app)],
+                ['phone', tr(copy.phone)],
+                ['email', tr(copy.email)],
+                ['none', tr(copy.none)]
               ] as const
             ).map(([kind, label]) => (
               <label key={kind} htmlFor={`contact-${kind}`} className="flex items-start gap-2">
@@ -182,7 +204,10 @@ export function AccountSettingsForm({ profile, variant }: { profile: Profile; va
 
           {wantsValue && (
             <>
-              <Field label={draft.contactKind === 'email' ? 'Email address' : 'Phone number'} htmlFor="contactValue">
+              <Field
+                label={draft.contactKind === 'email' ? tr('auth.emailAddressLabel') : tr('accountSettings.phoneLabel')}
+                htmlFor="contactValue"
+              >
                 <Input
                   id="contactValue"
                   value={draft.contactValue}
@@ -199,10 +224,7 @@ export function AccountSettingsForm({ profile, variant }: { profile: Profile; va
                   onChange={(e) => set('consent', e.target.checked)}
                   className="mt-1 h-4 w-4"
                 />
-                <span>
-                  I agree that this contact detail is shared with the other side of each arrangement. It is not published
-                  anywhere else.
-                </span>
+                <span>{tr('accountSettings.consentCheckbox')}</span>
               </label>
             </>
           )}
@@ -211,7 +233,7 @@ export function AccountSettingsForm({ profile, variant }: { profile: Profile; va
 
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={save} disabled={busy}>
-          {busy ? 'Saving…' : 'Save changes'}
+          {busy ? tr('listingForm.saving') : tr('listingForm.saveChanges')}
         </Button>
         {message && (
           <p role={message.ok ? 'status' : 'alert'} className={message.ok ? 'text-sm text-moss-700' : 'text-sm text-red-700'}>

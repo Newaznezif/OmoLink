@@ -3,11 +3,14 @@ import { getRepo } from '@/lib/repo';
 import { authErrorResponse, requireRole, type Actor } from '@/lib/session';
 import { makeId } from '@/lib/ids';
 import { parseDecimalAmount } from '@/lib/money';
+import { getT } from '@/lib/i18n/server';
+import type { Translator } from '@/lib/i18n';
 import { UNIT_OF_SALES, type AvailabilityStatus, type Listing, type ListingKind, type UnitOfSale } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const t = getT();
   let actor: Actor;
   try {
     // requireRole reads the role and the account status back from the stored
@@ -15,11 +18,11 @@ export async function POST(req: Request) {
     // this write.
     actor = await requireRole(['producer', 'coordinator']);
   } catch (err) {
-    const { body, status } = authErrorResponse(err, 'Sign in as a producer first.');
+    const { body, status } = authErrorResponse(err, t('apiListings.signInAsProducer'));
     return NextResponse.json(body, { status });
   }
   const producer = await getRepo().getProfile(actor.profileId);
-  if (!producer) return NextResponse.json({ error: 'Sign in as a producer first.' }, { status: 401 });
+  if (!producer) return NextResponse.json({ error: t('apiListings.signInAsProducer') }, { status: 401 });
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
   const title = String(body.title ?? '').trim();
@@ -43,10 +46,10 @@ export async function POST(req: Request) {
   const producerId = producer.id;
 
   if (!title || !description || !categoryId || priceCents === null) {
-    return NextResponse.json({ error: 'Fill in every required field with a valid price.' }, { status: 400 });
+    return NextResponse.json({ error: t('apiListings.fillRequired') }, { status: 400 });
   }
-  if (!Number.isInteger(availableQuantity) || availableQuantity < 0) return NextResponse.json({ error: 'Invalid available quantity.' }, { status: 400 });
-  if (!Number.isInteger(minOrderQuantity) || minOrderQuantity < 1) return NextResponse.json({ error: 'Invalid minimum order quantity.' }, { status: 400 });
+  if (!Number.isInteger(availableQuantity) || availableQuantity < 0) return NextResponse.json({ error: t('apiListings.invalidAvailableQuantity') }, { status: 400 });
+  if (!Number.isInteger(minOrderQuantity) || minOrderQuantity < 1) return NextResponse.json({ error: t('apiListings.invalidMinimumQuantity') }, { status: 400 });
 
   const id = makeId('lst');
   const slug = makeSlug(title, id);
@@ -74,7 +77,7 @@ export async function POST(req: Request) {
     verification: producer.verification,
     published: publish,
     tourism: tourismMeta,
-    images: [makePlaceholderImage(id, title)],
+    images: [makePlaceholderImage(id, title, t)],
     isDemo: true
   };
 
@@ -82,7 +85,7 @@ export async function POST(req: Request) {
     const saved = await getRepo().createListing(listing);
     return NextResponse.json({ listing: saved }, { status: 201 });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Could not create the listing.';
+    const message = err instanceof Error ? err.message : t('apiListings.createFailed');
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
@@ -125,8 +128,8 @@ function readTourism(body: Record<string, unknown>): NonNullable<Listing['touris
   };
 }
 
-function makePlaceholderImage(listingId: string, title: string): Listing['images'][number] {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400"><rect width="600" height="400" fill="#dfa773"/><rect x="16" y="16" width="568" height="368" fill="none" stroke="rgba(255,255,255,0.4)" stroke-dasharray="8 6" rx="10"/><text x="50%" y="52%" text-anchor="middle" font-family="system-ui,sans-serif" font-size="26" fill="#331b0f">${escapeXml(title.slice(0, 40))}</text><text x="50%" y="62%" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#331b0f">Placeholder — sample image</text></svg>`;
+function makePlaceholderImage(listingId: string, title: string, t: Translator): Listing['images'][number] {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400"><rect width="600" height="400" fill="#dfa773"/><rect x="16" y="16" width="568" height="368" fill="none" stroke="rgba(255,255,255,0.4)" stroke-dasharray="8 6" rx="10"/><text x="50%" y="52%" text-anchor="middle" font-family="system-ui,sans-serif" font-size="26" fill="#331b0f">${escapeXml(title.slice(0, 40))}</text><text x="50%" y="62%" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#331b0f">${t('apiPlaceholder.sampleCaption')}</text></svg>`;
   return {
     id: `img_${listingId}`,
     listingId,

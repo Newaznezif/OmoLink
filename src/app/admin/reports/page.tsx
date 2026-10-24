@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { AdminSection, BackField } from '@/components/admin-shell';
 import { Badge, Button, Card, CardBody, Empty, Field, Input, Select } from '@/components/ui';
+import { getT } from '@/lib/i18n/server';
 import type { ListingReport } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,7 @@ type SearchParams = Record<string, string | string[] | undefined>;
 const STATUSES: ListingReport['status'][] = ['open', 'reviewing', 'resolved', 'rejected'];
 
 export default async function AdminReportsPage({ searchParams }: { searchParams: SearchParams }) {
+  const t = getT();
   const text = (key: string): string => (typeof searchParams[key] === 'string' ? (searchParams[key] as string) : '');
   const repo = getRepo();
   const [reports, listings] = await Promise.all([repo.listReports(), repo.listAllListings()]);
@@ -30,8 +32,12 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
 
   return (
     <AdminSection
-      title="Reported listings"
-      description={`${openCount} of ${reports.length} ${reports.length === 1 ? 'report is' : 'reports are'} awaiting a decision. A report is a signal from a visitor or an affected party — it is not proof. Decide it against the published community guidelines and record the reason; the outcome is stored with your account name in the audit log. Unpublishing or archiving the listing itself happens on the Listings tab, where the producer’s work and history are preserved.`}
+      title={t('listingReports.title')}
+      description={t('listingReports.description', {
+        openCount,
+        total: reports.length,
+        verb: reports.length === 1 ? t('listingReports.verbIs') : t('listingReports.verbAre')
+      })}
       searchParams={searchParams}
     >
       <Card>
@@ -39,29 +45,29 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
           <form method="get" className="grid md:grid-cols-4 gap-3">
             <div className="md:col-span-2">
               <label htmlFor="q" className="block text-sm font-semibold text-ink-900 mb-1">
-                Search reason, reporter or listing
+                {t('listingReports.searchLabel')}
               </label>
               <Input id="q" name="q" defaultValue={text('q')} />
             </div>
             <div>
               <label htmlFor="status" className="block text-sm font-semibold text-ink-900 mb-1">
-                Status
+                {t('reports.status')}
               </label>
               <Select id="status" name="status" defaultValue={status}>
-                <option value="">All</option>
+                <option value="">{t('reports.allOptions')}</option>
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>
-                    {s}
+                    {t(`listingReports.status.${s}`)}
                   </option>
                 ))}
               </Select>
             </div>
             <div className="flex items-end gap-2">
               <Button type="submit" size="sm">
-                Apply
+                {t('buyerInquiries.apply')}
               </Button>
               <Link href="/admin/reports" className="rounded-lg border border-ink-100 bg-white px-4 py-2 min-h-11 text-sm font-semibold">
-                Clear
+                {t('common.clear')}
               </Link>
             </div>
           </form>
@@ -70,8 +76,8 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
 
       {rows.length === 0 ? (
         <Empty
-          title="No report matches"
-          body="Reports arrive from the “report this listing” link on a public listing page. Nothing is seeded here to make the queue look busy."
+          title={t('listingReports.emptyTitle')}
+          body={t('listingReports.emptyBody')}
         />
       ) : (
         <div className="space-y-3">
@@ -87,9 +93,9 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
                           {listing?.title ?? r.listingId}
                         </Link>
                       </h3>
-                      <Badge tone={tone(r.status)}>{r.status}</Badge>
-                      {listing && !listing.published && <Badge tone="neutral">not in the marketplace</Badge>}
-                      {listing?.archived && <Badge tone="neutral">archived</Badge>}
+                      <Badge tone={tone(r.status)}>{t(`listingReports.status.${r.status}`)}</Badge>
+                      {listing && !listing.published && <Badge tone="neutral">{t('listingReports.badgeNotInMarketplace')}</Badge>}
+                      {listing?.archived && <Badge tone="neutral">{t('listingReports.badgeArchived')}</Badge>}
                     </div>
                     <p className="mt-1 text-sm text-ink-500">
                       {r.reporterName} · {r.reporterContact} · {new Date(r.createdAt).toLocaleString()}
@@ -97,32 +103,31 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
                     <p className="mt-2 text-sm text-ink-700 whitespace-pre-line rounded-lg bg-clay-50 p-3">{r.reason}</p>
                     {r.adminNote && (
                       <p className="mt-2 text-sm text-ink-700">
-                        <span className="font-semibold">Decision note:</span> {r.adminNote}
+                        <span className="font-semibold">{t('listingReports.decisionNote')}</span> {r.adminNote}
                       </p>
                     )}
                     <p className="mt-1 text-xs text-ink-500">
-                      Reporter contact is private to this queue. The guidelines explaining what a listing may claim are
-                      on the community guidelines page.
+                      {t('listingReports.reporterPrivateNote')}
                     </p>
                   </div>
 
                   <form method="post" action="/api/admin/reports" className="lg:w-72 shrink-0 space-y-2">
                     <BackField path="/admin/reports" />
                     <input type="hidden" name="reportId" value={r.id} />
-                    <Field label="Decision" htmlFor={`status-${r.id}`}>
+                    <Field label={t('listingReports.decisionLabel')} htmlFor={`status-${r.id}`}>
                       <Select id={`status-${r.id}`} name="status" defaultValue={r.status === 'open' ? 'reviewing' : r.status}>
                         {STATUSES.map((s) => (
                           <option key={s} value={s}>
-                            {s}
+                            {t(`listingReports.status.${s}`)}
                           </option>
                         ))}
                       </Select>
                     </Field>
-                    <Field label="Reason (required)" htmlFor={`note-${r.id}`}>
+                    <Field label={t('listingReports.reasonLabel')} htmlFor={`note-${r.id}`}>
                       <Input id={`note-${r.id}`} name="note" defaultValue={r.adminNote ?? ''} maxLength={400} />
                     </Field>
                     <Button type="submit" size="sm">
-                      Save decision
+                      {t('listingReports.saveDecision')}
                     </Button>
                   </form>
                 </CardBody>
@@ -134,16 +139,16 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">How a decision should be made</h2>
+          <h2 className="font-semibold text-ink-900">{t('listingReports.howTitle')}</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-ink-700">
-            <li>Read the listing as a buyer would, and check the claim against the producer’s own description.</li>
-            <li>Where a report concerns a cultural or community matter, consult the guidelines and the people affected before removing anything.</li>
-            <li>Prefer unpublishing with a recorded reason over deletion: deletion discards the inquiry history.</li>
-            <li>“Resolved” and “rejected” both need a reason, so a later reviewer can see what was weighed.</li>
+            <li>{t('listingReports.how1')}</li>
+            <li>{t('listingReports.how2')}</li>
+            <li>{t('listingReports.how3')}</li>
+            <li>{t('listingReports.how4')}</li>
           </ul>
           <p className="mt-2 text-sm">
             <Link href="/community-guidelines" className="underline font-semibold text-clay-700">
-              Open the community guidelines
+              {t('listingReports.guidelinesLink')}
             </Link>
           </p>
         </CardBody>

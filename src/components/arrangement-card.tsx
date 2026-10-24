@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { t, type TranslationKey } from '@/lib/i18n';
+import type { LanguageCode } from '@/lib/types';
 import { Badge, Card, CardBody } from './ui';
 import { SampleTag } from './status-labels';
 import { BuyerArrangementActions } from './buyer-arrangement-actions';
@@ -17,6 +19,15 @@ export function arrangementLabel(status: string): string {
   return status.replace(/_/g, ' ');
 }
 
+const STATUS_WORD: Record<string, TranslationKey> = {
+  new: 'inquiries.statusWord.new',
+  accepted: 'inquiries.statusWord.accepted',
+  awaiting_confirmation: 'inquiries.statusWord.awaiting_confirmation',
+  fulfillment_arranged: 'inquiries.statusWord.fulfillment_arranged',
+  completed: 'inquiries.statusWord.completed',
+  cancelled: 'inquiries.statusWord.cancelled'
+};
+
 /**
  * One inquiry, rendered for whichever party owns the record. Amounts are the
  * estimate the server computed from the listing price at the time — never a
@@ -28,14 +39,21 @@ export function ArrangementCard({
   listing,
   canAct = false,
   showHistory = false,
-  side = 'buyer'
+  side = 'buyer',
+  // `lang` defaults to English only so dashboard callers owned by other passes
+  // keep rendering until they thread the prop in.
+  lang = 'en'
 }: {
   inquiry: Inquiry;
   listing?: Listing;
   canAct?: boolean;
   showHistory?: boolean;
   side?: 'buyer' | 'seller';
+  lang?: LanguageCode;
 }) {
+  const statusKey = STATUS_WORD[inquiry.status];
+  const statusLabel = statusKey ? t(lang, statusKey) : arrangementLabel(inquiry.status);
+
   return (
     <Card>
       <CardBody>
@@ -48,36 +66,36 @@ export function ArrangementCard({
                   {listing.title}
                 </Link>
               ) : (
-                'This listing is no longer published'
+                t(lang, 'arrangement.listingUnpublished')
               )}
             </h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge tone={arrangementTone(inquiry.status)}>{arrangementLabel(inquiry.status)}</Badge>
-            {listing?.kind === 'service' ? <Badge tone="info">booking</Badge> : null}
+            <Badge tone={arrangementTone(inquiry.status)}>{statusLabel}</Badge>
+            {listing?.kind === 'service' ? <Badge tone="info">{t(lang, 'arrangement.bookingBadge')}</Badge> : null}
             {inquiry.isDemo && <SampleTag />}
           </div>
         </div>
 
         <dl className="mt-3 grid sm:grid-cols-4 gap-3 text-sm">
           <div>
-            <dt className="text-ink-500">Quantity</dt>
+            <dt className="text-ink-500">{t(lang, 'receipt.quantity')}</dt>
             <dd className="text-ink-900 font-medium">
               {inquiry.quantity} {inquiry.unitOfSale}
             </dd>
           </div>
           <div>
-            <dt className="text-ink-500">Estimated subtotal</dt>
+            <dt className="text-ink-500">{t(lang, 'inquiry.subtotal')}</dt>
             <dd className="text-ink-900 font-medium">
               {formatMoney({ cents: inquiry.estimatedSubtotalCents, currency: inquiry.currency })}
             </dd>
           </div>
           <div>
-            <dt className="text-ink-500">Arrange</dt>
+            <dt className="text-ink-500">{t(lang, 'arrangement.arrange')}</dt>
             <dd className="text-ink-900">{inquiry.preference}</dd>
           </div>
           <div>
-            <dt className="text-ink-500">Preferred date</dt>
+            <dt className="text-ink-500">{t(lang, 'inquiries.preferredDate')}</dt>
             <dd className="text-ink-900">{inquiry.preferredDate || '—'}</dd>
           </div>
         </dl>
@@ -85,11 +103,11 @@ export function ArrangementCard({
         {side === 'seller' && (
           <dl className="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
             <div>
-              <dt className="text-ink-500">From</dt>
+              <dt className="text-ink-500">{t(lang, 'arrangement.from')}</dt>
               <dd className="text-ink-900 font-medium">{inquiry.buyerName}</dd>
             </div>
             <div>
-              <dt className="text-ink-500">Reply to</dt>
+              <dt className="text-ink-500">{t(lang, 'inquiries.replyTo')}</dt>
               <dd className="text-ink-900">{inquiry.buyerContact}</dd>
             </div>
           </dl>
@@ -103,7 +121,10 @@ export function ArrangementCard({
         )}
 
         <p className="mt-3 text-sm text-ink-500">
-          Sent {new Date(inquiry.createdAt).toLocaleString()} · last change {new Date(inquiry.updatedAt).toLocaleString()}
+          {t(lang, 'arrangement.sentLine', {
+            sent: new Date(inquiry.createdAt).toLocaleString(),
+            changed: new Date(inquiry.updatedAt).toLocaleString()
+          })}
         </p>
 
         {showHistory && inquiry.events.length > 0 && (
@@ -118,19 +139,17 @@ export function ArrangementCard({
 
         {canAct && side === 'buyer' && (
           <div className="mt-3">
-            <BuyerArrangementActions inquiryId={inquiry.id} current={inquiry.status} />
+            <BuyerArrangementActions inquiryId={inquiry.id} current={inquiry.status} lang={lang} />
           </div>
         )}
         {canAct && side === 'seller' && (
           <div className="mt-3">
-            <InquiryStatusPicker inquiryId={inquiry.id} current={inquiry.status} />
+            <InquiryStatusPicker inquiryId={inquiry.id} current={inquiry.status} lang={lang} />
           </div>
         )}
 
         <p className="mt-3 text-xs text-ink-500">
-          {side === 'seller'
-            ? 'The estimate is the listing price at the time of the request times the quantity asked for; it is not an invoice. Payment, where it is taken through OmoNetTab, is a separate record and is shown on the inquiry page.'
-            : 'The estimate is what the listing price times your quantity came to when you sent the request; it is not an invoice. Payment, where it is taken through OmoNetTab, is a separate record and is shown on the inquiry page.'}
+          {side === 'seller' ? t(lang, 'arrangement.estimateNoteSeller') : t(lang, 'arrangement.estimateNoteBuyer')}
         </p>
       </CardBody>
     </Card>

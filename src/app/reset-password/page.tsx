@@ -4,38 +4,43 @@ import { supabaseServer } from '@/lib/supabase/server';
 import { getRepo } from '@/lib/repo';
 import { landingFor } from '@/lib/session';
 import { Badge, Card, CardBody, Section } from '@/components/ui';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: 'Choose a new password',
-  description: 'Set a new password from the link the authentication service sent you.'
-};
+export async function generateMetadata() {
+  const t = getT();
+  return {
+    title: t('auth.resetTitle'),
+    description: t('auth.resetMetaDescription')
+  };
+}
 
 export default async function ResetPasswordPage({
   searchParams
 }: {
   searchParams: { error?: string; message?: string };
 }) {
+  const t = getT();
   if (!isSupabaseMode()) {
     return (
       <Section
-        eyebrow="Account help"
-        title="Nothing to reset yet"
-        description="Password reset needs a real account, and this site is still running in demo mode with sample accounts. Use the sign-in page to explore."
+        eyebrow={t('auth.accountHelpEyebrow')}
+        title={t('auth.resetDemoTitle')}
+        description={t('auth.resetDemoDescription')}
       >
         <Card>
           <CardBody>
             <div className="flex flex-wrap gap-2 text-sm">
               <a href="/sign-in" className="underline font-semibold text-clay-700">
-                Demo sign in
+                {t('auth.demoSignInLink')}
               </a>
               <a href="/forgot-password" className="underline font-semibold text-clay-700">
-                Why reset is unavailable
+                {t('auth.whyResetUnavailable')}
               </a>
             </div>
             <div className="mt-3">
-              <Badge tone="warning">Demo mode</Badge>
+              <Badge tone="warning">{t('auth.demoModeBadge')}</Badge>
             </div>
           </CardBody>
         </Card>
@@ -48,32 +53,35 @@ export default async function ResetPasswordPage({
     data: { user }
   } = await client.auth.getUser();
   // The recovery link is what grants this page; opening it directly proves nothing.
-  if (!user) redirect('/sign-in?error=' + encodeURIComponent('Open the reset link from your email to choose a new password.'));
+  if (!user) redirect('/sign-in?error=' + encodeURIComponent(t('auth.resetNeedsLink')));
 
   async function action(formData: FormData) {
     'use server';
+    // Must not close over the renderer's translator: a function in the closure
+    // cannot be serialized into the client action reference.
+    const t = getT();
     const password = String(formData.get('password') ?? '');
     const repeat = String(formData.get('passwordRepeat') ?? '');
     if (password.length < 8) {
-      redirect('/reset-password?error=' + encodeURIComponent('Use at least 8 characters. A long phrase is easier to remember than a short code.'));
+      redirect('/reset-password?error=' + encodeURIComponent(t('auth.resetErrorTooShort', { min: 8 })));
     }
     if (password !== repeat) {
-      redirect('/reset-password?error=' + encodeURIComponent('The two entries do not match.'));
+      redirect('/reset-password?error=' + encodeURIComponent(t('auth.resetErrorMismatch')));
     }
     const { error } = await supabaseServer().auth.updateUser({ password });
     if (error) {
       redirect('/reset-password?error=' + encodeURIComponent(error.message));
     }
-    redirect('/reset-password?message=' + encodeURIComponent('New password saved. You are still signed in on this device.'));
+    redirect('/reset-password?message=' + encodeURIComponent(t('auth.resetSaved')));
   }
 
   const profileRow = await getRepo().getProfileByUserId(user.id);
 
   return (
     <Section
-      eyebrow="Account help"
-      title="Choose a new password"
-      description="You arrived from a reset link, so this device holds a short-lived recovery session. Only the new password is sent, and it is stored as a hash by the authentication service — never as text here."
+      eyebrow={t('auth.accountHelpEyebrow')}
+      title={t('auth.resetTitle')}
+      description={t('auth.resetDescription')}
     >
       <Card>
         <CardBody>
@@ -93,14 +101,14 @@ export default async function ResetPasswordPage({
                 href={profileRow ? landingFor(profileRow.role) : '/onboarding'}
                 className="underline font-semibold text-clay-700"
               >
-                {profileRow ? 'Continue to your account' : 'Finish your profile'}
+                {profileRow ? t('auth.continueAccount') : t('auth.finishProfile')}
               </a>
             </p>
           ) : (
             <form action={action} className="space-y-4">
               <div>
                 <label htmlFor="password" className="block text-sm font-semibold text-ink-900 mb-1">
-                  New password
+                  {t('auth.newPasswordLabel')}
                 </label>
                 <input
                   id="password"
@@ -114,7 +122,7 @@ export default async function ResetPasswordPage({
               </div>
               <div>
                 <label htmlFor="passwordRepeat" className="block text-sm font-semibold text-ink-900 mb-1">
-                  Repeat the new password
+                  {t('auth.repeatPasswordLabel')}
                 </label>
                 <input
                   id="passwordRepeat"
@@ -127,13 +135,12 @@ export default async function ResetPasswordPage({
                 />
               </div>
               <button type="submit" className="rounded-lg bg-clay-700 px-4 py-2 font-semibold text-white hover:bg-clay-800">
-                Save new password
+                {t('auth.saveNewPassword')}
               </button>
             </form>
           )}
           <p className="mt-3 text-xs text-ink-500">
-            Signed in as {user.email}. If you did not request this reset, change your password and tell an administrator —
-            the account’s role and status are set by them, not by this page.
+            {t('auth.resetSignedInAs', { email: user.email ?? '' })}
           </p>
         </CardBody>
       </Card>

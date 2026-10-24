@@ -8,6 +8,8 @@ import { ListingCard } from '@/components/listing-card';
 import { ProducerCard } from '@/components/producer-card';
 import { Button, Card, CardBody, LinkButton, Section } from '@/components/ui';
 import { CollectiveOpportunityCard } from '@/components/collective-card';
+import { TeamMemberCard } from '@/components/team-card';
+import { TEAM_MEMBERS } from '@/lib/team';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +77,7 @@ export default async function HomePage() {
       </>
     ),
     how_it_works: () => <HowItWorksTeaser />,
+    team: () => <TeamPreview />,
     trust: () => <TrustSection />
   };
 
@@ -221,7 +224,7 @@ function CollectivePreview({ opportunities }: { opportunities: CollectiveOpportu
     <Section eyebrow={t('home.collectiveEyebrow')} title={t('home.collectiveTitle')} description={t('home.collectiveDescription')}
       actions={
         <Link href="/collective-orders" className="text-clay-700 font-semibold underline">
-          View all →
+          {t('common.viewAll')}
         </Link>
       }
     >
@@ -267,6 +270,25 @@ function HowItWorksTeaser() {
             </p>
           </CardBody>
         </Card>
+      </div>
+    </Section>
+  );
+}
+
+function TeamPreview() {
+  const t = getT();
+  return (
+    <Section
+      id="team"
+      eyebrow={t('home.teamEyebrow')}
+      title={t('home.teamTitle')}
+      description={t('home.teamBody')}
+      actions={<LinkButton href="/team" variant="secondary">{t('home.teamLink')}</LinkButton>}
+    >
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {TEAM_MEMBERS.map((member) => (
+          <TeamMemberCard key={member.id} member={member} compact />
+        ))}
       </div>
     </Section>
   );

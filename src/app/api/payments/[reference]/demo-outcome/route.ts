@@ -4,6 +4,7 @@ import { isDemoMode } from '@/lib/store';
 import { authErrorResponse, requireRole, type Actor } from '@/lib/session';
 import { verifyPayment } from '@/lib/payment-workflow';
 import { isDemoOutcome, recordDemoOutcome } from '@/lib/payment-providers/demo';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,28 +20,29 @@ export const dynamic = 'force-dynamic';
  * never taken from a request in the live flow at all.
  */
 export async function POST(req: Request, { params }: { params: { reference: string } }) {
-  if (!isDemoMode()) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
+  const t = getT();
+  if (!isDemoMode()) return NextResponse.json({ error: t('apiDemoCheckout.notFound') }, { status: 404 });
 
   let actor: Actor;
   try {
     actor = await requireRole('buyer');
   } catch (err) {
-    const { body, status } = authErrorResponse(err, 'Sign in as the buyer of this attempt.');
+    const { body, status } = authErrorResponse(err, t('apiDemoCheckout.signInAsBuyer'));
     return NextResponse.json(body, { status });
   }
 
   const body = (await req.json().catch(() => ({}))) as { outcome?: unknown };
   if (!isDemoOutcome(body.outcome)) {
-    return NextResponse.json({ error: 'Choose one of the outcomes the simulated checkout offers.' }, { status: 400 });
+    return NextResponse.json({ error: t('apiDemoCheckout.chooseOutcome') }, { status: 400 });
   }
 
   const payment = await getRepo().getPayment(params.reference);
-  if (!payment) return NextResponse.json({ error: 'No payment with that reference.' }, { status: 404 });
+  if (!payment) return NextResponse.json({ error: t('apiDemoCheckout.noPayment') }, { status: 404 });
   if (payment.buyerProfileId !== actor.profileId) {
-    return NextResponse.json({ error: 'Only the buyer of this attempt can use its checkout page.' }, { status: 403 });
+    return NextResponse.json({ error: t('apiDemoCheckout.onlyBuyer') }, { status: 403 });
   }
   if (payment.status !== 'pending') {
-    return NextResponse.json({ error: `This attempt is already ${payment.status}.` }, { status: 409 });
+    return NextResponse.json({ error: t('apiDemoCheckout.attemptAlready', { status: payment.status }) }, { status: 409 });
   }
 
   try {
@@ -48,7 +50,7 @@ export async function POST(req: Request, { params }: { params: { reference: stri
   } catch (err: unknown) {
     // The simulator keeps its answer in process memory, so a server restart can
     // legitimately have forgotten an attempt the demo store still shows.
-    const message = err instanceof Error && err.message ? err.message : 'That simulated checkout is no longer open.';
+    const message = err instanceof Error && err.message ? err.message : t('apiDemoCheckout.checkoutNotOpen');
     return NextResponse.json({ error: message }, { status: 409 });
   }
   const result = await verifyPayment(payment.reference, { actorProfileId: actor.profileId });

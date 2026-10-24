@@ -1,17 +1,23 @@
 import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
+import { getLanguage, getT } from '@/lib/i18n/server';
 import { Badge, Card, CardBody, Section } from '@/components/ui';
 import { OpportunityForm } from '@/components/opportunity-form';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: 'Open a group order',
-  description: 'Set the target, the pickup plan and the deadline a group can contribute towards.'
-};
+export async function generateMetadata() {
+  const t = getT();
+  return {
+    title: t('groupSelling.openAction'),
+    description: t('groupSelling.openMetaDescription')
+  };
+}
 
 export default async function NewOpportunityPage() {
+  const t = getT();
+  const lang = getLanguage();
   const actor = await requireArea('/dashboard', ['producer', 'coordinator']);
   const repo = getRepo();
   const [profile, categories, groups] = await Promise.all([
@@ -27,38 +33,36 @@ export default async function NewOpportunityPage() {
   if (!canCoordinate) {
     return (
       <Section
-        eyebrow="Dashboard"
-        title="Opening a group order is a coordinator power"
-        description="Any selling account can contribute to a group order. Creating one — and confirming what other members committed — belongs to an account an administrator has marked as a group coordinator."
+        eyebrow={t('groupSelling.eyebrow')}
+        title={t('groupSelling.coordinatorPowerTitle')}
+        description={t('groupSelling.coordinatorPowerDescription')}
       >
         <Card>
           <CardBody>
             {actor.role !== 'coordinator' ? (
               <p className="text-sm text-ink-700">
-                Your account type is <strong>{actor.role}</strong>. Ask an administrator to assign coordinator rights for
-                your group; the assignment is recorded in the account and in the audit log, and it cannot be granted from
-                this page.
+                {t('groupSelling.accountTypeLead')} <strong>{actor.role}</strong>
+                {t('groupSelling.accountTypeTail')}
               </p>
             ) : (
               <p className="text-sm text-ink-700">
-                You are a coordinator, but no group record lists you as one of its members or coordinators yet, so there is
-                nothing to organise an order under. An administrator can add your account to the group.
+                {t('groupSelling.coordinatorNoGroup')}
               </p>
             )}
             <div className="mt-3 flex flex-wrap gap-2 text-sm">
               <Link href="/dashboard/collective-orders" className="underline font-semibold text-clay-700">
-                My contributions
+                {t('groupSelling.myContributions')}
               </Link>
               <Link href="/collective-orders" className="underline font-semibold text-clay-700">
-                Browse open group orders
+                {t('groupSelling.browseOpenGroupOrders')}
               </Link>
               <Link href="/contact" className="underline font-semibold text-clay-700">
-                Contact an administrator
+                {t('groupSelling.contactAdmin')}
               </Link>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Badge tone="neutral">Role: {actor.role}</Badge>
-              <Badge tone="neutral">Groups you belong to: {myGroups.length}</Badge>
+              <Badge tone="neutral">{t('groupSelling.roleBadge', { role: actor.role })}</Badge>
+              <Badge tone="neutral">{t('groupSelling.groupsBadge', { count: myGroups.length })}</Badge>
             </div>
           </CardBody>
         </Card>
@@ -68,11 +72,11 @@ export default async function NewOpportunityPage() {
 
   return (
     <Section
-      eyebrow="Dashboard"
-      title="Open a group order"
-      description="A group order is a shared request for quantity, not a payment. Write the plan the way you would explain it at the meeting: what is wanted, where it is picked up, and by when."
+      eyebrow={t('groupSelling.eyebrow')}
+      title={t('groupSelling.openAction')}
+      description={t('groupSelling.newDescription')}
     >
-      <OpportunityForm categories={categories} groups={myGroups} />
+      <OpportunityForm lang={lang} categories={categories} groups={myGroups} />
     </Section>
   );
 }

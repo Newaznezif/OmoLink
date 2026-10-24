@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRepo } from '@/lib/repo';
 import { authErrorResponse, requireRole, type Actor } from '@/lib/session';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +13,12 @@ export const dynamic = 'force-dynamic';
  * accounts up front and validates the number.
  */
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const t = getT();
   let actor: Actor;
   try {
     actor = await requireRole(['producer', 'coordinator', 'admin']);
   } catch (err) {
-    const { body, status } = authErrorResponse(err, 'Sign in before changing a contribution.');
+    const { body, status } = authErrorResponse(err, t('apiCollective.signInToChangeContribution'));
     return NextResponse.json(body, { status });
   }
 
@@ -36,14 +38,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (action === 'quantity') {
       const quantity = Number(body.quantity);
       if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 100000) {
-        return NextResponse.json({ error: 'Quantity must be a whole number between 1 and 100000.' }, { status: 400 });
+        return NextResponse.json({ error: t('apiCollective.quantityRange') }, { status: 400 });
       }
       const contribution = await repo.updateContribution(params.id, quantity, actor);
       return NextResponse.json({ contribution });
     }
-    return NextResponse.json({ error: 'Choose what to do with this contribution.' }, { status: 400 });
+    return NextResponse.json({ error: t('apiCollective.chooseAction') }, { status: 400 });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Could not change this contribution.';
+    const message = err instanceof Error ? err.message : t('apiCollective.changeContributionFailed');
     const notFound = /not found/i.test(message);
     return NextResponse.json({ error: message }, { status: notFound ? 404 : 400 });
   }

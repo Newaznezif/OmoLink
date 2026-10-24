@@ -3,6 +3,7 @@ import { getRepo } from '@/lib/repo';
 import { isDemoMode } from '@/lib/store';
 import { AdminSection } from '@/components/admin-shell';
 import { Badge, Button, Card, CardBody, Empty, Input, Select } from '@/components/ui';
+import { getT } from '@/lib/i18n/server';
 import type { AuditAction } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,7 @@ const ACTIONS: AuditAction[] = [
 const RECORD_TYPES = ['profile', 'listing', 'category', 'settings', 'report', 'review', 'opportunity'] as const;
 
 export default async function AdminAuditLogsPage({ searchParams }: { searchParams: SearchParams }) {
+  const t = getT();
   const text = (key: string): string => (typeof searchParams[key] === 'string' ? (searchParams[key] as string) : '');
   const limit = Math.min(Number(text('limit') || 100) || 100, 500);
   const entries = await getRepo().listAuditLogs(limit);
@@ -43,15 +45,13 @@ export default async function AdminAuditLogsPage({ searchParams }: { searchParam
 
   return (
     <AdminSection
-      title="Audit log"
-      description="Who changed what, newest first. Entries carry a safe summary only: passwords, session cookies, API keys and service-role keys are never written here, because a log is usually readable by more people than the secrets are."
+      title={t('nav.auditLog')}
+      description={t('audit.description')}
       searchParams={searchParams}
     >
       {isDemoMode() && (
         <p className="rounded-lg border border-clay-200 bg-clay-50 px-4 py-3 text-sm text-clay-800">
-          <strong>Demo data.</strong> In demo mode the log lives in this app instance’s memory and resets when it
-          restarts. In a Supabase deployment the same entries are stored in the <code>audit_logs</code> table, readable
-          only through Row Level Security by an administrator.
+          <strong>{t('audit.demoTitle')}</strong> {t('audit.demoBodyBefore')} <code>audit_logs</code> {t('audit.demoBodyAfter')}
         </p>
       )}
 
@@ -60,16 +60,16 @@ export default async function AdminAuditLogsPage({ searchParams }: { searchParam
           <form method="get" className="grid md:grid-cols-5 gap-3">
             <div className="md:col-span-2">
               <label htmlFor="q" className="block text-sm font-semibold text-ink-900 mb-1">
-                Search actor, record or summary
+                {t('audit.searchLabel')}
               </label>
               <Input id="q" name="q" defaultValue={text('q')} />
             </div>
             <div>
               <label htmlFor="action" className="block text-sm font-semibold text-ink-900 mb-1">
-                Action
+                {t('audit.action')}
               </label>
               <Select id="action" name="action" defaultValue={action}>
-                <option value="">All</option>
+                <option value="">{t('reports.allOptions')}</option>
                 {ACTIONS.map((a) => (
                   <option key={a} value={a}>
                     {a.replace(/_/g, ' ')}
@@ -79,10 +79,10 @@ export default async function AdminAuditLogsPage({ searchParams }: { searchParam
             </div>
             <div>
               <label htmlFor="recordType" className="block text-sm font-semibold text-ink-900 mb-1">
-                Record type
+                {t('audit.recordType')}
               </label>
               <Select id="recordType" name="recordType" defaultValue={recordType}>
-                <option value="">All</option>
+                <option value="">{t('reports.allOptions')}</option>
                 {RECORD_TYPES.map((r) => (
                   <option key={r} value={r}>
                     {r}
@@ -92,7 +92,7 @@ export default async function AdminAuditLogsPage({ searchParams }: { searchParam
             </div>
             <div>
               <label htmlFor="limit" className="block text-sm font-semibold text-ink-900 mb-1">
-                Newest entries
+                {t('audit.newestEntries')}
               </label>
               <Select id="limit" name="limit" defaultValue={String(limit)}>
                 {[50, 100, 250, 500].map((n) => (
@@ -104,10 +104,10 @@ export default async function AdminAuditLogsPage({ searchParams }: { searchParam
             </div>
             <div className="md:col-span-5 flex items-end gap-2">
               <Button type="submit" size="sm">
-                Apply
+                {t('buyerInquiries.apply')}
               </Button>
               <Link href="/admin/audit-logs" className="rounded-lg border border-ink-100 bg-white px-4 py-2 min-h-11 text-sm font-semibold">
-                Clear
+                {t('common.clear')}
               </Link>
             </div>
           </form>
@@ -116,11 +116,11 @@ export default async function AdminAuditLogsPage({ searchParams }: { searchParam
 
       {rows.length === 0 ? (
         <Empty
-          title="Nothing to show"
+          title={t('audit.emptyTitle')}
           body={
             entries.length === 0
-              ? 'No privileged change has been recorded yet. The log only fills when an administrator acts.'
-              : 'No entry matches these filters.'
+              ? t('audit.emptyNoEntriesBody')
+              : t('audit.emptyFilteredBody')
           }
         />
       ) : (
@@ -128,15 +128,15 @@ export default async function AdminAuditLogsPage({ searchParams }: { searchParam
           <CardBody className="overflow-x-auto">
             <table className="w-full text-sm">
               <caption className="text-left text-xs text-ink-500 pb-2">
-                Showing {rows.length} of {entries.length} fetched {entries.length === 1 ? 'entry' : 'entries'}.
+                {t('audit.showing', { shown: rows.length, total: entries.length, unit: entries.length === 1 ? t('audit.entry') : t('audit.entries') })}
               </caption>
               <thead>
                 <tr className="text-left border-b border-ink-100">
-                  <th className="py-2 pr-3 font-semibold text-ink-900 whitespace-nowrap">When</th>
-                  <th className="py-2 pr-3 font-semibold text-ink-900">Administrator</th>
-                  <th className="py-2 pr-3 font-semibold text-ink-900">Action</th>
-                  <th className="py-2 pr-3 font-semibold text-ink-900">Record</th>
-                  <th className="py-2 font-semibold text-ink-900">Summary</th>
+                  <th className="py-2 pr-3 font-semibold text-ink-900 whitespace-nowrap">{t('audit.when')}</th>
+                  <th className="py-2 pr-3 font-semibold text-ink-900">{t('auth.demoAdminTitle')}</th>
+                  <th className="py-2 pr-3 font-semibold text-ink-900">{t('audit.action')}</th>
+                  <th className="py-2 pr-3 font-semibold text-ink-900">{t('audit.record')}</th>
+                  <th className="py-2 font-semibold text-ink-900">{t('reports.summaryHeading')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -177,15 +177,15 @@ export default async function AdminAuditLogsPage({ searchParams }: { searchParam
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold text-ink-900">What is and is not recorded</h2>
+          <h2 className="font-semibold text-ink-900">{t('audit.recordedTitle')}</h2>
           <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-ink-700">
-            <li>Role changes, suspensions, verification decisions, listing moderation, category edits, report and review decisions, and site-settings saves.</li>
-            <li>Ordinary browsing and a buyer submitting an inquiry are not logged — a person arranging a purchase is not an administrative action.</li>
-            <li>Summaries store the administrator’s name and the record id, not the record’s private contents.</li>
+            <li>{t('audit.recorded1')}</li>
+            <li>{t('audit.recorded2')}</li>
+            <li>{t('audit.recorded3')}</li>
           </ul>
           <p className="mt-2 text-sm">
             <Link href="/admin/roles" className="underline font-semibold text-clay-700">
-              Review which role can do what
+              {t('audit.rolesLink')}
             </Link>
           </p>
         </CardBody>

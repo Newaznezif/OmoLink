@@ -2,26 +2,31 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { t, type TranslationKey } from '@/lib/i18n';
+import type { LanguageCode } from '@/lib/types';
 import { Button, Field, Select, Textarea } from './ui';
 
-const RATINGS = [
-  { v: '5', label: '5 — exactly as described, would buy again' },
-  { v: '4', label: '4 — good, small issue' },
-  { v: '3', label: '3 — acceptable' },
-  { v: '2', label: '2 — problems worth knowing' },
-  { v: '1', label: '1 — did not arrive or was not as described' }
+const RATING_KEYS: { v: string; label: TranslationKey }[] = [
+  { v: '5', label: 'reviewForm.score5' },
+  { v: '4', label: 'reviewForm.score4' },
+  { v: '3', label: 'reviewForm.score3' },
+  { v: '2', label: 'reviewForm.score2' },
+  { v: '1', label: 'reviewForm.score1' }
 ];
 
 export function ReviewForm({
+  lang,
   listingId,
   inquiryId,
   listingTitle
 }: {
+  lang: LanguageCode;
   listingId: string;
   inquiryId: string;
   listingTitle: string;
 }) {
   const router = useRouter();
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) => t(lang, key, vars);
   const [rating, setRating] = useState('5');
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
@@ -29,7 +34,7 @@ export function ReviewForm({
 
   async function submit() {
     if (comment.trim().length < 4) {
-      setMessage({ ok: false, text: 'Add a few words so the review is useful to the next buyer.' });
+      setMessage({ ok: false, text: tr('reviewForm.errorTooShort') });
       return;
     }
     setBusy(true);
@@ -41,12 +46,12 @@ export function ReviewForm({
         body: JSON.stringify({ listingId, inquiryId, rating: Number(rating), comment })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error ?? 'Could not save the review.');
-      setMessage({ ok: true, text: 'Review saved and shown on the listing. Thank you — it is tied to the arrangement you completed.' });
+      if (!res.ok) throw new Error(json?.error ?? tr('reviewForm.saveFailed'));
+      setMessage({ ok: true, text: tr('reviewForm.saved') });
       setComment('');
       router.refresh();
     } catch (err: unknown) {
-      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Something went wrong.' });
+      setMessage({ ok: false, text: err instanceof Error ? err.message : tr('report.generic') });
     } finally {
       setBusy(false);
     }
@@ -54,20 +59,16 @@ export function ReviewForm({
 
   return (
     <div className="space-y-3">
-      <Field label={`Rating for ${listingTitle}`} htmlFor="review-rating" hint="One review per arrangement.">
+      <Field label={tr('reviewForm.ratingLabel', { name: listingTitle })} htmlFor="review-rating" hint={tr('reviewForm.ratingHint')}>
         <Select id="review-rating" name="rating" value={rating} onChange={(e) => setRating(e.target.value)}>
-          {RATINGS.map((r) => (
+          {RATING_KEYS.map((r) => (
             <option key={r.v} value={r.v}>
-              {r.label}
+              {tr(r.label)}
             </option>
           ))}
         </Select>
       </Field>
-      <Field
-        label="What happened"
-        htmlFor="review-comment"
-        hint="Quantity, quality, whether the pickup or the guide went as agreed. No phone numbers or addresses — they are published to every visitor."
-      >
+      <Field label={tr('reviewForm.commentLabel')} htmlFor="review-comment" hint={tr('reviewForm.commentHint')}>
         <Textarea
           id="review-comment"
           name="comment"
@@ -78,7 +79,7 @@ export function ReviewForm({
       </Field>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" onClick={submit} disabled={busy}>
-          {busy ? 'Saving…' : 'Post review'}
+          {busy ? tr('reviewForm.saving') : tr('reviewForm.submit')}
         </Button>
         {message && (
           <p

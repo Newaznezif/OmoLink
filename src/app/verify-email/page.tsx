@@ -2,13 +2,17 @@ import { redirect } from 'next/navigation';
 import { isSupabaseMode } from '@/lib/supabase/config';
 import { supabaseServer } from '@/lib/supabase/server';
 import { Badge, Card, CardBody, Section } from '@/components/ui';
+import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: 'Confirm your email address',
-  description: 'Ask OmoNetTab to send the confirmation email again.'
-};
+export async function generateMetadata() {
+  const t = getT();
+  return {
+    title: t('auth.verifyTitle'),
+    description: t('auth.verifyMetaDescription')
+  };
+}
 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
@@ -19,17 +23,18 @@ export default async function VerifyEmailPage({
 }: {
   searchParams: { error?: string; message?: string };
 }) {
+  const t = getT();
   async function action(formData: FormData) {
     'use server';
+    // Must not close over the renderer's translator: a function in the closure
+    // cannot be serialized into the client action reference.
+    const t = getT();
     const email = String(formData.get('email') ?? '').trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      redirect('/verify-email?error=' + encodeURIComponent('Enter the email address you signed up with.'));
+      redirect('/verify-email?error=' + encodeURIComponent(t('auth.errorEmailRequired')));
     }
     if (!isSupabaseMode()) {
-      redirect(
-        '/verify-email?error=' +
-          encodeURIComponent('Demo mode has no email service and no addresses to confirm, so nothing was sent.')
-      );
+      redirect('/verify-email?error=' + encodeURIComponent(t('auth.verifyDemoError')));
     }
     const { error } = await supabaseServer().auth.resend({
       type: 'signup',
@@ -39,36 +44,31 @@ export default async function VerifyEmailPage({
     if (error) {
       redirect('/verify-email?error=' + encodeURIComponent(error.message));
     }
-    redirect(
-      '/verify-email?message=' +
-        encodeURIComponent(
-          'If that address needs confirming, a new link has been sent by the authentication service. Addresses already confirmed, or with no account, get the same answer here.'
-        )
-    );
+    redirect('/verify-email?message=' + encodeURIComponent(t('auth.verifySentMessage')));
   }
 
   if (!isSupabaseMode()) {
     return (
       <Section
-        eyebrow="Account help"
-        title="Email confirmation is not available yet"
-        description="This site runs in demo mode, where a sample account is created already signed in and no email address is stored, so there is nothing to confirm."
+        eyebrow={t('auth.accountHelpEyebrow')}
+        title={t('auth.verifyDemoTitle')}
+        description={t('auth.verifyDemoDescription')}
       >
         <Card>
           <CardBody>
             <p className="text-sm text-ink-700">
-              Email confirmation arrives with real accounts, when this site is connected to its database.
+              {t('auth.verifyDemoBody')}
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-sm">
               <a href="/sign-in" className="underline font-semibold text-clay-700">
-                Go to sign in
+                {t('auth.goToSignIn')}
               </a>
               <a href="/register" className="underline font-semibold text-clay-700">
-                Register
+                {t('nav.register')}
               </a>
             </div>
             <div className="mt-3">
-              <Badge tone="warning">Demo mode</Badge>
+              <Badge tone="warning">{t('auth.demoModeBadge')}</Badge>
             </div>
           </CardBody>
         </Card>
@@ -83,24 +83,24 @@ export default async function VerifyEmailPage({
 
   return (
     <Section
-      eyebrow="Account help"
-      title="Confirm your email address"
-      description="Until the address is confirmed the account has no profile record, so it cannot sell or inquire. This page asks the authentication service to send the link again."
+      eyebrow={t('auth.accountHelpEyebrow')}
+      title={t('auth.verifyTitle')}
+      description={t('auth.verifyDescription')}
     >
       {user && (
         <Card>
           <CardBody>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-ink-700">Signed in as {user.email}</span>
-              <Badge tone={confirmed ? 'success' : 'warning'}>{confirmed ? 'Address confirmed' : 'Awaiting confirmation'}</Badge>
+              <span className="text-sm text-ink-700">{t('auth.signedInAs', { email: user.email ?? '' })}</span>
+              <Badge tone={confirmed ? 'success' : 'warning'}>{confirmed ? t('auth.addressConfirmed') : t('auth.awaitingConfirmation')}</Badge>
             </div>
             {confirmed && (
               <p className="mt-2 text-sm text-ink-700">
-                Nothing further is needed.{' '}
+                {t('auth.nothingFurther')}{' '}
                 <a href="/sign-in" className="underline font-semibold text-clay-700">
-                  Go to your account
+                  {t('auth.goToAccount')}
                 </a>
-                .
+                {t('auth.punctuation')}
               </p>
             )}
           </CardBody>
@@ -122,7 +122,7 @@ export default async function VerifyEmailPage({
           <form action={action} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-ink-900 mb-1">
-                Email address
+                {t('auth.emailAddressLabel')}
               </label>
               <input
                 id="email"
@@ -135,18 +135,15 @@ export default async function VerifyEmailPage({
               />
             </div>
             <button type="submit" className="rounded-lg bg-clay-700 px-4 py-2 font-semibold text-white hover:bg-clay-800">
-              Resend confirmation email
+              {t('auth.resendConfirmation')}
             </button>
           </form>
           <p className="mt-3 text-xs text-ink-500">
-            The authentication service only resends a confirmation link to a session it recognises, so if you are not
-            signed in, sign in first and then use this form — or use the password reset instead. If a link never arrives
-            even after a resend, the project’s mail settings — not OmoNetTab — are the place to look. An administrator can
-            also confirm an account directly in the authentication provider.
+            {t('auth.verifyFootnote')}
           </p>
           <p className="mt-2 text-sm">
             <a href="/forgot-password" className="underline font-semibold text-clay-700">
-              Forgot your password instead?
+              {t('auth.forgotInstead')}
             </a>
           </p>
         </CardBody>

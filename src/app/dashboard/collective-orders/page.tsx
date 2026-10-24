@@ -2,17 +2,38 @@ import Link from 'next/link';
 import { getRepo } from '@/lib/repo';
 import { requireArea } from '@/lib/area';
 import { formatMoney } from '@/lib/money';
+import type { TranslationKey } from '@/lib/i18n';
+import { getT } from '@/lib/i18n/server';
+import type { CollectiveOpportunity, GroupContribution } from '@/lib/types';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 import { SampleTag } from '@/components/status-labels';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: 'Group selling',
-  description: 'Your contributions to group orders, and the orders your account coordinates.'
+const OPPORTUNITY_STATUS_KEYS: Record<CollectiveOpportunity['status'], TranslationKey> = {
+  open: 'status.opportunity.open',
+  closing_soon: 'status.opportunity.closingSoon',
+  closed: 'status.opportunity.closed',
+  fulfilled: 'status.opportunity.fulfilled',
+  cancelled: 'status.opportunity.cancelled'
 };
 
+const CONTRIBUTION_STATUS_KEYS: Record<GroupContribution['status'], TranslationKey> = {
+  pending: 'collective.contributionStatus.pending',
+  confirmed: 'collective.contributionStatus.confirmed',
+  withdrawn: 'collective.contributionStatus.withdrawn'
+};
+
+export async function generateMetadata() {
+  const t = getT();
+  return {
+    title: t('nav.groupSelling'),
+    description: t('groupSelling.metaDescription')
+  };
+}
+
 export default async function DashboardCollectivePage() {
+  const t = getT();
   const actor = await requireArea('/dashboard', ['producer', 'coordinator']);
   const repo = getRepo();
   const opportunities = await repo.listOpportunities();
@@ -29,16 +50,16 @@ export default async function DashboardCollectivePage() {
 
   return (
     <Section
-      eyebrow="Dashboard"
-      title="Group selling"
-      description="Collective orders you contribute to, and the ones your account organises. A group order is a shared quantity request: OmoNetTab records who committed what, and moves no money."
+      eyebrow={t('groupSelling.eyebrow')}
+      title={t('nav.groupSelling')}
+      description={t('groupSelling.description')}
       actions={
         isCoordinator ? (
           <Link
             href="/dashboard/collective-orders/new"
             className="inline-flex bg-clay-700 text-white font-semibold px-4 py-2 rounded-lg"
           >
-            Open a group order
+            {t('groupSelling.openAction')}
           </Link>
         ) : undefined
       }
@@ -46,14 +67,14 @@ export default async function DashboardCollectivePage() {
       {isCoordinator && (
         <Card>
           <CardBody>
-            <h2 className="font-semibold text-ink-900">Group orders you coordinate</h2>
+            <h2 className="font-semibold text-ink-900">{t('groupSelling.coordinateHeading')}</h2>
             {coordinated.length === 0 ? (
               <p className="mt-1 text-sm text-ink-700">
-                None yet.{' '}
+                {t('groupSelling.noneLead')}{' '}
                 <Link href="/dashboard/collective-orders/new" className="underline font-semibold text-clay-700">
-                  Open one
+                  {t('groupSelling.openOne')}
                 </Link>{' '}
-                when the group has an agreed target and a pickup plan.
+                {t('groupSelling.noneTail')}
               </p>
             ) : (
               <ul className="mt-2 space-y-2 text-sm">
@@ -67,16 +88,16 @@ export default async function DashboardCollectivePage() {
                           {o.title}
                         </Link>
                         <Badge tone={o.status === 'open' ? 'success' : o.status === 'cancelled' ? 'danger' : 'neutral'}>
-                          {o.status.replace(/_/g, ' ')}
+                          {t(OPPORTUNITY_STATUS_KEYS[o.status])}
                         </Badge>
                       </div>
                       <p className="mt-1 text-ink-700">
-                        {committed} / {o.targetQuantity} {o.unitOfSale} committed by {active.length} member(s)
-                        {o.indicativeGroupPrice ? ` · indicative ${formatMoney(o.indicativeGroupPrice)} per ${o.unitOfSale}` : ''}
+                        {t('groupSelling.committedLine', { committed, target: o.targetQuantity, unit: o.unitOfSale, count: active.length })}
+                        {o.indicativeGroupPrice ? t('groupSelling.indicativeSuffix', { amount: formatMoney(o.indicativeGroupPrice), unit: o.unitOfSale }) : ''}
                       </p>
                       <p className="mt-1 text-xs text-ink-500">
                         <Link href={`/dashboard/collective-orders/${o.id}`} className="underline">
-                          Manage contributions and state →
+                          {t('groupSelling.manageContributions')}
                         </Link>
                       </p>
                     </li>
@@ -85,21 +106,20 @@ export default async function DashboardCollectivePage() {
               </ul>
             )}
             <p className="mt-2 text-xs text-ink-500">
-              Confirming another member’s quantity is a coordinator action and is written to the audit log. Withdrawing or
-              editing your own contribution never needs a coordinator.
+              {t('groupSelling.coordinatorNote')}
             </p>
           </CardBody>
         </Card>
       )}
 
-      <h2 className="text-xl font-bold text-ink-900 mt-6 mb-2">My contributions</h2>
+      <h2 className="text-xl font-bold text-ink-900 mt-6 mb-2">{t('groupSelling.myContributions')}</h2>
       {mine.length === 0 ? (
         <Empty
-          title="No contributions yet"
-          body="Open a group order and add an available quantity from your stock. What you commit is checked against the stock on your listings in that category."
+          title={t('groupSelling.contribEmptyTitle')}
+          body={t('groupSelling.contribEmptyBody')}
           action={
             <Link href="/collective-orders" className="inline-flex bg-clay-700 text-white font-semibold px-4 py-2 rounded-lg">
-              Browse opportunities
+              {t('groupSelling.browseOpportunities')}
             </Link>
           }
         />
@@ -116,24 +136,24 @@ export default async function DashboardCollectivePage() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <h3 className="font-semibold text-ink-900">{o.title}</h3>
                       <div className="flex flex-wrap gap-2 items-center">
-                        <Badge tone={o.status === 'open' ? 'success' : 'neutral'}>{o.status.replace(/_/g, ' ')}</Badge>
+                        <Badge tone={o.status === 'open' ? 'success' : 'neutral'}>{t(OPPORTUNITY_STATUS_KEYS[o.status])}</Badge>
                         {o.isDemo && <SampleTag />}
                       </div>
                     </div>
                     <div className="text-sm text-ink-500 mt-1 flex flex-wrap gap-4">
                       <Link href={`/collective-orders/${o.id}`} className="underline text-clay-800 font-semibold">
-                        Public page →
+                        {t('groupSelling.publicPage')}
                       </Link>
                       <Link href={`/dashboard/collective-orders/${o.id}`} className="underline text-clay-800 font-semibold">
-                        Change or withdraw my quantity →
+                        {t('groupSelling.changeWithdraw')}
                       </Link>
                     </div>
                     <table className="mt-3 w-full text-sm">
                       <thead>
                         <tr className="text-left text-ink-500">
-                          <th className="font-medium py-1">Quantity</th>
-                          <th className="font-medium py-1">Status</th>
-                          <th className="font-medium py-1">Note</th>
+                          <th className="font-medium py-1">{t('receipt.quantity')}</th>
+                          <th className="font-medium py-1">{t('reports.status')}</th>
+                          <th className="font-medium py-1">{t('collective.noteHeader')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -148,7 +168,7 @@ export default async function DashboardCollectivePage() {
                                   c.status === 'confirmed' ? 'success' : c.status === 'withdrawn' ? 'danger' : 'warning'
                                 }
                               >
-                                {c.status}
+                                {t(CONTRIBUTION_STATUS_KEYS[c.status])}
                               </Badge>
                             </td>
                             <td className="py-1 text-ink-700">{c.note ?? '—'}</td>
@@ -157,13 +177,11 @@ export default async function DashboardCollectivePage() {
                       </tbody>
                     </table>
                     <div className="mt-2 text-sm text-ink-500">
-                      Your live commitment: <strong>{activeTotal}</strong> {o.unitOfSale} · group aggregate{' '}
-                      <strong>{o.aggregateQuantity}</strong> / {o.targetQuantity} {o.unitOfSale}
+                      {t('groupSelling.liveCommitment')} <strong>{activeTotal}</strong> {t('groupSelling.groupAggregateMiddle', { unit: o.unitOfSale })}{' '}
+                      <strong>{o.aggregateQuantity}</strong> {t('groupSelling.targetSuffix', { target: o.targetQuantity, unit: o.unitOfSale })}
                     </div>
                     <p className="mt-2 text-xs text-ink-500">
-                      “Pending” means you said you can bring it and nobody confirmed it yet. “Confirmed” is recorded by the
-                      coordinating account. Withdrawing is honest as long as you really cannot supply — the buyer sees the
-                      revised total.
+                      {t('groupSelling.pendingNote')}
                     </p>
                   </CardBody>
                 </Card>
@@ -176,12 +194,11 @@ export default async function DashboardCollectivePage() {
       {!isCoordinator && (
         <Card>
           <CardBody>
-            <h2 className="font-semibold text-ink-900">Want to open a group order?</h2>
+            <h2 className="font-semibold text-ink-900">{t('groupSelling.wantOpenHeading')}</h2>
             <p className="mt-1 text-sm text-ink-700">
-              Opening one and confirming other members’ quantities are coordinator powers, assigned by an administrator so
-              the group’s commitments have an accountable owner. Until then, contribute to orders others have opened.{' '}
+              {t('groupSelling.wantOpenLead')}{' '}
               <Link href="/contact" className="underline font-semibold text-clay-700">
-                Ask about your group
+                {t('groupSelling.askAboutGroup')}
               </Link>
               .
             </p>

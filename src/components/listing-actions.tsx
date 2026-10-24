@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { t, type TranslationKey } from '@/lib/i18n';
 import { Button } from './ui';
-import type { AvailabilityStatus, Listing } from '@/lib/types';
+import type { AvailabilityStatus, LanguageCode, Listing } from '@/lib/types';
 
 type State = { busy: boolean; message: { ok: boolean; text: string } | null };
 
@@ -14,13 +15,16 @@ type State = { busy: boolean; message: { ok: boolean; text: string } | null };
  * listing, which is the repository's own rule restated in the UI.
  */
 export function ListingLifecycleActions({
+  lang,
   listing,
   inquiryCount
 }: {
+  lang: LanguageCode;
   listing: Listing;
   inquiryCount: number;
 }) {
   const router = useRouter();
+  const tr: (key: TranslationKey, vars?: Record<string, string | number>) => string = (key, vars) => t(lang, key, vars);
   const [{ busy, message }, setState] = useState<State>({ busy: false, message: null });
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -32,13 +36,13 @@ export function ListingLifecycleActions({
       const res = await action();
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setState({ busy: false, message: { ok: false, text: json?.error ?? `Could not ${successText} (status ${res.status}).` } });
+        setState({ busy: false, message: { ok: false, text: json?.error ?? tr('listingActions.couldNot', { action: successText, status: res.status }) } });
         return;
       }
       setState({ busy: false, message: { ok: true, text: successText } });
       if (refresh) router.refresh();
     } catch {
-      setState({ busy: false, message: { ok: false, text: 'Network problem: nothing was changed. Try again.' } });
+      setState({ busy: false, message: { ok: false, text: tr('listingActions.network') } });
     }
   }
 
@@ -61,11 +65,11 @@ export function ListingLifecycleActions({
           onClick={() =>
             run(
               patch({ published: !listing.published }),
-              listing.published ? 'Listing hidden from the marketplace.' : listing.archived ? 'Listing published again and restored from the archive.' : 'Listing published: buyers can find it now.'
+              listing.published ? tr('listingActions.hidden') : listing.archived ? tr('listingActions.restored') : tr('listingActions.published')
             )
           }
         >
-          {busy ? 'Saving…' : listing.published ? 'Unpublish' : 'Publish'}
+          {busy ? tr('listingActions.saving') : listing.published ? tr('listingActions.unpublish') : tr('listingActions.publish')}
         </Button>
 
         <Button
@@ -76,11 +80,11 @@ export function ListingLifecycleActions({
           onClick={() =>
             run(
               patch({ availability: nextAvailability }),
-              nextAvailability === 'available' ? 'Marked available.' : 'Marked unavailable: buyers can still read the page but cannot order.'
+              nextAvailability === 'available' ? tr('listingActions.markedAvailable') : tr('listingActions.markedUnavailable')
             )
           }
         >
-          {busy ? 'Saving…' : nextAvailability === 'available' ? 'Mark available' : 'Mark unavailable'}
+          {busy ? tr('listingActions.saving') : nextAvailability === 'available' ? tr('listingActions.markAvailable') : tr('listingActions.markUnavailable')}
         </Button>
 
         {!listing.archived && (
@@ -90,17 +94,17 @@ export function ListingLifecycleActions({
             size="sm"
             disabled={busy}
             onClick={() =>
-              run(patch({ archived: true }), 'Listing archived. Its inquiry history is kept, so the record is still correct for both sides.', true)
+              run(patch({ archived: true }), tr('listingActions.archived'), true)
             }
           >
-            {busy ? 'Saving…' : 'Archive'}
+            {busy ? tr('listingActions.saving') : tr('listingActions.archive')}
           </Button>
         )}
 
         {inquiryCount === 0 ? (
           confirmDelete ? (
             <span className="flex flex-wrap items-center gap-2 rounded-lg bg-red-50 px-2 py-1">
-              <span className="text-xs text-red-800">Delete “{listing.title}” permanently? Nothing can recover it.</span>
+              <span className="text-xs text-red-800">{tr('listingActions.deleteConfirm', { title: listing.title })}</span>
               <Button
                 type="button"
                 size="sm"
@@ -108,25 +112,25 @@ export function ListingLifecycleActions({
                 onClick={() =>
                   run(
                     () => fetch(`/api/listings/${listing.id}`, { method: 'DELETE' }),
-                    'Listing deleted. No inquiry record pointed at it.',
+                    tr('listingActions.deleted'),
                     false
                   )
                 }
               >
-                {busy ? 'Deleting…' : 'Yes, delete'}
+                {busy ? tr('listingActions.deleting') : tr('listingActions.yesDelete')}
               </Button>
               <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
-                Keep it
+                {tr('listingActions.keepIt')}
               </Button>
             </span>
           ) : (
             <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => setConfirmDelete(true)}>
-              Delete
+              {tr('listingActions.delete')}
             </Button>
           )
         ) : (
           <span className="text-xs text-ink-500 self-center">
-            Cannot delete: {inquiryCount} inquiry record(s) depend on this listing. Archive it instead.
+            {tr('listingActions.cannotDelete', { count: inquiryCount })}
           </span>
         )}
       </div>
@@ -142,7 +146,7 @@ export function ListingLifecycleActions({
 
       {listing.archived && (
         <p className="mt-2 text-xs text-ink-500">
-          Archived: hidden from the marketplace and from search. Publishing again brings it back with the same history.
+          {tr('listingActions.archivedNote')}
         </p>
       )}
     </div>
