@@ -4,6 +4,7 @@ import { isDemoMode } from '@/lib/store';
 import { requireArea } from '@/lib/area';
 import { getLanguage, getT } from '@/lib/i18n/server';
 import { AccountSettingsForm } from '@/components/account-settings-form';
+import { AppLockCard } from '@/components/app-lock-card';
 import { AppearanceCard } from '@/components/appearance-card';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 
@@ -48,6 +49,8 @@ export default async function BuyerSettingsPage() {
       <AccountSettingsForm profile={profile} variant="buyer" lang={lang} />
 
       <AppearanceCard profile={profile} />
+
+      <AppLockCard userId={actor.userId} />
 
       <Card>
         <CardBody>

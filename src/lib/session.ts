@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { appLockApiVerdict } from './app-lock/gate';
 import { getT } from './i18n/server';
 import { getRepo } from './repo';
 import { isDemoMode } from './store';
@@ -123,7 +124,14 @@ export function clearSession() {
 export class AuthorizationError extends Error {
   constructor(
     message: string,
-    readonly status: 401 | 403
+    /**
+     * 401 for "I do not know you", 403 for "you may not do this", 423 Locked for "you are
+     * known, but this session has to pass the app lock first" — a state no amount of
+     * re-reading the role can resolve, so it is not flattened into 401 — and 503 for "the
+     * lock's own settings could not be read", which is a refusal the client may retry
+     * rather than one it can satisfy by trying a different credential.
+     */
+    readonly status: 401 | 403 | 423 | 503
   ) {
     super(message);
     this.name = 'AuthorizationError';
@@ -156,8 +164,12 @@ export function landingFor(role: Role): string {
  * Server-side authorization for route handlers and server components. A
  * suspended account is rejected even when it still holds a valid session
  * cookie, because the role and status are re-read on every request.
+ *
+ * `lock: false` is only for the app-lock endpoints themselves — a locked session must
+ * still be able to ask to be unlocked. Everything else is checked, so a client-side
+ * screen is never the thing standing between a request and account data.
  */
-export async function requireRole(role: Role | Role[]): Promise<Actor> {
+export async function requireRole(role: Role | Role[], options: { lock?: boolean } = {}): Promise<Actor> {
   const actor = await getSessionActor();
   if (!actor) throw new AuthorizationError(getT()('auth.signInToContinue'), 401);
   if (actor.status === 'suspended') {
@@ -167,14 +179,33 @@ export async function requireRole(role: Role | Role[]): Promise<Actor> {
   if (!required.includes(actor.role)) {
     throw new AuthorizationError(getT()('auth.notPermitted'), 403);
   }
+  if (options.lock !== false) await enforceApiLock(actor);
   return actor;
 }
 
 /** Anyone with an account, suspended or not — used by pages that must show the suspension notice. */
-export async function requireSignedIn(): Promise<Actor> {
+export async function requireSignedIn(options: { lock?: boolean } = {}): Promise<Actor> {
   const actor = await getSessionActor();
   if (!actor) throw new AuthorizationError(getT()('auth.signInToContinue'), 401);
+  if (options.lock !== false) await enforceApiLock(actor);
   return actor;
+}
+
+/**
+ * The app lock, seen as an API answer rather than a redirect: 423 Locked for a session
+ * that has to step up, 401 when the envelope presented belongs to a different account, and
+ * 503 when the lock's own settings could not be read. All three are refusals only the
+ * server can lift — which is the property that makes the feature worth having — and the
+ * last of them is refused rather than waved through, because a database that did not
+ * answer is not evidence that no lock was asked for.
+ */
+async function enforceApiLock(actor: Actor): Promise<void> {
+  const verdict = await appLockApiVerdict(actor);
+  if (verdict === 'pass') return;
+  const t = getT();
+  if (verdict === 'stale') throw new AuthorizationError(t('auth.signInToContinue'), 401);
+  if (verdict === 'unavailable') throw new AuthorizationError(t('appLock.storeUnavailable'), 503);
+  throw new AuthorizationError(t('appLock.apiLocked'), 423);
 }
 
 /**
@@ -182,7 +213,7 @@ export async function requireSignedIn(): Promise<Actor> {
  * handler should send, keeping the honest status code instead of flattening
  * every refusal into a 400.
  */
-export function authErrorResponse(err: unknown, fallback: string): { body: { error: string }; status: 401 | 403 } {
+export function authErrorResponse(err: unknown, fallback: string): { body: { error: string }; status: 401 | 403 | 423 | 503 } {
   if (err instanceof AuthorizationError) return { body: { error: err.message }, status: err.status };
   return { body: { error: fallback }, status: 401 };
 }

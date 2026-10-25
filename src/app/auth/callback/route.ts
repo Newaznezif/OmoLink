@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase/server';
+import { envelopeForSignIn } from '@/lib/app-lock/gate';
 import { landingFor, safeNext, type Actor } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,11 @@ export async function GET(req: Request) {
     data: { user }
   } = await client.auth.getUser();
   if (!user) return go('/sign-in');
+
+  // Email confirmation is a fresh account session, so it opens the app lock the same
+  // way a password sign-in does. The recovery branch above deliberately does not: a
+  // visitor on the way to choosing a new password has not finished signing in.
+  await envelopeForSignIn(user.id);
 
   const { data: row } = await client.from('profiles').select('id, role, status').eq('user_id', user.id).maybeSingle();
   const profile = row as Pick<Actor, 'role' | 'status'> | null;

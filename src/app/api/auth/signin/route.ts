@@ -4,6 +4,7 @@ import { isDemoMode } from '@/lib/store';
 import { getRepo } from '@/lib/repo';
 import { restoreThemeFromAccount } from '@/lib/theme-server';
 import { safeNext } from '@/lib/session';
+import { envelopeForSignIn } from '@/lib/app-lock/gate';
 import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
@@ -52,6 +53,11 @@ export async function POST(req: Request) {
   // column in the select above would have made this sign-in fail instead.
   const fullProfile = await getRepo().getProfileByUserId(data.session.user.id);
   restoreThemeFromAccount(fullProfile?.theme);
+  // The app lock starts its own session here, separately from Supabase's. Signing in
+  // with the account password satisfies the lock for as long as the account's grant
+  // lasts, and says "no lock" when the account never asked for one — so this call is
+  // what makes the lock survivable when a device credential goes missing.
+  await envelopeForSignIn(data.session.user.id);
   // Relative target: an absolute one would have to be built from configuration
   // (easy to forget on a first deployment) or from req.url, which reports the
   // server's own address rather than the address the visitor used. Both land a

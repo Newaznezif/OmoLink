@@ -6,6 +6,7 @@ import { getLanguage, getT } from '@/lib/i18n/server';
 import type { TranslationKey } from '@/lib/i18n';
 import type { AccountStatus } from '@/lib/types';
 import { AccountSettingsForm } from '@/components/account-settings-form';
+import { AppLockCard } from '@/components/app-lock-card';
 import { AppearanceCard } from '@/components/appearance-card';
 import { Badge, Card, CardBody, Empty, Section } from '@/components/ui';
 import { VerificationLabel } from '@/components/status-labels';
@@ -61,6 +62,8 @@ export default async function DashboardSettingsPage() {
       <AccountSettingsForm profile={profile} variant="seller" lang={lang} />
 
       <AppearanceCard profile={profile} />
+
+      <AppLockCard userId={actor.userId} />
 
       <Card>
         <CardBody>

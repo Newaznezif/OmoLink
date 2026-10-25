@@ -1,6 +1,7 @@
 import { getRepo } from '@/lib/repo';
 import { getSessionActor } from '@/lib/session';
 import { AdminSection, BackField } from '@/components/admin-shell';
+import { AppLockCard } from '@/components/app-lock-card';
 import { AppearanceCard } from '@/components/appearance-card';
 import { Button, Card, CardBody, Field, Input, Textarea } from '@/components/ui';
 import { accentContrastColor } from '@/lib/settings';
@@ -173,6 +174,10 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
       </form>
 
       <AppearanceCard profile={adminProfile} />
+
+      {/* An administrator's own lock, not a site setting: it belongs to the account that
+          signs in here, and nothing about it changes what anyone else sees. */}
+      {actor ? <AppLockCard userId={actor.userId} /> : null}
 
       <Card>
         <CardBody>

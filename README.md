@@ -291,6 +291,9 @@ See `.env.example`; there are no secret values in this repository and none shoul
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | in Supabase mode | Public key; every read and write it makes is still subject to RLS. Preferred name on newer projects. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | in Supabase mode | The same key under its older name. Set one or the other; if both are set, the publishable value wins. |
 | `SUPABASE_SERVICE_ROLE_KEY` | **never** | The application does not read it, by design: it bypasses RLS and has no place in a request path a browser can influence. |
+| `APP_LOCK_SECRET` | for the app lock | ≥ 32 characters; signs the `omonettab_app_lock` session envelope. Without it the lock reports itself unavailable and offers no controls — server-only, never sent to a browser. |
+| `APP_LOCK_RP_ID` | **yes, in production**, for the device door | The bare host WebAuthn credentials are bound to (`omo-net-tab.vercel.app`). With `NODE_ENV=production` it is the only source, and missing or `localhost` makes every ceremony endpoint answer 503; the request's `Host` is never consulted there. The lock-password door still works without it. |
+| `APP_LOCK_ALLOWED_ORIGINS` | no | Exact, comma-separated origins permitted to assert a ceremony. Unset means `https://<rp id>` alone; the request's own Origin is never added. |
 
 `.gitignore` excludes `.env`, `.env.local`, key material, and credential files. Confirm with `git status --porcelain` before every commit.
 
@@ -871,6 +874,420 @@ own freshly started server — `workflow-smoke` **20/20**, `buyer-smoke` **93/93
 `producer-smoke` **113/113**, `admin-smoke` **53/53**, `catalogue-smoke` **235/235**,
 `money-and-appearance-smoke` **53/53**.
 
+## Optional app lock (device passkey or a separate lock password)
+
+An owner can require a step-up before OmoNETAB shows **their own account area on this
+device**. It is off by default, opt-in per account, and one of the app's optional
+features rather than a requirement: signing in, roles, Row Level Security and every
+existing journey behave exactly as they did before it existed.
+
+### What it does and what it does not do
+
+- **It is not a second database.** RLS is unchanged. Whoever presents a valid Supabase
+  access token is, to Postgres, that account, and can read and write the rows `0002`
+  already permits. A lock therefore does not hide data from someone who extracted the
+  bearer token and is talking to the REST endpoint by hand.
+- **What it does protect is the application.** The authority for "this session is
+  unlocked" is an HMAC-SHA256-signed cookie (`omonettab_app_lock`, `httpOnly`,
+  `SameSite=Lax`, `Secure` in production) that the browser cannot read and cannot mint,
+  because `APP_LOCK_SECRET` never leaves the server. The credential check behind it runs
+  on the server. No client-side boolean is treated as proof of anything, and no screen
+  that merely hides a page is claimed to be a lock.
+- **It cannot be offered where it cannot be verified.** The lock is available only when
+  `DATA_MODE=supabase`, `APP_LOCK_SECRET` is set, and migration `0008` has been applied.
+  In demo mode — which is how this project currently runs, locally and on
+  <https://omo-net-tab.vercel.app> — the Settings card states *which* prerequisite is
+  missing (`unavailableDemo` / `unavailableSecret` / `unavailableStore`) and renders no
+  controls, and `/unlock` redirects instead of pretending. A missing `0008` table
+  degrades to "no lock" rather than a 500 on sign-in; a database that merely *failed*
+  does not — see "A database failure is never a pass" below.
+
+### The two doors
+
+| Door | How it is proved | Notes |
+| --- | --- | --- |
+| Device credential | `@simplewebauthn/server` verifies the assertion **on the server**, against a challenge the server generated and signed into a read-once, path-scoped cookie (`omonettab_lock_challenge`, 300 s). | The platform decides whether that is a fingerprint, a face scan, or the device passcode, so the interface never promises "fingerprint". Public keys, counters, transports and AAGUID are stored in `webauthn_credentials`; nothing about the credential is trusted from the browser. |
+| Lock password | scrypt (`N=16384, r=8, p=1`, 32-byte salt, 64-byte key) compared in constant time on the server. | Deliberately **separate from the account password**. The digest lives only in `app_lock_settings.password_hash`; it is never placed in `localStorage`, `sessionStorage`, or IndexedDB, and never returned by an API response. |
+
+`method` is `webauthn`, `password`, or `either`, and **`either` is the default** so a
+changed fingerprint, a wiped keystore or a lost passkey is never a permanent lockout.
+A lock cannot be switched on without at least one door, and the last door cannot be
+removed while it is on: the Settings route and the credentials route both refuse it
+(`appLock.needWayBackIn` / `appLock.lastDoorCredential`, 409), and trigger
+`app_lock_requires_a_way_back_in` refuses the settings write in Postgres — because
+hiding a button is not a boundary. The trigger covers `app_lock_settings` only: nothing
+in the database stops a hand-written `DELETE` of the last row in
+`webauthn_credentials`, which is an application-side refusal alone. The unlock screen
+then shows `unlock.noDoor` and the sign-out link, so even that state is survivable —
+it is a gap in durability, not a way in. Recovery that always works is signing out and back in with the account
+password; email password reset is untouched.
+
+Repeated failures are counted by the **server**, in `failed_attempts` / `locked_until`,
+so killing the app or opening a second tab cannot reset them: backoff goes 15 → 30 → 60
+→ 120 → 240 seconds, capped at 900, and the unlock screen shows the remaining seconds.
+
+### Where the decision is made
+
+| File | Role |
+| --- | --- |
+| `src/middleware.ts` | Reads the envelope before any account HTML is served; a closed window redirects to `/unlock?next=…`. An envelope older than `ENVELOPE_TRUST_SECONDS` is sent to `/api/app-lock/bootstrap` instead, which is where the account's settings are re-read. |
+| `src/lib/app-lock/gate.ts` | `enforceAreaLock` for pages/layouts, `appLockApiVerdict` for API calls, and the envelope writes after unlock/lock/sign-in. |
+| `src/lib/app-lock/envelope.ts` | Sign, verify, and parse `omonettab_app_lock` (`{u,r,x,i,s}` — requirement, deadline, instant, and the step-up provenance); a bad signature is a locked session, never a lenient one. |
+| `src/lib/app-lock/state.ts` | Pure rules: usable doors, cooldown, backoff, grant deadline, the trust window, and `requiredLockPasswordProof()`. |
+| `src/lib/app-lock/challenge.ts` | The per-ceremony signed, read-once challenge cookie. |
+| `src/lib/app-lock/password.ts` | scrypt hash/verify, clamp rules. |
+| `src/lib/app-lock/store.ts` | Postgres access through the public key only; `readLockSettingsResult()` classifies a read as `ok` / `absent` / `error` so an unapplied migration cannot be mistaken for a database that timed out, or the other way round. |
+| `src/lib/app-lock/rp.ts` | The rp id and the accepted origins. In production `APP_LOCK_RP_ID` is the only source; the request's `Host` never answers there, and the caller's `Origin` is never added to the list. |
+| `src/app/unlock/page.tsx`, `src/components/unlock-form.tsx` | The screen. It only displays — the server decides. |
+| `src/components/app-lock-card.tsx`, `app-lock-controls.tsx` | Settings block for every role, including the "why is this unavailable" text. |
+| `src/components/app-lock-sentinel.tsx`, `app-lock-watch.tsx` | Ask for the re-lock a phone can only be asked for: window hidden, and idle. Each post only closes the server-side window; the grant's real bound is `grant_minutes`, which the browser cannot stretch. |
+| `public/sw.js` (v3) | Account paths (`/dashboard`, `/buyer`, `/admin`, `/unlock`) are never written to or read from cache, and a re-lock posts `omonettab:purge-account-cache`, so a locked account cannot be reconstructed offline. |
+| `supabase/migrations/0008_app_lock.sql` | The two tables, owner-only RLS (no admin policy), the way-back-in trigger. **Not applied.** |
+
+Endpoints, all under `/api/app-lock/`: `GET bootstrap`, `POST settings`, `POST lock`,
+`GET credentials` / `DELETE credentials`, `POST enroll/options` → `POST enroll/verify`,
+`GET unlock/options` → `POST unlock`. Every one is a route handler: a settings or
+enrolment change needs an unlocked session, while `unlock/options` and `unlock` answer a
+locked one (`requireSignedIn({ lock: false })`) — otherwise a locked session could not
+stand at the door. Bodies are JSON only (with `SameSite=Lax` a
+cross-site form cannot set that content type without a preflight this site never
+grants), and each one re-checks the session on the server. Responses never include the
+digest, the salt, or the attempt count.
+
+Pages and layouts are guarded by `src/lib/area.ts`, and the API by `requireRole()` /
+`requireSignedIn()`, which answer a locked session with 423 Locked and an envelope
+belonging to another account with 401. One consequence of that split is worth knowing
+before changing anything here: Next refuses a cookie write from a Server Component, so
+the gate must not depend on minting one to reach its verdict — when there is nothing to
+read and nothing it may write, it decides from the account's own settings, which is
+`locked` for an account that turned the lock on.
+
+### Setup to make it real
+
+1. `DATA_MODE=supabase` plus the Supabase URL and publishable key.
+2. `APP_LOCK_SECRET` (≥ 32 characters; `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
+3. **`APP_LOCK_RP_ID`, required for production**: the bare host the site is served from,
+   e.g. `APP_LOCK_RP_ID=omo-net-tab.vercel.app`. With `NODE_ENV=production` it is the only
+   source of the rp id and there is no Host fallback, so leaving it unset makes every
+   WebAuthn ceremony endpoint answer `503 appLock.rpUnknown`. The lock password door still
+   works without it; a device door cannot be enrolled or verified, and the code refuses
+   rather than guessing a domain that a credential could never be asserted against again.
+   Optionally `APP_LOCK_ALLOWED_ORIGINS` (exact, comma-separated; the request's own Origin
+   is never added). See `.env.example`.
+4. Apply `0008_app_lock.sql`. Nothing in this pass executed SQL against the live project.
+
+   What it needs, checked against the files rather than assumed: `auth.users` (Supabase
+   manages it), `gen_random_uuid()` — already used twelve times in `0001`, which is
+   applied — and nothing else. It creates two new tables, its own function and its own
+   trigger, and writes no row in a table `0001`–`0007` owns. **It does not depend on
+   `0006` or `0007`**, and the app lock works without them.
+
+   That matters because of how the CLI applies files: `supabase db push` runs *every*
+   pending migration in name order, so pushing 0008 also pushes `0006_payments.sql`,
+   which — unlike 0008 — reaches into a live table: it drops and re-adds
+   `audit_logs_action_check` and `audit_logs_record_type_check`, narrowing what may be
+   written to an audit row that already exists. That is worth reviewing on its own
+   terms, not as a side effect of switching a lock on. `0007_profile_theme.sql` adds one
+   nullable column.
+
+   So the two honest paths, in this order:
+
+   ```bash
+   cd C:\Users\lenovo\OmoNetTab
+   npx supabase db push --dry-run   # prints everything pending; changes nothing
+   ```
+
+   - To apply **only** the lock: paste `supabase/migrations/0008_app_lock.sql` into the
+     Supabase SQL Editor after reading it. It is self-contained.
+   - To apply **all three**: read 0006 and 0007 first, then `npx supabase db push`.
+
+   Either way, re-read `supabase/migrations` as a set before deciding; a pending
+   migration is not a free step just because nothing has complained yet.
+5. Sign in, open Settings → App lock, turn it on, and enrol a door. On Vercel, both
+   `APP_LOCK_SECRET` and `APP_LOCK_RP_ID` have to be set as production environment
+   variables there; a variable that exists only in `.env.local` is absent in the deployment.
+
+### How a policy change reaches every device, and what a failure means
+
+Three rules that are not visible from any single file, so they are written down here with
+the numbers that bound them.
+
+**Bounded staleness (`required:false` is not a permanent grant).** An envelope is trusted
+for `ENVELOPE_TRUST_SECONDS` (60 s) after it was signed. Inside that window a request costs
+no settings read at all. Once it is older, the gate re-reads the account's own row and
+carries the open window forward only if nothing about the *policy* moved after the envelope
+was signed: the comparison is against `app_lock_settings.updated_at`
+(`AppLockSettings.policyChangedAt`), with `POLICY_CLOCK_SKEW_MS` (30 s) allowed for two
+clocks that are not perfectly in step. So **turning the lock on, pressing Lock now,
+tightening a timing, or revoking a device reaches a second signed-in device within
+`MAX_POLICY_PROPAGATION_SECONDS` = 90 s**, asserted in
+`tests/app-lock.test.ts` so the documented number cannot drift from the code. The cost is
+at most one settings read per session per minute, and a fresh envelope costs zero.
+
+`updated_at` is the policy instant for **policy** writes only. `recordAttempts()` moves
+`failed_attempts` and `locked_until` and deliberately does not touch it — otherwise one
+typo on a password screen would log out every other device of the account holder.
+`touchLockPolicy()` is the explicit way a change says "re-check the others", and the
+"Lock now" and device-revoke routes call it before they answer.
+
+**Proving ownership before a lock password is replaced or removed.**
+`requiredLockPasswordProof()` returns `none`, `step-up` or `password`, and the settings
+route settles it *before* it writes anything:
+
+| Asking for | Needs |
+| --- | --- |
+| a new lock password | the current one, unless this session already carries a verified step-up |
+| removal of the lock password (`clearPassword`) | the current one, or a verified step-up |
+| turning the lock off | nothing — that is the recovery path, and a lock that cannot be turned off is a lockout |
+
+The provenance is the `s` field inside the signed envelope, never a field of the request:
+sign-in mints `stepUp: false` (so completing the account password cannot authorise a lock
+password change), and only a verified ceremony — the password compared against the server's
+scrypt digest, or an assertion verified by `@simplewebauthn/server` — mints `stepUp: true`.
+A session that is signed in but not stepped up can earn it in Settings by running the real
+device ceremony (`appLock.confirmWithDevice`), or by typing the current lock password.
+Wrong-password refusals in that flow still spend the backoff, server-counted.
+
+**A database failure is never a pass.** `readLockSettingsResult()` answers `ok`, `absent`,
+or `error`. `absent` means one of `42P01` / `42703` / `PGRST205` — no table, no column — and
+it is the *only* failure allowed to mean "this deployment has no lock", which is what keeps
+a project that never applied `0008` working. Everything else (timeout, connection pool,
+permission denied, a serialisation conflict, a client that cannot even be built because the
+project url or key is missing) is `error`, and every caller must treat it as closed:
+
+| Caller | On `error` |
+| --- | --- |
+| a page or layout (`enforceAreaLock`) | redirect to `/unlock?next=…` |
+| an API route (`appLockApiVerdict` → `enforceApiLock`) | `503` with `appLock.storeUnavailable` |
+| `POST /api/app-lock/unlock` and the ceremony endpoints | `503`, not `401` — the honest answer when the door's own lock cannot be inspected is "not now" |
+| the unlock screen | renders the failure card, with the sign-out form still there, so a database that is not answering is never a room with no door out |
+| `GET /api/app-lock/bootstrap` | sends the visitor to `/unlock` rather than through |
+
+`/unlock` and bootstrap point at each other only in the direction that terminates: a stale
+envelope at `/unlock` is left alone by the middleware, and the unlock screen never
+redirects to itself. Public pages, sign-in, sign-out and account password reset are
+untouched by all of this — the lock gates the account area, and nothing else.
+
+**The rp id in production.** `webauthnIdentity()` reads `APP_LOCK_RP_ID` and, with
+`NODE_ENV=production`, reads *nothing else*: missing or `localhost` means the ceremony
+endpoints answer `503 appLock.rpUnknown`. A `Host` header is client-chosen data, and an rp
+id taken from it would let a request that names another domain get a credential enrolled
+for that domain. Outside production the Host may answer (that is what makes `npm run dev`
+work), and even then only a plain host: a scheme, a path, a query, a malformed port or an
+IP literal is refused, because reading `https://example.com` as the host `https` is how an
+rp id becomes a string no authenticator will ever assert against. `APP_LOCK_ALLOWED_ORIGINS`
+is an exact list, and the request's own Origin is never added to it.
+
+### Decisions this pass deliberately left to the owner
+
+Found by reading, and left unfixed because each one changes behaviour or needs the database:
+
+- **A WebAuthn failure costs no attempt.** `src/app/api/app-lock/unlock/route.ts` counts
+  wrong passwords and ignores failed assertions on purpose (a damp thumb should not
+  start a cool-down, and there is nothing to guess). A device-holder can therefore be
+  retried against the platform without limit; the platform is what says no.
+- **The signature counter is stored as reported.** `markCredentialUsed` does not reject a
+  counter that failed to increase, because synced passkeys legitimately do that. `0008`
+  keeps `credential_device_type`, so refusing a non-increasing counter for
+  `singleDevice` rows is available if cloning detection is ever wanted.
+- **`verifyLockPassword` honours the scrypt parameters in the stored row.** The check
+  constraint in `0008` pins the *shape*, not `N`/`r`/`p`, so a hand-written digest can
+  ask the server for more work than `16384` (an authenticated owner can only do this to
+  themselves; the 64 MB `maxmem` cap bounds it). A digest whose parameters this process
+  will not pay for now verifies as a wrong password rather than throwing, which is what
+  keeps the unlock screen answering a message instead of a 500.
+- **Nothing client-side is protected.** The lock decides what the *server* will render.
+  Listing and inquiry drafts saved in IndexedDB (`src/hooks/use-listing-draft.ts`,
+  `src/components/draft-browser.tsx`) are readable by whoever holds the phone, with or
+  without an envelope, and no copy claims otherwise.
+
+### Manual phone testing that still has to happen
+
+Not performed. The procedure, for whoever has the devices:
+
+**Before any phone test** — on the deployment being tested, `APP_LOCK_RP_ID` must be the
+bare host of that deployment (`omo-net-tab.vercel.app` for production; a preview URL needs
+its own host and its own enrolments) and `APP_LOCK_SECRET` must be set. Without the rp id
+production refuses every ceremony with `503 appLock.rpUnknown` on purpose; if that is what
+the phone reports, the variable is missing in Vercel, not unsupported by the handset.
+
+**Android Chrome** — open the deployed site over HTTPS, install it (Add to Home
+screen), Settings → App lock → enable, method *Either*, enrol a passkey, and note that
+Google Services may ask to use the screen lock instead of a fingerprint. Unlock from
+`/unlock` with the passkey; then retry with the lock password; then make five wrong
+passwords and read the cooldown. Kill the app from Recents, reopen it, and confirm the
+unlock screen reappears after the grant expires. Also test "Lock on background" by
+switching apps, and idle relock with a one-minute setting.
+
+**Two devices, one account** — sign in on both, unlock on both, then on device A turn the
+lock on (or press **Lock now**). Device B should be asking for a step-up within 90 seconds
+of its next navigation; note the actual delay. Then repeat with a *timing* change and with
+revoking device A's passkey, which are the other writes that move the policy instant.
+
+**Proving ownership of the lock password** — on a session that only signed in (no step-up),
+try to replace or clear the lock password: the current one should be demanded, and a wrong
+one should cost a backoff step. Then unlock with the passkey, retry the same change, and it
+should go through without a password. Finally confirm the lock can still be turned off from
+either state — that refusal is the difference between a lock and a lockout.
+
+**iPhone Safari / PWA** — Add to Home Screen, then the same enrolment. WebAuthn in an
+installed iOS web app is scoped to the app's own origin and to the credential's
+`rpId`, and Face ID or Touch ID is completed by iOS with the device passcode as the
+fallback, so a lock password door should be enrolled as well. Confirm that iCloud Keychain
+passkeys (`multiDevice`) and a device-only security key (`singleDevice`) both behave, and
+that Private Relay or an unusual hostname does not make the origin check fail — if it
+does, that is what `APP_LOCK_ALLOWED_ORIGINS` is for.
+
+**Everywhere** — verify PWA install and update still work, dark and light mode are
+unaffected, offline browsing of public pages still works while account pages do not, and
+the other languages (Italian, Simplified Chinese, Amharic fallback) render the unlock
+screen without leaking key names.
+
+### Checks observed for this pass
+
+```bash
+cd C:\Users\lenovo\OmoNetTab
+npx tsc --noEmit
+npm test
+npm run lint
+npm run build
+npm run start   # in its own terminal, then in another one:
+SMOKE_BASE=http://localhost:3140 node tests/http/app-lock-smoke.mjs
+```
+
+`tests/app-lock.test.ts` is 51 unit tests over the pure rules and the store layer:
+envelope forgery attempts (including a well-shaped `{"admin":true}` payload) are
+rejected, `required:true` with a window that includes "now" is still locked, a grant of
+`0`/`NaN` falls back to the default lifetime, the backoff ladder and its cap, the
+scrypt digest matches the format `0008`'s check constraint demands, the credential
+columns and `credential_device_type` values match what `@simplewebauthn` actually
+produces, the trigger refuses `password`/`webauthn` with no door, RLS is exactly
+`user_id = auth.uid()` with no `is_admin()` escape, and in demo mode the gate is a
+pass-through. `tests/http/app-lock-smoke.mjs` is 23 HTTP checks run against this
+deployment's actual demo configuration, so every one of them is that the feature is
+**absent and says so** rather than imitated: no `omonettab_app_lock` cookie on any
+response, `/unlock` redirecting rather than rendering, the eight endpoints answering
+409 with a reason, the Settings page showing the explanation and zero lock controls,
+the appearance card still intact, and `credentials`/`unlock/options` refusing to
+fabricate a ceremony.
+
+The findings pass below added cases for each of the four items, all of them in
+`tests/app-lock.test.ts`:
+
+- *H2, cross-device enforcement* — a presented envelope is trusted for exactly its
+  window and no longer; an open window ends when the account's policy moved after it was
+  signed; the backoff moves the counter and never the policy instant; the instant a
+  session is compared against is the row's own `updated_at`; and the documented bound is
+  asserted as a number (`MAX_POLICY_PROPAGATION_SECONDS === 90`).
+- *M2, password removal* — the step-up provenance travels inside the signature (a forged
+  `s:1` on an envelope minted without one is void); `requiredLockPasswordProof()` refuses
+  to replace or clear a lock password without the current one or a proven step-up, and
+  asks for nothing when the lock is being turned off.
+- *M4, database failures* — each of `42P01` / `42703` / `PGRST205` classifies as `absent`
+  and nothing else does; a timeout, `permission denied`, `53300`, `40001` classify as
+  `error`; a store this process cannot even build is an `error`, not an absent migration;
+  and for that case the page gate redirects to `/unlock` while the API verdict is
+  `unavailable` and `lockAuthResponse` answers 503 rather than a 500 or a pass.
+- *RP id* — in production the rp id comes from `APP_LOCK_RP_ID` alone (missing, empty,
+  `localhost`, or a URL-shaped value all refuse); outside production a request `Host` may
+  answer, but only when it is a plain host.
+
+Last full run (2026-10-25, after the findings pass below): `npx tsc --noEmit` exit 0;
+`npm test` **205/205**; `npm run lint` exit 0, 1 warning and 0 errors (the deliberate
+`<img>` in `src/components/listing-images.tsx`); `npm run build` exit 0; and all nine HTTP
+suites on their own freshly started servers — `catalogue` **236**, `locale` **27**,
+`workflow` **20**, `producer` **118**, `buyer` **102**, `admin` **55**,
+`money-and-appearance` **53**, `refinements` **123**, `app-lock` **23** — 757 checks,
+0 failures. The four suites that touch the session gate (`app-lock`, `locale`, `admin`,
+`buyer`) were re-run again after that build, all green.
+
+Earlier in the day, before the findings pass: `npm test` **192/192**, with the same nine
+suites at the same counts.
+
+Live migration state, read back with `npx supabase migration list` (read-only):
+`0001`–`0005` present in both the local and the remote column, `0006`, `0007` and
+`0008` local-only. Nothing was applied by this pass.
+
+**NOT TESTED, and therefore not claimed**: a real WebAuthn registration or assertion on
+any authenticator; the lock in Supabase mode at all; migration `0008` applied to any
+database; live Row Level Security against a real project with two separate accounts; and
+any behaviour on an actual phone. Specifically for the four findings above: the 90-second
+propagation bound is asserted as a rule and as arithmetic in a unit test, never measured
+between two handsets; the 503 fail-closed path has only ever been produced by a stubbed or
+unreachable client, not by a real Postgres refusing a query; and no device has ever been
+asked to prove a lock password. A green suite here is evidence about this code, not about a
+handset.
+
+### What the 2026-10-25 audit pass changed
+
+Read-through of every app-lock file, then the fixes that were local and did not weaken
+anything. Each was found by reading, and three of them were reachable:
+
+- **`resolveLockForActor()` no longer mints a cookie during a page render.** It used to
+  call `cookies().set()` on the path a Server Component takes, and Next 14.2.5 refuses
+  that write — proven with a probe page that answered HTTP 500 with
+  `Cookies can only be modified in a Server Action or Route Handler`. Any account page
+  outside the middleware's matcher could reach it (e.g. `src/app/pay/demo/[reference]`
+  calls `requireArea()` before its own demo guard). The write is now attempted inside a
+  `try`, and when it is refused the verdict comes from the account's own settings. It is
+  also no longer fail-open: the old fallback was `off` for an account whose settings
+  said `enabled`.
+- **`/unlock?next=` cannot be pointed at another host.** The middleware's own copy of
+  the check was the hand-written `startsWith('/') && !startsWith('//')` shape, which a
+  browser reads `/\evil.com` and `/<TAB>/evil.com` as an authority, so the "relative
+  path" is another site. It now parses the
+  value, compares origins, and allows only `/dashboard`, `/buyer`, `/admin` — the same
+  rule `safeNext()` in `src/lib/session.ts` already enforced on the page and on
+  `/api/app-lock/bootstrap`. Proven with a script against the two implementations
+  (`/\evil.com`: old `https://evil.com/`, new same-site); **not** covered by a suite,
+  because demo mode returns from the middleware before this branch runs.
+- **A request that closes the last door is refused, not half-applied.** Settings now
+  parse every choice and check `hasWayBackIn()` *before* any write, so clearing the last
+  one answers 409 with a message instead of letting the `0008` trigger raise an exception
+  and reach the owner as a 500.
+- **An unverifiable stored digest is a wrong password, not a crash.** See the
+  `verifyLockPassword` bullet above; `tests/app-lock.test.ts` holds the case.
+
+### What the 2026-10-25 findings pass changed (H2, M2, M4, rp id)
+
+Four reported findings, each fixed in the layer that owns it and each with a case in
+`tests/app-lock.test.ts`. No SQL was executed, nothing was deployed, committed or pushed.
+
+- **H2 — a lock-enabled change and "Lock now" now reach other devices within 90 s.**
+  `state.ts` gained `ENVELOPE_TRUST_SECONDS`, `POLICY_CLOCK_SKEW_MS`,
+  `MAX_POLICY_PROPAGATION_SECONDS`, `envelopeNeedsRecheck()` and `grantSurvivesRecheck()`;
+  `AppLockSettings` carries `policyChangedAt`, read from the row's own `updated_at`
+  (no schema change, and `recordAttempts()` was changed so a failed password no longer
+  moves that instant). `gate.ts`'s `resolveLockForActor()` re-reads the account's settings
+  when the presented envelope has aged and closes a window the policy invalidated.
+  `middleware.ts` sends an aged envelope to `/api/app-lock/bootstrap` instead of trusting
+  it, and bootstrap answers with the same verdict the pages use. `lock/route.ts` and
+  `credentials/route.ts` (DELETE) call `touchLockPolicy()` so the change is stamped before
+  the route answers.
+- **M2 — removing or replacing the lock password is proved, not assumed.**
+  `requiredLockPasswordProof()` in `state.ts` is the single rule; `settings/route.ts`
+  settles it before any write and spends the server-side backoff on a wrong current
+  password; `gate.ts`'s `sessionStepUp()` reads the provenance out of the signed envelope,
+  which sign-in sets to `false` and only a verified ceremony sets to `true`.
+  `app-lock-controls.tsx` asks for the current password when there is no provenance and
+  offers `appLock.confirmWithDevice` to earn one with a real passkey; turning the lock off
+  still asks for nothing, because that is the recovery path.
+- **M4 — an unexpected database failure can no longer read as "no lock".**
+  `store.ts` classifies every read through `LockStoreError` and `readLockSettingsResult()`
+  (`ok` / `absent` / `error`), `gate.ts` classifies a client that cannot be built as the
+  same `error`, `SessionLock` gained the `unavailable` verdict, `session.ts` answers it
+  with 503, `http.ts` maps a store failure to 409 only when the schema is genuinely
+  missing, and `unlock/page.tsx` renders an honest failure card that keeps the sign-out
+  form. Every route that used the old "safe read" now branches on all three answers.
+- **RP id — production reads `APP_LOCK_RP_ID` and nothing else**, so a `Host` header cannot
+  choose the domain a credential is bound to; `requestedHost()` also refuses a value that
+  is a URL rather than a host (it previously read `https://example.com` as the host
+  `https`), and a production rp id of `localhost` is refused.
+
+Two consequences to know before deploying this: production needs `APP_LOCK_RP_ID` set on
+Vercel or the device door answers 503 (the password door is unaffected), and an account
+whose `app_lock_settings` row cannot be read is now sent to `/unlock` rather than shown the
+page — which is the point of the change, and the reason the unlock screen can explain it.
 
 ## Project status and roadmap
 

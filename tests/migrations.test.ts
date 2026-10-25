@@ -71,7 +71,7 @@ function livePolicies(): Map<string, Policy> {
 
 const policies = livePolicies();
 
-test('the sequence is the seven reviewed files, in order', () => {
+test('the sequence is the eight reviewed files, in order', () => {
   assert.deepEqual(
     sequence.map((s) => s.file),
     [
@@ -81,7 +81,11 @@ test('the sequence is the seven reviewed files, in order', () => {
       '0004_inquiry_status_guard.sql',
       '0005_privilege_guards.sql',
       '0006_payments.sql',
-      '0007_profile_theme.sql'
+      '0007_profile_theme.sql',
+      // Drafted for the owner's review, and not applied to any live database.
+      // It is listed here because a migration reaching this directory has to be
+      // read before it is run, not because it has been run.
+      '0008_app_lock.sql'
     ]
   );
 });
@@ -231,6 +235,7 @@ test('no function declares a parameter named with a reserved word', () => {
 test('the sequence declares exactly the functions the policies and triggers need', () => {
   const declared = new Set(sequence.flatMap(({ sql }) => functionDeclarations(sql).map((fn) => fn.name)));
   assert.deepEqual([...declared].sort(), [
+    'app_lock_requires_a_way_back_in',
     'current_profile_id',
     'guard_admin_insert',
     'guard_suspended_writer',

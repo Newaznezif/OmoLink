@@ -3,6 +3,7 @@ import { getRepo } from '@/lib/repo';
 import { writeSession } from '@/lib/session';
 import { restoreThemeFromAccount } from '@/lib/theme-server';
 import { canSignInAsDemo, isDemoMode } from '@/lib/store';
+import { clearLockEnvelope } from '@/lib/app-lock/gate';
 import { getT } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: t('apiSession.noProfile') }, { status: 404 });
   }
   writeSession({ userId });
+  // Demo mode has no app lock (see src/lib/app-lock/store.ts), so any envelope left on
+  // this browser by a previous Supabase-mode deployment is dropped here rather than
+  // carried into a sample account's session.
+  clearLockEnvelope();
   // The saved scheme travels with the account: without this, signing in on a
   // browser that has never been used here would paint the default instead.
   restoreThemeFromAccount(profile.theme);

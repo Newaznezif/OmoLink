@@ -1,6 +1,7 @@
 import { requireArea } from '@/lib/area';
 import { getLanguage } from '@/lib/i18n/server';
 import { AccountBanner } from '@/components/account-banner';
+import { AppLockWatch } from '@/components/app-lock-watch';
 import { SellerNav } from '@/components/seller-nav';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <AccountBanner actor={actor} lang={lang} />
         {children}
       </div>
+      <AppLockWatch userId={actor.userId} />
     </>
   );
 }
